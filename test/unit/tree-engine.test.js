@@ -86,8 +86,8 @@ test('kit.readFlag: the attribute\'s own name as its value (disabled="disabled")
     assert.equal(kit.readFlag({showLabel: 'showLabel'}, 'showLabel', undefined, false), false);
 });
 
-test('kit.borderRadius follows aui-select precedence, with the radius token of the CSS', () => {
-    const r = 'var(--aui-control-radius-default)';
+test('kit.borderRadius follows aui-select precedence, with the theme\'s radius token', () => {
+    const r = 'var(--aui-control-radius)';
     assert.equal(kit.borderRadius(false, true, true), '0');
     assert.equal(kit.borderRadius(true, false, false), r);
     assert.equal(kit.borderRadius(true, true, false), '0 ' + r + ' ' + r + ' 0');

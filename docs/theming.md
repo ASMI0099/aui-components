@@ -26,11 +26,12 @@ default, never an unreadable field.
 | `--aui-control-accent-color` | `#0d6efd` | the focus and open look (border and 2px ring), the open chevron, the picked option, the checkboxes, links and spinners of the lists, the primary button |
 | `--aui-control-value-color` | `#1f2328` | the value: in the field, typed, in the rows of a list and its search box |
 | `--aui-control-label-color` | `#64748b` | the label in the box and above it |
-| `--aui-control-placeholder-color` | `#9aa8b8` | the placeholders of the fields and of their search boxes |
+| `--aui-control-placeholder-color` | `#9aa8b8` | the placeholders of the fields and of their search boxes: a light hint |
 | `--aui-control-muted-color` | `#64748b` | second texts: counts, readonly values, empty and loading texts of a list, the password eye |
 | `--aui-control-disabled-color` | `#a8abb2` | the text of a disabled field or option |
-| `--aui-control-border-color` | `#d6dce5` | the border of a field |
-| `--aui-control-border-hover-color` | `#b8c1cf` | the border under the pointer |
+| `--aui-control-border-color` | `#8590a0` | the border of a field |
+| `--aui-control-border-hover-color` | `#737f90` | the border under the pointer |
+| `--aui-control-divider-color` | `#d6dce5` | the line between a label in the box and the value |
 | `--aui-control-invalid-color` | `#dc3545` | an invalid field (border, halo, ring), a count over its limit, the error text |
 | `--aui-control-background-color` | `#ffffff` | the field and its panel |
 | `--aui-control-readonly-background-color` | `#f8fafc` | a readonly or disabled field |
@@ -39,14 +40,16 @@ The shades the components need (hover, pressed, tints of the accent and of the i
 two colours with `color-mix()`, so changing `--aui-control-accent-color` or `--aui-control-invalid-color` recolours
 everything. A browser without `color-mix()` draws the default shades.
 
-Keep the text colours readable: the defaults meet WCAG AA (4.5:1 for text, 3:1 for borders and focus rings) on white.
+Keep the text colours readable. On white the defaults meet WCAG AA: 4.5:1 for the value, the labels and the second
+texts, 3:1 for the field border (3.2:1) and the focus ring. The placeholder is a light hint (2.4:1), so that it never
+reads as a value; a page that must meet 4.5:1 for placeholders too sets `--aui-control-placeholder-color: #6b7889`.
 A primary button draws white text on the accent colour, so an accent lighter than about `#0d6efd` loses contrast.
 
 ## Sizes and shapes
 
 | Token | Default | |
 |---|---|---|
-| `--aui-control-height` | `34px` | the height of the fields (a field's `size="small"` is 28px, `size="large"` 40px) |
+| `--aui-control-height` | `34px` | the height of the fields, from 28px to 40px (a field's `size="small"` is 28px, `size="large"` 40px) |
 | `--aui-control-radius` | `3px` | the corners of the fields |
 | `--aui-control-value-size` | 14px (scaled) | the size of a field's value |
 | `--aui-control-label-size` | 13px (scaled) | the size of a field's label |

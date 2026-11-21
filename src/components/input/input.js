@@ -301,6 +301,8 @@ angular.module('aui')
                 id: () => $ctrl.compId
             });
 
+            const STYLES = ['basic', 'form', 'cell'];
+
             /**
              * The options, read as aui-select and aui-tree-select read theirs (kit.readFlag): a bare attribute
              * (`<aui-input show-label readonly>`) is on; an expression or 'true'/'false' counts as given. Read again on
@@ -308,6 +310,8 @@ angular.module('aui')
              */
             function readOptions() {
                 const opt = $ctrl.opt;
+                // the style: basic, form or cell; empty or unknown, the default basic style (a field always has its box)
+                if (STYLES.indexOf($ctrl.inputStyleType) < 0) $ctrl.inputStyleType = 'basic';
                 opt.disabled = kit.readFlag($attrs, 'disabled', $ctrl.disabled, false);
                 opt.readonly = kit.readFlag($attrs, 'readonly', $ctrl.readonly, false);
                 opt.showLabel = kit.readFlag($attrs, 'showLabel', $ctrl.showLabel, false);
@@ -423,6 +427,13 @@ angular.module('aui')
                 if (boxEl && $ctrl.isPassword()) boxEl.type = 'password';
             };
 
+            /*
+             * The box takes no action of the field's (clearing, showing the password, the focus): disabled by the field,
+             * or by a disabled fieldset around it - the box is :disabled then, while the field's own disabled option is
+             * off. (Its clear button and eye are hidden then as well: input.css.)
+             */
+            const boxLocked = () => !!$ctrl.opt.disabled || (!!boxEl && typeof boxEl.matches === 'function' && boxEl.matches(':disabled'));
+
             $ctrl.togglePassword = ($event) => {
                 if ($event && $event.stopPropagation) $event.stopPropagation();
                 if (!$ctrl.hasEye()) return;
@@ -430,6 +441,7 @@ angular.module('aui')
                     hidePassword();
                     return;
                 }
+                if (boxLocked()) return;
                 $ctrl.passwordShown = true;
                 // shown while the user is in the field only: a press on the eye from outside the field (the eye keeps
                 // the focus where it is) brings the focus into the box, so that leaving the field hides it again
@@ -540,7 +552,7 @@ angular.module('aui')
             // a press on a prefix or suffix puts the caret in the box, as a press on the box would
             $ctrl.focusBox = ($event) => {
                 if ($event && $event.preventDefault) $event.preventDefault();
-                if (boxEl && !$ctrl.opt.disabled) boxEl.focus();
+                if (boxEl && !boxLocked()) boxEl.focus();
             };
 
             /*
@@ -553,7 +565,7 @@ angular.module('aui')
              * listener: no page digest for a press.
              */
             const onFramePress = (event) => {
-                if (event.button !== 0 || event.defaultPrevented || !boxEl || event.target === boxEl || $ctrl.opt.disabled) return;
+                if (event.button !== 0 || event.defaultPrevented || !boxEl || event.target === boxEl || boxLocked()) return;
                 const target = event.target;
                 const frame = target.closest ? target.closest('.aui-input__form-trigger, .aui-input-container') : null;
                 if (!frame || !frame.contains(boxEl) || target.closest('[role="button"]')) return;
@@ -584,9 +596,8 @@ angular.module('aui')
 
             this.$onInit = () => {
                 $ctrl.placeholder = $ctrl.placeholder || '';
-                $ctrl.inputStyleType = $ctrl.inputStyleType || 'basic';
 
-                readOptions();
+                readOptions();   // (the style too: basic unless form or cell)
                 kit.followNgFlags($attrs, readOptions);
                 // the page's aria-label / aria-labelledby / aria-describedby on the field go on the box (see boxLabel)
                 ['ariaLabel', 'ariaLabelledby', 'ariaDescribedby'].forEach(name => {
@@ -834,12 +845,19 @@ angular.module('aui')
                 boxStateShown = invalid + required;
                 setBoxAttr('aria-invalid', invalid);
                 setBoxAttr('aria-required', required);
+                // the box's own required too: a form the browser checks (a native submit) stops at an empty required
+                // field, as it does at a native one (a form with novalidate is not checked by the browser)
+                boxEl.required = required === 'true';
             }
 
-            // ng-trim of the password box (see isPassword): Angular's input listener reads it from the box's attributes
+            /*
+             * ng-trim of the box: Angular's input listener reads it from the box's attributes. Off for a password (see
+             * isPassword), and where the page asks for the spaces around the text (ng-trim="false" on the field).
+             */
+            const keepsSpaces = () => $ctrl.isPassword() || String($attrs.ngTrim === undefined ? '' : $attrs.ngTrim).trim() === 'false';
             function syncTrim() {
                 if (!boxAttrs) return;
-                if ($ctrl.isPassword()) boxAttrs.ngTrim = 'false';
+                if (keepsSpaces()) boxAttrs.ngTrim = 'false';
                 else delete boxAttrs.ngTrim;
             }
 
@@ -866,8 +884,20 @@ angular.module('aui')
             // the box's validators run on every check that gets past its parsers (typed, formatted, $validate)
             const boxCheck = (modelValue, viewValue) => {
                 queueTakeOver();
-                return precisionValidator(modelValue, viewValue);
+                const valid = precisionValidator(modelValue, viewValue);
+                syncNativePrecision(valid);
+                return valid;
             };
+
+            /*
+             * precision for a form the browser checks (a native submit, checkValidity): the box's own validity says it
+             * too, with the field's text for it. The step cannot always say it (a min off the precision's grid gives
+             * the step "any", see stepValue).
+             */
+            function syncNativePrecision(valid) {
+                if (!boxEl || typeof boxEl.setCustomValidity !== 'function') return;
+                boxEl.setCustomValidity(valid ? '' : $ctrl.field.textFor('precision'));
+            }
 
             /*
              * Whose change a change of the box's value is. Angular changes it in a commit of the box's text (typed,
@@ -967,8 +997,11 @@ angular.module('aui')
                 // required reads the box's text (see $postLink), which the box has just checked
                 const required = host.$validators.required;
                 if (required) host.$setValidity('required', !!required(host.$modelValue, host.$viewValue));
-                // typed in, even if the value did not change (an invalid text stays an undefined value): the field is dirty
-                if (box && box.$dirty && host.$pristine) host.$setDirty();
+                // typed in, even if the value did not change (an invalid text stays an undefined value): the field is
+                // dirty - when the field takes its text as it is typed. With ng-model-options updateOn (blur...) it is
+                // dirty once it commits, as Angular's own field is (form.$rollbackViewValue() before then leaves the
+                // field and the form pristine).
+                if (box && box.$dirty && host.$pristine && !(host.$options && host.$options.updateOnDefault === false)) host.$setDirty();
             }
 
             /*
@@ -982,12 +1015,13 @@ angular.module('aui')
             };
 
             /*
-             * show-count: the length of the text in the box, out of value-max-length when that is set ("3/7"). It counts
-             * every character in the box, the spaces around the text too, as the box's maxlength does (enforce-limits),
-             * in UTF-16 units: the count reaches the limit when the box takes no more. (The value the page receives is
-             * the text without those spaces, Angular's ng-trim; its checks, value-max-length too, count that value.)
-             * Angular reports no change when only those spaces change: the count takes the box's text as it is typed
-             * (onBoxTyped); a value from the page, or cleared, is counted as it is.
+             * show-count: the length of the text in the box, out of value-max-length when that is set ("3/7"), in UTF-16
+             * units, as the length that limits it counts it. The check counts the value: the text without the spaces
+             * around it (Angular's ng-trim), so the count does too, and it is never over while the field is valid.
+             * With enforce-limits the box's own maxlength stops the typing, and it counts every character, the spaces
+             * too: the count follows it there, and reaches the limit when the box takes no more. Angular reports no
+             * change when only those spaces change: the count takes the box's text as it is typed (onBoxTyped); a value
+             * from the page, or cleared, is counted as it is.
              */
             let typedText = null;    // the box's text as last typed; null: the value's
             let countShown = null;   // the length the count showed in the last digest
@@ -1004,7 +1038,8 @@ angular.module('aui')
 
             const countLength = () => {
                 const text = typedText !== null ? typedText : (box ? box.$viewValue : $ctrl.internalValue);
-                return (text === undefined || text === null) ? 0 : String(text).length;
+                if (text === undefined || text === null) return 0;
+                return ($ctrl.opt.enforceLimits || keepsSpaces()) ? String(text).length : String(text).trim().length;
             };
 
             $ctrl.countText = () => {
@@ -1050,11 +1085,19 @@ angular.module('aui')
              * clear button ('clear') or the api ('api').
              */
             function clearField($event, moveFocus, source) {
-                if ($ctrl.opt.disabled || $ctrl.opt.readonly) return;
+                if (boxLocked() || $ctrl.opt.readonly) return;
+                flushFocus();   // an on-focus still waiting came first
                 const textBefore = $ctrl.internalValue;
                 if ($event) {
                     if ($event.preventDefault) $event.preventDefault();
                     if ($event.stopPropagation) $event.stopPropagation();
+                }
+
+                // an empty field cleared again changes nothing: no on-change, no search, its model left as it is
+                if (!$ctrl.hasValue()) {
+                    if (moveFocus && boxEl) boxEl.focus();
+                    if ($ctrl.onClear) $ctrl.onClear({ $event: $event || null });
+                    return;
                 }
 
                 $ctrl.internalValue = '';
@@ -1181,12 +1224,12 @@ angular.module('aui')
                 const target = $ctrl.api;
                 if (!target || typeof target !== 'object') return;
                 const methods = {
-                    focus: function () { if (boxEl && !$ctrl.opt.disabled) boxEl.focus(); },
+                    focus: function () { if (boxEl && !boxLocked()) boxEl.focus(); },
                     blur: function () { if (boxEl) boxEl.blur(); },
                     /** Clears the value (as the clear button does, not when disabled or readonly); the focus stays where it is. */
                     clear: function () { $scope.$evalAsync(() => clearField(null, false, 'api')); },
                     /** Selects the text of the box (e.g. to be typed over). */
-                    select: function () { if (boxEl && !$ctrl.opt.disabled && typeof boxEl.select === 'function') boxEl.select(); }
+                    select: function () { if (boxEl && !boxLocked() && typeof boxEl.select === 'function') boxEl.select(); }
                 };
                 Object.keys(methods).forEach(name => { target[name] = methods[name]; });
                 installedApi = {target: target, methods: methods};
@@ -1209,6 +1252,7 @@ angular.module('aui')
                     takeRecheckedValue();
                     return;
                 }
+                flushFocus();   // an on-focus still waiting came first
                 $ctrl.ngModelCtrl.$setViewValue(toHostView($ctrl.internalValue));
                 reportText('input');
             };
@@ -1241,13 +1285,24 @@ angular.module('aui')
             /*
              * on-focus. A listener of the box's own (attachBox), not ng-focus: ng-focus runs a digest of the whole page on
              * every focus, which the page then pays in the very frames that draw the focus look (its ring comes in mostly
-             * within the first frames). The digest runs only when the page asked for on-focus.
+             * within the first frames). The digest runs only when the page asked for on-focus. Its $value is the value
+             * at the focus, and it comes before anything that follows the focus (a blur, a change, Enter, a clear),
+             * which runs it first if it still waits (flushFocus).
              */
+            let pendingFocus = null;   // on-focus waiting for its digest: the event and the value at the focus
             const onBoxFocus = (event) => {
                 fitTextarea();   // a textarea first shown hidden (see fitTextarea)
                 if (!$ctrl.onFocus) return;
-                $scope.$evalAsync(() => $ctrl.onFocus({ $event: event || null, $value: $ctrl.internalValue }));
+                pendingFocus = {event: event || null, value: $ctrl.internalValue};
+                $scope.$evalAsync(flushFocus);
             };
+
+            function flushFocus() {
+                if (!pendingFocus) return;
+                const focus = pendingFocus;
+                pendingFocus = null;
+                $ctrl.onFocus({ $event: focus.event, $value: focus.value });
+            }
 
             /*
              * The box lost the focus: on-blur. The field is left - committed, touched, on-finish with blur - when the
@@ -1255,6 +1310,7 @@ angular.module('aui')
              * onFieldFocusOut): a Tab to the clear button is no end of the field.
              */
             $ctrl._onBlur = ($event) => {
+                flushFocus();   // an on-focus still waiting came first
                 const native = $event && ($event.originalEvent || $event);
                 const leaving = !isInField(native && native.relatedTarget);
                 if (leaving) settleField();
@@ -1346,6 +1402,7 @@ angular.module('aui')
                 // a textarea's Enter is a new line, not the end of the field (on-finish comes when it is left)
                 if (event.keyCode === 13 && $ctrl.isTextarea()) return;
                 if (event.keyCode === 13) { // Enter key
+                    flushFocus();     // an on-focus still waiting came first
                     hidePassword();   // before the browser acts on Enter (a form submitted with it)
                     if ($ctrl.isSearch()) fireSearch(searchText());
                     if ($ctrl.onFinish) {

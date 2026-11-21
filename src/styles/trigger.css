@@ -4,7 +4,7 @@
 
 /* Base Styles */
 .aui-select {
-    --aui-control-radius: var(--aui-select-border-radius, var(--aui-control-radius-default));
+    --aui-field-radius: var(--aui-select-border-radius, var(--aui-control-radius));   /* see .aui-input in field.css */
     position: relative;
     width: 100%;
     font-size: 1em;

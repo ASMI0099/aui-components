@@ -6,6 +6,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Field borders are darker (`#8590a0`, 3.2:1 on white) so an empty field shows where it is; the hover border follows.
+  The line between a label in the box and the value keeps the light colour through `--aui-control-divider-color`.
+- `aui-input` basic style: a thin resting line under the text.
+- `aui-input`: in a field too narrow for all its parts, the prefix and suffix texts and the label give way (ellipsis).
+
+### Fixed
+
+- `aui-input`: inside a disabled `<fieldset>`, the clear button, the password eye and `api.clear()` no longer act.
+- `aui-input`: `required` and `precision` also hold for a form the browser checks (native submit).
+- `aui-input`: with `ng-model-options` `updateOn`, typing no longer marks the field and the form dirty before the commit,
+  and a rollback leaves them pristine.
+- `aui-input`: `ng-trim="false"` keeps the spaces; the count counts what the check counts.
+- `aui-input`: `on-focus` comes before a blur or change that follows it, with the value at the focus.
+- `aui-input`: clearing an empty field reports no change; an empty or unknown `input-style-type` gives the basic style.
+- `aui-input`: no hover look on a disabled field; the basic clear button has a 24px target.
+- The field box takes `--aui-control-background-color` (a dark theme no longer draws white on white), and the fields
+  follow a theme's `--aui-control-height` and `--aui-control-radius`.
+- A cut top label shows its whole text as a tooltip, as the label in the box does.
+
 ## [0.1.0]
 
 The first public release.

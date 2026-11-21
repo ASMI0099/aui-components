@@ -186,7 +186,7 @@
             return {tags150: t150.k, count150: t150.count, parts150: title150.split(', ').length,
                 tags200: t200.k, count200: t200.count, parts200: title200.split(', ').length, end200: title200.endsWith('… +50 more')};
         }],
-        ['U7 max-tag-count="responsive": one line, "+N" for the rest, follows the width; a first tag that does not fit is cut, readable, or only the count shows', {some: true, countMatches: true, fits: true, oneLine: true, wider: true, cut: {k: 1, readable: true, fits: true}, narrow: {k: 0, count: '+20', fits: true}}, async () => {
+        ['U7 max-tag-count="responsive": one line, "+N" for the rest, follows the width; a first tag that does not fit is cut, readable, or only the count shows', {some: true, countMatches: true, fits: true, oneLine: true, wider: true, cut: {found: true, readable: true, fits: true}, narrow: {k: 0, count: '+20', fits: true}}, async () => {
             apply(() => { window.unifyScope.m.s4 = window.unifyScope.many.slice(0, 20).map(o => o.id); });
             await frames(3);
             await sleep(100);
@@ -194,12 +194,18 @@
             document.getElementById('h-s4').style.width = '700px';
             await sleep(300);
             const b = tagState('s4');
-            // room for the first tag only when cut (at least two letters of it show), then for no readable part of it
-            document.getElementById('h-s4').style.width = '150px';
-            await sleep(300);
-            const c = tagState('s4');
-            const text = visibleTags('s4').querySelector('.aui-select__tag:not(.aui-select__tag--count) .aui-select__tag-text');
-            const cut = {k: c.k, readable: !!text && text.getBoundingClientRect().width >= 23.5 && text.scrollWidth > text.clientWidth, fits: c.fits};
+            // room for the first tag only when cut (at least two letters of it show), then for no readable part of it.
+            // The width where it is cut depends on the system's fonts, so the field is narrowed step by step: some
+            // width shows the first tag cut, and every cut shows at least two letters of it (24px).
+            const cuts = [];
+            for (let width = 216; width >= 112; width -= 8) {
+                document.getElementById('h-s4').style.width = width + 'px';
+                await sleep(300);
+                const s = tagState('s4');
+                const text = visibleTags('s4').querySelector('.aui-select__tag:not(.aui-select__tag--count) .aui-select__tag-text');
+                if (s.k === 1 && text && text.scrollWidth > text.clientWidth) cuts.push({readable: text.getBoundingClientRect().width >= 23.5, fits: s.fits});
+            }
+            const cut = {found: cuts.length > 0, readable: cuts.every(c => c.readable), fits: cuts.every(c => c.fits)};
             document.getElementById('h-s4').style.width = '100px';
             await sleep(300);
             const d = tagState('s4');

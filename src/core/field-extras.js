@@ -62,7 +62,12 @@ angular.module('aui')
                 if (!field.hasMessageLine() || !options.invalidShown()) return '';
                 const model = options.ngModel();
                 const key = model ? firstError(model.$error) : null;
-                if (!key) return '';
+                return key ? field.textFor(key) : '';
+            };
+
+            // the text of a failed check: the page's own for it (error-messages), error-text, or the shared one, with
+            // the field's limits in it
+            field.textFor = (key) => {
                 const limits = options.limits ? options.limits() : {};
                 const own = ($ctrl.errorMessages && typeof $ctrl.errorMessages === 'object') ? $ctrl.errorMessages[key] : undefined;
                 const shared = messages[key === 'precision' && limits.precision === 0 ? 'integer' : key];

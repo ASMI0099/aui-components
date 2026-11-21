@@ -27,13 +27,16 @@
    that is not one (a typo) gives the default, never an unreadable field.
    - value-color: the value, in the field, typed in, in the rows of its list and its search box (near-black, 15.8:1)
    - label-color: the label in the box and above it (4.8:1)
-   - placeholder-color: the placeholders of the field and of its search box
+   - placeholder-color: the placeholders of the field and of its search box: a light hint (2.4:1), set apart from a
+     value at a glance; below the 4.5:1 of text, so a page that must meet it sets #6b7889 (4.5:1)
    - muted-color: the second texts: the count, a readonly value, the list's empty, loading and status texts, the
      password eye (the label's colour: one colour for the second texts, 4.8:1 for small text)
    - disabled-color: the text of a disabled field and of a disabled option
    - accent-color: the focus and open look (the border and the 2px ring), the open chevron, the picked option (its text
      the accent 20% darker, 5.8:1), the highlighted and picked rows' tints, the checkboxes, spinners and links of the list
-   - border-color, border-hover-color: the field's border, under the pointer
+   - border-color, border-hover-color: the field's border, under the pointer (the border is what shows an empty field:
+     3.2:1 on white, 3:1 on a light page)
+   - divider-color: the line between a label in the box and the value (a divider only: light)
    - invalid-color: the invalid field (its border, halo, ring), a count over its limit, the error text
    - background-color, readonly-background-color: the field (and its list); readonly and disabled */
 @property --aui-control-value-color { syntax: '<color>'; inherits: true; initial-value: #1f2328; }
@@ -42,8 +45,9 @@
 @property --aui-control-muted-color { syntax: '<color>'; inherits: true; initial-value: #64748b; }
 @property --aui-control-disabled-color { syntax: '<color>'; inherits: true; initial-value: #a8abb2; }
 @property --aui-control-accent-color { syntax: '<color>'; inherits: true; initial-value: #0d6efd; }
-@property --aui-control-border-color { syntax: '<color>'; inherits: true; initial-value: #d6dce5; }
-@property --aui-control-border-hover-color { syntax: '<color>'; inherits: true; initial-value: #b8c1cf; }
+@property --aui-control-border-color { syntax: '<color>'; inherits: true; initial-value: #8590a0; }
+@property --aui-control-border-hover-color { syntax: '<color>'; inherits: true; initial-value: #737f90; }
+@property --aui-control-divider-color { syntax: '<color>'; inherits: true; initial-value: #d6dce5; }
 @property --aui-control-invalid-color { syntax: '<color>'; inherits: true; initial-value: #dc3545; }
 @property --aui-control-background-color { syntax: '<color>'; inherits: true; initial-value: #ffffff; }
 @property --aui-control-readonly-background-color { syntax: '<color>'; inherits: true; initial-value: #f8fafc; }
@@ -59,8 +63,9 @@
     --aui-control-muted-color: #64748b;
     --aui-control-disabled-color: #a8abb2;
     --aui-control-accent-color: #0d6efd;
-    --aui-control-border-color: #d6dce5;
-    --aui-control-border-hover-color: #b8c1cf;
+    --aui-control-border-color: #8590a0;
+    --aui-control-border-hover-color: #737f90;
+    --aui-control-divider-color: #d6dce5;
     --aui-control-invalid-color: #dc3545;
     --aui-control-background-color: #ffffff;
     --aui-control-readonly-background-color: #f8fafc;

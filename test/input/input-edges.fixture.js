@@ -12,8 +12,13 @@ angular.module('auiTest', ['aui'])
     .controller('EdgesCtrl', ['$scope', function ($scope) {
         $scope.m = {ns: 12345, npp: 1.2345, pdyn: 1.23, rdyn: 25, bd: 'old', fc: 'Text', pw: 'secret', ta: '',
             long: 'One short first line, then some words to wrap repeatedly as the panel around it gets narrower. ' +
-                'This second sentence makes sure the text needs several lines at a narrow width.'};
-        $scope.state = {places: 2, max: 40, afShown: false, w: 220, auto: true};
+                'This second sentence makes sure the text needs several lines at a narrow width.',
+            fsText: 'Locked', fsPw: 'secret', dark: 'Typed text', rb: 'old', bc: 'Text', narrow: 123.45, fo: 'Start'};
+        $scope.state = {places: 2, max: 40, afShown: false, w: 220, auto: true, style: 'form'};
+        $scope.fsApi = {};
+        $scope.foApi = {};
+        $scope.ceApi = {};
+        $scope.calls = [];
         $scope.changes = [];
         $scope.changed = function (value, oldValue, source, byUser) {
             $scope.changes.push({value: value, oldValue: oldValue, source: source, byUser: byUser});

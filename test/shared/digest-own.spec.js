@@ -36,7 +36,7 @@
             return r;
         });
 
-    T('D2 aui-input: a space typed at the end of a counted field (only the count changes: its own digest), a digest of the page waiting: the page shows its work at once, the count the space',
+    T('D2 aui-input: a space typed at the end of a counted field with enforce-limits (it counts every character: only the count changes, its own digest), a digest of the page waiting: the page shows its work at once, the count the space',
         {note: 'D2', count: '4/20'},
         async () => {
             const box = document.querySelector('#f-input input');

@@ -7,8 +7,8 @@ angular.module('aui')
      */
     .factory('auiControlKit', ['auiTexts', function (texts) {
         const FALSE_WORDS = ['false', '0', 'no', 'off'];
-        // the fields' corner radius is the CSS token (in px there, see :root in aui-components.css)
-        const RADIUS = 'var(--aui-control-radius-default)';
+        // the fields' corner radius is the theme's token (--aui-control-radius: a page may set it, see tokens.css)
+        const RADIUS = 'var(--aui-control-radius)';
         const BORDER_RADIUS = Object.freeze({
             NONE: '0',
             DEFAULT: RADIUS,
@@ -869,13 +869,13 @@ angular.module('aui')
         }
 
         /**
-         * The field's label in its box is cut with an ellipsis when it is longer than its room (half the field by
-         * default, see .aui-control-label): on hover it then shows its whole text as a tooltip, and none while it
+         * The field's label, in its box or above it, is cut with an ellipsis when it is longer than its room (see
+         * .aui-control-label, .aui-field-label): on hover it then shows its whole text as a tooltip, and none while it
          * shows whole, as an option row does. Returns a function that removes the listener.
          */
         function labelTip(root) {
             function onOver(event) {
-                const label = event.target && event.target.closest ? event.target.closest('.aui-control-label') : null;
+                const label = event.target && event.target.closest ? event.target.closest('.aui-control-label, .aui-field-label') : null;
                 if (!label || !root.contains(label)) return;
                 const text = isCutOff(label) ? label.textContent.trim() : '';
                 if (text) {

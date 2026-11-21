@@ -59,6 +59,21 @@
     top: calc(50% - 1px) !important;
 }
 
+/* its target: 24px, 4px around the 16px button, as the family's other small buttons (the look unchanged) */
+.aui-input--basic .aui-control-clear::after {
+    content: "";
+    position: absolute;
+    inset: -4px;
+}
+
+/* a box disabled by the field or by a disabled fieldset around it: no clear button and no eye (both would still act
+   on it: a fieldset disables the box, not the field's own disabled option) */
+.aui-input input:disabled ~ .aui-control-clear,
+.aui-input textarea:disabled ~ .aui-control-clear,
+.aui-input input:disabled ~ .aui-input__eye {
+    display: none !important;
+}
+
 .aui-input--basic .aui-control-clear-svg {
     width: 14px !important;
     height: 14px !important;
@@ -80,8 +95,11 @@
 
 /* aui-input prefix / suffix: an icon or a short text in the box, before / after the text (a search icon, the unit of
    a value: "kg", "%"); muted, the value's size. The clear button stands between the text and the suffix. */
+/* In a field too narrow for all its parts, the prefix and suffix texts and the label in the box give way first, cut
+   with an ellipsis; the text keeps a little room (2em), and the clear button, the eye and the count keep theirs. */
 .aui-input__affix {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 0;
     display: inline-flex;
     align-items: center;
     gap: 4px;
@@ -103,8 +121,25 @@
 }
 
 .aui-input__affix-icon {
+    flex: none;
     font-size: calc(var(--aui-font-14) * 1px);
     line-height: 1;
+}
+
+.aui-input__affix-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.aui-input .aui-control-label {
+    flex-shrink: 1;
+    min-width: 2em;
+}
+
+.aui-input.aui-input--form .aui-input__form-trigger > input.aui-input__form-field,
+.aui-input.aui-input--row .aui-input-container > input.aui-input-field {
+    min-width: 2em !important;
 }
 
 .aui-input--disabled .aui-input__affix {

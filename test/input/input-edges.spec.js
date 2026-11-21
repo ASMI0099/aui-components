@@ -246,6 +246,134 @@
             return {paused, replaced: scope().searches.slice()};
         });
 
+    T('E20 in a disabled fieldset: no clear button and no eye; api.clear clears nothing; the password is never shown',
+        {clearShown: false, eyeShown: false, value: 'Locked', revealed: false},
+        async () => {
+            const shown = el => !!el && getComputedStyle(el).display !== 'none';
+            const eye = host('fs-pw').querySelector('.aui-input__eye');
+            const out = {clearShown: shown(host('fs-clear').querySelector('.aui-control-clear')), eyeShown: shown(eye)};
+            scope().fsApi.clear();
+            eye.click();
+            await sleep(30);
+            return Object.assign(out, {value: scope().m.fsText, revealed: box('fs-pw').type === 'text'});
+        });
+
+    T('E21 a form the browser checks sees the field\'s rules: required (empty), precision (a min off its grid)',
+        {required: {required: true, missing: true}, decimals: {refused: true, message: 'Whole numbers only'}, whole: true},
+        async () => {
+            const r = box('nv-req');
+            const p = box('nv-prec');
+            type(p, '1.25');
+            await sleep(30);
+            const decimals = {refused: !p.checkValidity(), message: p.validationMessage};
+            type(p, '2');
+            await sleep(30);
+            return {required: {required: r.required, missing: r.validity.valueMissing}, decimals, whole: p.checkValidity()};
+        });
+
+    T('E22 the field box takes the theme\'s background colour (a dark theme: never white on white)',
+        {background: 'rgb(25, 35, 47)', value: 'rgb(255, 255, 255)'},
+        async () => ({background: getComputedStyle(host('theme-dark').querySelector('.aui-input__form-trigger')).backgroundColor,
+            value: getComputedStyle(box('theme-dark')).color}));
+
+    T('E23 updateOn blur: typing leaves the field and the form pristine until it commits; a rollback leaves them pristine',
+        {typed: {model: 'old', pristine: true, formPristine: true}, rolledBack: {model: 'old', box: 'old', pristine: true, formPristine: true}},
+        async () => {
+            const look = () => ({model: scope().m.rb, pristine: form().rb.$pristine, formPristine: form().$pristine});
+            apply(s => { s.f.$setPristine(); });
+            type(box('rollback'), 'draft');
+            await sleep(30);
+            const typed = look();
+            apply(s => { s.f.$rollbackViewValue(); });
+            await sleep(30);
+            const after = look();
+            return {typed, rolledBack: {model: after.model, box: box('rollback').value, pristine: after.pristine, formPristine: after.formPristine}};
+        });
+
+    T('E24 ng-trim="false" on the field: the model keeps the spaces around the text',
+        {model: '  ab  '},
+        async () => {
+            type(box('keep-spaces'), '  ab  ');
+            await sleep(20);
+            return {model: scope().m.ks};
+        });
+
+    T('E25 on-focus comes first, with the value at the focus: api.focus() then api.blur() at once, and a focus then typing at once',
+        {blurred: ['focus:Start', 'blur', 'finish'], typed: 'focus:Start'},
+        async () => {
+            apply(s => { s.calls.length = 0; });
+            scope().foApi.focus();
+            scope().foApi.blur();
+            await sleep(30);
+            const blurred = scope().calls.slice();
+            apply(s => { s.calls.length = 0; });
+            scope().foApi.focus();
+            type(box('focus-order'), 'Edited');
+            await sleep(30);
+            box('focus-order').blur();
+            return {blurred, typed: scope().calls[0]};
+        });
+
+    T('E26 api.clear() on an empty field: on-clear, but no on-change (nothing changed)',
+        {calls: ['clear']},
+        async () => {
+            apply(s => { s.calls.length = 0; });
+            scope().ceApi.clear();
+            await sleep(30);
+            return {calls: scope().calls.slice()};
+        });
+
+    T('E27 input-style-type from an expression, set empty: the default basic style, never a field without its box',
+        {empty: {boxes: 1, basic: true}, cell: {boxes: 1, cell: true}},
+        async () => {
+            const look = name => ({boxes: host('style-dyn').querySelectorAll('input').length,
+                [name]: !!host('style-dyn').querySelector('.aui-input--' + name)});
+            apply(s => { s.state.style = ''; });
+            await sleep(30);
+            const empty = look('basic');
+            apply(s => { s.state.style = 'cell'; });
+            await sleep(30);
+            return {empty, cell: look('cell')};
+        });
+
+    T('E28 the basic style: a resting line under the text; its clear button a 24px target (10px beside its centre hits it)',
+        {line: {width: '1px', color: 'rgb(133, 144, 160)'}, besideHits: true},
+        async () => {
+            const line = getComputedStyle(host('basic-clear').querySelector('.aui-input-container'), '::before');
+            const clear = host('basic-clear').querySelector('.aui-control-clear');
+            clear.scrollIntoView({block: 'center'});
+            await frames(1);
+            const r = clear.getBoundingClientRect();
+            const hit = document.elementFromPoint(r.left + r.width / 2 - 10, r.top + r.height / 2);
+            return {line: {width: line.borderTopWidth, color: line.borderTopColor}, besideHits: !!hit && clear.contains(hit)};
+        });
+
+    T('E29 a top label cut by its room shows its whole text as a tooltip',
+        {title: 'A label much longer than the room the field has for it'},
+        async () => {
+            const label = host('top-tip').querySelector('.aui-field-label');
+            label.dispatchEvent(new MouseEvent('mouseover', {bubbles: true}));
+            return {title: label.getAttribute('title')};
+        });
+
+    T('E30 the theme\'s height and radius reach the fields (aui-input and aui-select)',
+        {input: {height: 30, radius: '9px'}, select: {height: 30, radius: '9px'}},
+        async () => {
+            const look = el => ({height: Math.round(el.getBoundingClientRect().height), radius: getComputedStyle(el).borderTopLeftRadius});
+            return {input: look(host('theme-size').querySelector('.aui-input__form-trigger')),
+                select: look(document.querySelector('#theme-size .aui-select__trigger'))};
+        });
+
+    T('E31 a narrow field with many parts: the count stays in the frame, the text keeps room, the suffix gives way',
+        {countInside: true, textRoom: true, suffixCut: true},
+        async () => {
+            const frame = host('narrow').querySelector('.aui-input__form-trigger').getBoundingClientRect();
+            const countBox = host('narrow').querySelector('.aui-input__count').getBoundingClientRect();
+            const suffix = host('narrow').querySelector('.aui-input__affix--suffix .aui-input__affix-text');
+            return {countInside: countBox.right <= frame.right + 0.5, textRoom: box('narrow').getBoundingClientRect().width >= 20,
+                suffixCut: suffix.scrollWidth > suffix.clientWidth};
+        });
+
     T('E19 no Angular errors in the whole suite',
         {errors: 0},
         async () => ({errors: window.__ngErrors.length}));

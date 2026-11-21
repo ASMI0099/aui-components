@@ -10,7 +10,7 @@
 //   the button, not on the element;
 // - a page's span rules do not reach its text (Angular's wrapper), a span of the page's own keeps them.
 (function () {
-    const {sleep} = AuiTest;
+    const {sleep, until} = AuiTest;
     const scope = () => angular.element(document.body).scope();
     const apply = fn => { const s = scope(); s.$apply(() => fn(s)); };
     const host = id => document.getElementById(id);
@@ -478,10 +478,12 @@
             click(b);
             await sleep(100);
             const loading = b.getAttribute('aria-busy') === 'true';
-            await sleep(350);
+            // each state waited for, not timed: a busy machine delays the promise (300 ms) and the status text (60 ms
+            // after the check), so fixed waits read them too early
+            await until(() => statusOf('b-done') === 'Saved', 2000);
             const done = {icon: iconOf('b-done') === drawing('circle-check') ? 'circle-check' : iconOf('b-done'), shown: shownText('b-done'), status: statusOf('b-done'),
                 sameWidth: near(b.getBoundingClientRect().width, width, 0.5)};
-            await sleep(650);
+            await until(() => !b.getAttribute('data-feedback'), 2000);
             return {loading, done, after: {icon: iconOf('b-done') === drawing('upload') ? 'upload' : iconOf('b-done'), shown: shownText('b-done'),
                 feedback: b.getAttribute('data-feedback')}};
         });

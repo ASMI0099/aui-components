@@ -19,7 +19,7 @@
 <p>The page's note: <span id="page-note">{{ page.note }}</span></p>
 <div style="width: 320px; display: grid; gap: 12px;">
     <aui-input id="f-input" ng-model="f.text" input-style-type="form" show-label label-text="Counted" show-count="true"
-               value-max-length="20"></aui-input>
+               value-max-length="20" enforce-limits></aui-input>
     <aui-select id="f-select" ng-model="f.pick" options="options" label-field="name" value-field="id" show-label
                 label-text="Select"></aui-select>
     <aui-tree-select id="f-tree" ng-model="f.node" options="tree" label-field="name" value-field="id" show-label

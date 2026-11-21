@@ -3465,7 +3465,7 @@ angular.module('aui')
                 $ctrl.borderRadiusStyleVal = kit.borderRadius($ctrl.borderRounded, leftNone, rightNone);
                 // the field's left and right corners on their own (as kit.borderRadius gives them): a corner of the
                 // field past the panel's edge keeps its radius while the panel is joined to it
-                const radius = 'var(--aui-control-radius-default)';
+                const radius = 'var(--aui-control-radius)';
                 $ctrl.cornerStart = !$ctrl.borderRounded || (leftNone && !rightNone) ? '0' : radius;
                 $ctrl.cornerEnd = !$ctrl.borderRounded || rightNone ? '0' : radius;
                 $ctrl.panelStyle = kit.panelBackgroundStyle($ctrl.dropDownPanelBackgroundOpacity === 'OPAQUE_LIKE' ? 'OPAQUE_LIKE' : 'FULL');

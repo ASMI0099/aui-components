@@ -113,8 +113,8 @@
     T('IF10 show-count is off unless asked for',
         {count: false, describedBy: null}, async () => ({count: !!count('count-off'), describedBy: box('count-off').getAttribute('aria-describedby')}));
 
-    T('IF11 show-count: the length (out of value-max-length when set) of the text in the box, the spaces around it too',
-        {start: '0', typed: '5', limited: '3/5', spaces: '6/7', describedBy: true}, async () => {
+    T('IF11 show-count: the length (out of value-max-length when set) the check counts: the text without the spaces around it, as the value has it (with enforce-limits every character: IF29)',
+        {start: '0', typed: '5', limited: '3/5', spaces: '2/7', describedBy: true}, async () => {
             const start = count('count-free').textContent;
             type(box('count-free'), 'hello');
             const typed = count('count-free').textContent;

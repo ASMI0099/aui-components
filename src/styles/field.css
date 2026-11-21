@@ -15,8 +15,17 @@ aui-textarea {
     display: block;
 }
 
+/* A field's own tokens, from the theme's: its corners (--aui-field-radius: the theme's radius, or the field's corner
+   options, which are written with it) and its box's inner line (the field's height less 4px of padding and a 1px
+   border above and below; the sizes set both). Worked out on the field, so a theme's height or radius set on :root
+   or on a container reaches it. */
+.aui-input,
+.aui-select {
+    --aui-control-inner-height: calc(var(--aui-control-height) - 10px);
+}
+
 .aui-input {
-    --aui-control-radius: var(--aui-input-border-radius, var(--aui-control-radius-default));
+    --aui-field-radius: var(--aui-input-border-radius, var(--aui-control-radius));
     position: relative;
     min-width: 0;
 }
@@ -57,7 +66,7 @@ aui-textarea {
     right: 0;
     bottom: calc(var(--aui-control-inner-height, 24px) * 0.17);
     width: 1px;
-    background: var(--aui-control-border-color);
+    background: var(--aui-control-divider-color);
 }
 
 .aui-field-item {
@@ -82,8 +91,8 @@ aui-textarea {
     width: 100%;
     min-height: var(--aui-control-height);
     border: 1px solid var(--aui-control-border-color);
-    border-radius: var(--aui-control-radius);
-    background-color: #ffffff;
+    border-radius: var(--aui-field-radius, var(--aui-control-radius));
+    background-color: var(--aui-control-background-color);
     box-sizing: border-box;
 }
 
@@ -254,6 +263,13 @@ aui-textarea {
     display: none;
 }
 
+/* disabled: no hover look either, invalid or not (as aui-select's): a red halo under the pointer looked like the focus */
+.aui-input--disabled .aui-input__form-trigger:hover,
+.aui-input--disabled .aui-input__form-trigger.aui-input__form-trigger--invalid:hover {
+    border-color: #dbe3ec;
+    box-shadow: none;
+}
+
 .aui-input--disabled input.aui-input__form-field,
 .aui-input input.aui-input__form-field:disabled {
     cursor: not-allowed;
@@ -286,6 +302,22 @@ aui-textarea {
 .aui-input-container {
     position: relative;
     margin: 16px 20px 1px 20px;
+}
+
+/* basic style: a thin line under the text at rest, in the fields' border colour, so that an empty field shows where it
+   is; the focus underline grows over it. A border, not a background: high contrast (forced colours) keeps it. */
+.aui-input-container::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-top: 1px solid var(--aui-control-border-color);
+    pointer-events: none;
+}
+
+.aui-input--disabled .aui-input-container::before {
+    border-top-color: #dbe3ec;
 }
 
 /* aui-input field */
