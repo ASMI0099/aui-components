@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: load-disabled-text</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        .cell .out { margin-top: 6px; font: 11px Consolas, monospace; color: #666; word-break: break-all; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 420px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="load-disabled.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="load-disabled.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="LoadDisabledCtrl">
+<h1>load-disabled-text: what to do before anything can load</h1>
+<div class="grid">
+    <div class="cell" id="s-room"><label>aui-select, paged, depends on the hall</label>
+        <aui-select ng-model="m.room" label-field="name" value-field="id" placeholder="Room"
+                    load-options="loadRooms($request, 'room')" load-params="{hall: form.hall}" load-enabled="!!form.hall"
+                    load-disabled-text="{{ text.hall }}" page-size="20" search-delay="60"></aui-select>
+        <div class="out">model: {{ m.room | json }}</div>
+    </div>
+    <div class="cell" id="s-rooms"><label>aui-select, multiple, load all</label>
+        <aui-select ng-model="m.rooms" label-field="name" value-field="id" multiple placeholder="Rooms"
+                    load-options="loadRooms($request, 'rooms')" load-params="{hall: form.hall}" load-enabled="!!form.hall"
+                    load-disabled-text="Select a hall first"></aui-select>
+    </div>
+    <div class="cell" id="s-plain"><label>aui-select without load-disabled-text (as before)</label>
+        <aui-select ng-model="m.plain" label-field="name" value-field="id" placeholder="Plain"
+                    load-options="loadRooms($request, 'plain')" load-params="{hall: form.hall}" load-enabled="!!form.hall"
+                    page-size="20"></aui-select>
+    </div>
+    <div class="cell" id="s-two"><label>aui-select, two conditions, one message each</label>
+        <aui-select ng-model="m.two" label-field="name" value-field="id" placeholder="Two"
+                    load-options="loadRooms($request, 'two')" load-params="{hall: form.hall, type: form.type}"
+                    load-enabled="!!form.hall && !!form.type"
+                    load-disabled-text="{{ !form.hall ? 'Select a hall first' : 'Select a room type first' }}" page-size="20"></aui-select>
+    </div>
+    <div class="cell" id="t-cat"><label>aui-tree-select, load-options</label>
+        <aui-tree-select ng-model="m.cat" label-field="name" value-field="id" placeholder="Area"
+                         load-options="loadTree($request, 'cat')" load-params="{hall: form.hall}" load-enabled="!!form.hall"
+                         load-disabled-text="Select a hall first"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-lazy"><label>aui-tree-select, lazy, remote-search</label>
+        <aui-tree-select ng-model="m.lazy" label-field="name" value-field="id" placeholder="Lazy"
+                         load-children="loadKids($request, 'lazy')" load-params="{hall: form.hall}" load-enabled="!!form.hall"
+                         remote-search="[]" load-disabled-text="Select a hall first"></aui-tree-select>
+    </div>
+</div>
+<div class="bottom-spacer"></div>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" href="data:,"/>
+    <title>aui-input: examples</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../assets/examples.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="../assets/examples.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="input.js"></script>
+    <style>
+        /* a stand-in for an icon font (prefix-icon takes any icon classes, e.g. "fa fa-search") */
+        .ex-icon-search { display: inline-block; width: 14px; height: 14px; background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2393969a' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E"); }
+        /* the table of the cell example */
+        .ex-table { border-collapse: collapse; width: 100%; background: #fff; font-size: 13px; }
+        .ex-table th, .ex-table td { border: 1px solid #e2e8f0; padding: 4px 8px; text-align: left; }
+        .ex-table th { color: #64748b; font-weight: 500; background: #f8fafc; }
+        .ex-table td:last-child { width: 160px; padding: 2px; }
+    </style>
+</head>
+<body class="ex" ng-app="auiExamples" ng-controller="InputExampleCtrl as vm">
+<ex-page heading="aui-input"
+         lead="The text field of the family, in its two styles: form (a bordered box like aui-select's trigger) and basic (an underline). Every value is on the page.">
+
+    <section class="ex-example" id="ex-form">
+        <h2>Next to aui-select</h2>
+        <p class="ex-example__text">The form style matches the selects: the label, the 14px placeholder, the hover look, and
+            the 2px focus ring that blends in with the border colour (0.2s, the curve of the selects' panel). Enter and
+            leaving the field call <code>on-finish</code>.</p>
+        <div class="ex-example__row">
+            <div class="ex-form__grid">
+                <aui-input ng-model="vm.search.name" input-style-type="form" show-label label-text="Product name"
+                           placeholder="please enter the product name" clearable on-finish="vm.onFinish($value, $event)"></aui-input>
+                <aui-select ng-model="vm.search.storeId" options="vm.stores" show-label label-text="Store"
+                            placeholder="Choose a store" clearable></aui-select>
+            </div>
+            <pre class="ex-out">name: {{ vm.search.name | json }}
+storeId: {{ vm.search.storeId | json }}
+on-finish (newest first): {{ vm.finished | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-count">
+        <h2>show-count</h2>
+        <p class="ex-example__text"><code>show-count</code> (off unless set) shows the length of the text at the end of the
+            box, out of <code>value-max-length</code> when that is set: <code>3/7</code>. It counts what the limit counts
+            (the text without the spaces around it); longer than the limit, the count and the field turn red at once. The
+            clear button stands before it. With <code>enforce-limits</code> (off unless set) the box stops at the limit
+            instead (a longer paste is cut).</p>
+        <div class="ex-example__row">
+            <div class="ex-form__grid">
+                <aui-input ng-model="vm.count.code" input-style-type="form" show-label label-text="Code" value-max-length="7" show-count></aui-input>
+                <aui-input ng-model="vm.count.note" input-style-type="form" show-label label-text="Note" placeholder="No limit" show-count clearable></aui-input>
+                <aui-input ng-model="vm.count.over" input-style-type="form" show-label label-text="Too long" value-max-length="7" show-count></aui-input>
+                <aui-input ng-model="vm.count.clear" input-style-type="form" show-label label-text="Clearable" value-max-length="7" show-count clearable></aui-input>
+                <aui-input ng-model="vm.count.strict" input-style-type="form" show-label label-text="Stops at 7" placeholder="enforce-limits"
+                           value-max-length="7" show-count clearable enforce-limits></aui-input>
+                <aui-input ng-model="vm.count.disabled" input-style-type="form" show-label label-text="Disabled" value-max-length="7" show-count disabled></aui-input>
+                <aui-input ng-model="vm.count.readonly" input-style-type="form" show-label label-text="Readonly" value-max-length="7" show-count readonly></aui-input>
+            </div>
+            <pre class="ex-out">{{ vm.count | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-number">
+        <h2>Numbers</h2>
+        <p class="ex-example__text"><code>input-type="number"</code> with <code>value-max-length</code>: digits only, no more
+            than the limit (typing over a selection replaces it); keys that type nothing (arrows, Home/End, F5, Esc) work.
+            Emptied or cleared, the field is just empty (no error). A numeric text from the page (<code>"12"</code>) shows as
+            its number. A typed number field: no browser spin buttons, and the mouse wheel over a focused field leaves it
+            and scrolls the page (it never steps the value); ArrowUp / ArrowDown step a field without a digit limit. With
+            <code>enforce-limits</code>, a key or paste that would take the number above <code>max</code> (or below a
+            <code>min</code> under zero) is refused; without it, the field shows the max error.</p>
+        <div class="ex-example__row">
+            <div class="ex-form__grid">
+                <aui-input ng-model="vm.numbers.priority" input-type="number" min="0" max="9999999" value-max-length="7"
+                           input-style-type="form" show-label label-text="Priority" show-count clearable></aui-input>
+                <aui-input ng-model="vm.numbers.amount" input-type="number" input-style-type="form" show-label
+                           label-text="Amount" placeholder="Optional" clearable></aui-input>
+                <aui-input ng-model="vm.numbers.fromText" input-type="number" input-style-type="form" show-label
+                           label-text="From text"></aui-input>
+                <aui-input ng-model="vm.numbers.percent" input-type="number" min="0" max="100" input-style-type="form" show-label
+                           label-text="0 to 100" placeholder="enforce-limits" clearable enforce-limits></aui-input>
+                <aui-input ng-model="vm.numbers.price" input-type="number" precision="2" min="0" input-style-type="form" show-label
+                           label-text="Price" placeholder="precision 2" prefix-text="¥" inputmode="decimal" clearable></aui-input>
+            </div>
+            <pre class="ex-out">{{ vm.numbers | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-affix">
+        <h2>Prefix and suffix</h2>
+        <p class="ex-example__text"><code>prefix-icon</code> / <code>prefix-text</code> before the text,
+            <code>suffix-icon</code> / <code>suffix-text</code> after it (a unit), muted, the value's size. The clear
+            button stands between the text and the suffix; a press on them puts the caret in the box. The texts are read
+            with the box by a screen reader.</p>
+        <div class="ex-example__row">
+            <div class="ex-form__grid">
+                <aui-input ng-model="vm.affix.keyword" input-style-type="form" prefix-icon="ex-icon-search" placeholder="Search products" clearable></aui-input>
+                <aui-input ng-model="vm.affix.weight" input-type="number" precision="3" input-style-type="form" show-label label-text="Weight"
+                           suffix-text="kg" clearable></aui-input>
+                <aui-input ng-model="vm.affix.rate" input-type="number" min="0" max="100" input-style-type="form" show-label label-text="Rate"
+                           suffix-text="%" enforce-limits clearable></aui-input>
+                <aui-input ng-model="vm.affix.site" input-style-type="form" prefix-text="https://" placeholder="example.com" autocomplete="url"></aui-input>
+                <aui-input ng-model="vm.affix.basic" suffix-text="kg" placeholder="Basic style, suffix" clearable></aui-input>
+            </div>
+            <pre class="ex-out">{{ vm.affix | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-password">
+        <h2>Password</h2>
+        <p class="ex-example__text"><code>input-type="password"</code>: never trimmed, no spell check, no count,
+            <code>autocomplete="current-password"</code> unless given (<code>new-password</code> for a new one). With
+            <code>show-password</code> an eye button shows it, only while you are in the field: it is hidden again when the
+            focus leaves the field and before Enter acts.</p>
+        <div class="ex-example__row">
+            <div class="ex-form__grid">
+                <aui-input ng-model="vm.secret.current" input-type="password" input-style-type="form" show-label label-text="Password"
+                           show-password clearable></aui-input>
+                <aui-input ng-model="vm.secret.next" input-type="password" input-style-type="form" show-label label-text="New password"
+                           autocomplete="new-password" show-password value-max-length="32"></aui-input>
+                <aui-input ng-model="vm.secret.basic" input-type="password" placeholder="Basic style" show-password clearable></aui-input>
+            </div>
+            <pre class="ex-out">lengths: {{ (vm.secret.current || '').length }}, {{ (vm.secret.next || '').length }}, {{ (vm.secret.basic || '').length }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-message">
+        <h2>Message line, size, label on top (aui-input, aui-select, aui-tree-select)</h2>
+        <p class="ex-example__text"><code>hint-text</code> puts a hint on a line under the field; once the field shows
+            invalid, the line says why: <code>error-messages</code> (a text per check, <code>{length}</code>,
+            <code>{min}</code>, <code>{max}</code> filled in), <code>error-text</code> (one text), or with
+            <code>show-errors</code> the shared texts, which a page sets once (<code>auiFieldMessagesProvider.set</code>).
+            The line keeps its room, so nothing moves. <code>size="small"</code> / <code>"large"</code>: 28 / 40px.
+            <code>label-position="top"</code>: the label above the box. Leave a field to see its message.</p>
+        <form name="extrasForm" novalidate>
+            <div class="ex-form__grid">
+                <aui-input name="who" ng-model="vm.extras.name" input-style-type="form" show-label label-text="Name" required
+                           value-max-length="10" show-count hint-text="As on the ID card"
+                           error-messages="{required: 'Please enter the name', maxlength: 'At most {length} characters'}"></aui-input>
+                <aui-select name="store"
+                            ng-model="vm.extras.store"
+                            options="vm.stores"
+                            show-label
+                            label-text="Store"
+                            required
+                            clearable
+                            hint-text="Where the item is kept"
+                            error-messages="{required:'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'}"
+                            show-errors>
+                </aui-select>
+                <aui-tree-select name="cat" ng-model="vm.extras.category" options="vm.categories" show-label label-text="Category" required
+                                 error-text="Pick a category"></aui-tree-select>
+                <aui-input ng-model="vm.extras.small" input-style-type="form" show-label label-text="Small" size="small" clearable></aui-input>
+                <aui-select ng-model="vm.extras.smallStore" options="vm.stores" show-label label-text="Small" size="small" multiple clearable></aui-select>
+                <aui-tree-select ng-model="vm.extras.smallCat" options="vm.categories" show-label label-text="Small" size="small"></aui-tree-select>
+                <aui-input ng-model="vm.extras.large" input-style-type="form" show-label label-text="Large" size="large" clearable></aui-input>
+                <aui-select ng-model="vm.extras.largeStore" options="vm.stores" show-label label-text="Large" size="large" clearable></aui-select>
+                <aui-tree-select ng-model="vm.extras.largeCat" options="vm.categories" show-label label-text="Large" size="large"></aui-tree-select>
+                <aui-input ng-model="vm.extras.top" input-style-type="form" show-label label-text="Label on top" label-position="top"
+                           hint-text="An edit form's layout"></aui-input>
+                <aui-select ng-model="vm.extras.topStore" options="vm.stores" show-label label-text="Label on top" label-position="top" clearable></aui-select>
+                <aui-tree-select ng-model="vm.extras.topCat" options="vm.categories" show-label label-text="Label on top" label-position="top"></aui-tree-select>
+            </div>
+        </form>
+    </section>
+
+    <section class="ex-example" id="ex-textarea">
+        <h2>aui-textarea</h2>
+        <p class="ex-example__text"><code>&lt;aui-textarea&gt;</code> is aui-input around a textarea: the same field in all
+            else (the page form, the checks, <code>show-count</code>, <code>enforce-limits</code>, the message line, api,
+            events). <code>rows</code> (3), <code>auto-height</code> with <code>max-rows</code> (8) to grow with the text;
+            Enter is a new line, leaving the field is <code>on-finish</code>.</p>
+        <div class="ex-example__row">
+            <div class="ex-form__grid">
+                <aui-textarea ng-model="vm.notes.remark" show-label label-text="Remark" placeholder="A remark for the order"
+                              value-max-length="200" show-count clearable rows="3"></aui-textarea>
+                <aui-textarea ng-model="vm.notes.address" show-label label-text="Address" label-position="top" auto-height rows="2"
+                              max-rows="6" hint-text="Grows with the text, up to 6 lines" clearable></aui-textarea>
+                <aui-textarea ng-model="vm.notes.short" placeholder="At most 30 characters, enforce-limits" value-max-length="30"
+                              show-count enforce-limits auto-height rows="2"></aui-textarea>
+            </div>
+            <pre class="ex-out">{{ vm.notes | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-search">
+        <h2>Search field and table cells</h2>
+        <p class="ex-example__text"><code>search</code>: the search icon, a searchbox with the phone's search key;
+            <code>on-search</code> on Enter and when cleared, with <code>search-debounce</code> also once typing pauses;
+            <code>searching</code> shows the selects' spinner. <code>input-style-type="cell"</code>: the field of a table
+            cell (an editable column): 28px, no label, its box only under the pointer or with the focus.</p>
+        <div class="ex-example__row">
+            <div>
+                <aui-input ng-model="vm.find.query" input-style-type="form" search search-debounce="400" clearable
+                           searching="vm.find.busy" on-search="vm.runSearch($value)" placeholder="Search products"></aui-input>
+                <div class="ex-gap"></div>
+                <table class="ex-table">
+                    <tr><th>Product</th><th>Priority</th></tr>
+                    <tr ng-repeat="row in vm.rows track by row.id">
+                        <td>{{ row.name }}</td>
+                        <td><aui-input ng-model="row.priority" input-type="number" min="0" max="9999999" value-max-length="7"
+                                       input-style-type="cell" required></aui-input></td>
+                    </tr>
+                </table>
+            </div>
+            <pre class="ex-out">searches (newest first): {{ vm.find.log | json }}
+rows: {{ vm.rows | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-api">
+        <h2>api and events</h2>
+        <p class="ex-example__text"><code>api</code> receives <code>focus</code>, <code>blur</code>, <code>clear</code> and
+            <code>select</code> (as the selects' <code>api</code>); <code>on-focus</code>, <code>on-blur</code>,
+            <code>on-clear</code> report them. <code>autofocus</code> gives the focus once the field is shown.</p>
+        <div class="ex-example__row">
+            <div>
+                <aui-input ng-model="vm.events.value" input-style-type="form" show-label label-text="Name" api="vm.events.api" clearable
+                           on-focus="vm.logEvent('focus')" on-blur="vm.logEvent('blur: ' + $value)" on-clear="vm.logEvent('clear')"></aui-input>
+                <div class="ex-gap"></div>
+                <aui-button variant="outline" intent="neutral" ng-click="vm.events.api.focus()">focus()</aui-button>
+                <aui-button variant="outline" intent="neutral" ng-click="vm.events.api.select()">select()</aui-button>
+                <aui-button variant="outline" intent="neutral" ng-click="vm.events.api.clear()">clear()</aui-button>
+            </div>
+            <pre class="ex-out">value: {{ vm.events.value | json }}
+events (newest first): {{ vm.events.log | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-checks">
+        <h2>The checks in a page form</h2>
+        <p class="ex-example__text">The page form knows the field itself: <code>form.title</code> has the
+            <code>required</code> error, and the box's own checks (pattern, value-max-length, min/max) are the field's too.
+            The field turns red once it has been left. Reset clears touched and dirty everywhere.</p>
+        <form name="checksForm" novalidate>
+            <div class="ex-example__row">
+                <div>
+                    <div class="ex-form__grid">
+                        <aui-input name="title" ng-model="vm.checks.title" input-style-type="form" show-label label-text="Title" required></aui-input>
+                        <aui-input name="code" ng-model="vm.checks.code" input-style-type="form" hint-text="Just  a  digit" show-label label-text="Digits" pattern="\d+" clearable></aui-input>
+                        <aui-input name="short" ng-model="vm.checks.short" input-style-type="form" show-label label-text="Max 5" value-max-length="5" show-count></aui-input>
+                        <aui-input name="qty" ng-model="vm.checks.qty" input-type="number" min="0" max="100" input-style-type="form" show-label label-text="0 to 100"></aui-input>
+                    </div>
+                    <div class="ex-gap"></div>
+                    <aui-button variant="outline" intent="neutral" ng-click="vm.resetForm(checksForm)">Reset the form state</aui-button>
+                </div>
+                <pre class="ex-out">model: {{ vm.checks | json }}
+form: {{ vm.formState(checksForm) | json }}</pre>
+            </div>
+        </form>
+    </section>
+
+    <section class="ex-example" id="ex-options">
+        <h2>The options, as the selects read them</h2>
+        <p class="ex-example__text">A bare attribute is on (<code>show-label</code>, <code>readonly</code>,
+            <code>clearable</code>, <code>disabled</code>, <code>show-count</code>), as on aui-select, and so is one
+            written the HTML way (<code>disabled="disabled"</code>); an expression or <code>"true"</code> /
+            <code>"false"</code> counts as given and follows its changes.</p>
+        <div class="ex-example__row">
+            <div class="ex-form__grid">
+                <aui-input ng-model="vm.basic.name" input-style-type="form" show-label label-text="Bare" readonly clearable></aui-input>
+                <aui-input ng-model="vm.basic.note" input-style-type="form" show-label="vm.options.label" label-text="Expression"
+                           readonly="vm.options.readonly" show-count="vm.options.count" clearable></aui-input>
+            </div>
+            <pre class="ex-out"><label><input type="checkbox" ng-model="vm.options.label"> show-label</label>
+<label><input type="checkbox" ng-model="vm.options.readonly"> readonly</label>
+<label><input type="checkbox" ng-model="vm.options.count"> show-count</label></pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-basic">
+        <h2>Basic style</h2>
+        <p class="ex-example__text">The underline style (the default <code>input-style-type</code>): the placeholder rises as
+            a label on focus, the clear button fits the text line above the underline, and an invalid field shows a red
+            underline once left.</p>
+        <form name="basicForm" novalidate>
+            <div class="ex-example__row">
+                <div class="ex-form__grid">
+                    <aui-input ng-model="vm.basic.name" placeholder="please enter the product name" clearable></aui-input>
+                    <aui-input ng-model="vm.basic.note" placeholder="With show-count" value-max-length="7" show-count clearable></aui-input>
+                    <aui-input name="basicRequired" ng-model="vm.basic.required" placeholder="Required (leave it empty)" required></aui-input>
+                </div>
+                <pre class="ex-out">{{ vm.basic | json }}</pre>
+            </div>
+        </form>
+    </section>
+</ex-page>
+</body>
+</html>

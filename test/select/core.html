@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-select: core</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 16px; background: #fff; color: #222; }
+        .row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+        .cell { width: 260px; }
+        .cell label { display: block; font-size: 12px; color: #555; margin-bottom: 4px; }
+        #results { font: 12px/1.5 Consolas, monospace; white-space: pre-wrap; border-top: 1px solid #ccc; margin-top: 16px; padding-top: 8px; }
+        .variant { font-weight: 700; font-size: 18px; margin-bottom: 12px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="core.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="core.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="TestCtrl">
+<form name="testForm" id="testForm" ng-submit="onSubmit()">
+    <div class="row">
+        <div class="cell" id="c-s1"><label>S1 searchable single (string labels)</label>
+            <aui-select ng-model="m.s1" name="s1" options="strOptions" searchable="true" clearable="true"
+                        placeholder="Pick one" on-change="onChange1"
+                        on-open="opens.s1 = opens.s1 + 1" on-close="closes.s1 = closes.s1 + 1"></aui-select>
+        </div>
+        <div class="cell" id="c-s2"><label>S2 numeric labels</label>
+            <aui-select ng-model="m.s2" name="s2" options="numOptions" searchable="true" placeholder="Numbers"></aui-select>
+        </div>
+        <div class="cell" id="c-req"><label>S3 required</label>
+            <aui-select ng-model="m.req" name="reqField" options="strOptions" ng-required="true" placeholder="Required"></aui-select>
+        </div>
+        <div class="cell" id="c-multi"><label>S4 multiple</label>
+            <aui-select ng-model="m.multi" name="multiField" options="strOptions" multiple clearable placeholder="Many"></aui-select>
+        </div>
+    </div>
+    <div class="row">
+        <div class="cell" id="c-s5"><label>S5 destroyable</label>
+            <aui-select ng-if="show5" ng-model="m.s5" name="s5" options="strOptions" placeholder="Destroy me"
+                        on-open="opens.s5 = opens.s5 + 1" on-close="closes.s5 = closes.s5 + 1"></aui-select>
+        </div>
+        <div class="cell" id="c-auto1"><label>S6 auto-select, destroyed early</label>
+            <aui-select ng-if="showAuto1" ng-model="m.auto1" name="auto1" options="singleOption" required
+                        auto-select-on-single-required on-change="onAutoChange" placeholder="Auto 1"></aui-select>
+        </div>
+        <div class="cell" id="c-auto2"><label>S7 auto-select, kept</label>
+            <aui-select ng-model="m.auto2" name="auto2" options="singleOption" required
+                        auto-select-on-single-required placeholder="Auto 2"></aui-select>
+        </div>
+        <div class="cell" id="c-dv"><label>S8 disabled values 2,3</label>
+            <aui-select ng-model="m.dv" name="dv" options="strOptions" disabled-values="disabledVals" placeholder="Disabled values"></aui-select>
+        </div>
+    </div>
+    <div class="row">
+        <div class="cell" id="c-t2"><label>S9 multiple, max-tag-count 2</label>
+            <aui-select ng-model="m.tags" name="tags" options="strOptions" multiple clearable max-tag-count="2" placeholder="Tags"></aui-select>
+        </div>
+        <div class="cell" id="c-t0"><label>S10 multiple, max-tag-count 0</label>
+            <aui-select ng-model="m.tags0" name="tags0" options="strOptions" multiple max-tag-count="0" placeholder="Tags 0"></aui-select>
+        </div>
+        <div class="cell" id="c-tdyn"><label>S11 multiple, max-tag-count = tagLimit</label>
+            <aui-select ng-model="m.tagsDyn" name="tagsDyn" options="strOptions" multiple max-tag-count="tagLimit" placeholder="Tags dyn"></aui-select>
+        </div>
+        <div class="cell" id="c-tneg"><label>S12 multiple, max-tag-count -1 (ignored)</label>
+            <aui-select ng-model="m.tagsNeg" name="tagsNeg" options="strOptions" multiple max-tag-count="-1" placeholder="Tags neg"></aui-select>
+        </div>
+        <div class="cell" id="c-tsingle"><label>S13 single, max-tag-count 1 (ignored)</label>
+            <aui-select ng-model="m.singleLimit" name="singleLimit" options="strOptions" max-tag-count="1" placeholder="Single"></aui-select>
+        </div>
+        <div class="cell" id="c-long"><label>S14 1,000 static options (scroll window)</label>
+            <aui-select ng-model="m.long" name="long" options="longOptions" placeholder="Long list"></aui-select>
+        </div>
+    </div>
+    <button type="submit" id="submitBtn">Submit</button>
+</form>
+</body>
+</html>

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: message line, size, label-position</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(3, 300px); gap: 14px 18px; align-items: start; margin-bottom: 14px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 360px; }
+        /* a page's general label rules, as CSS frameworks and admin themes write them, which every
+           label of a page gets: the field's labels must look the same under them */
+        label { float: left; width: 100px; text-align: left; line-height: 30px; }
+        label { display: inline-block; margin-bottom: 5px; }
+        label { font-weight: normal; font-size: 13px; }
+        td > label, th > label { margin-bottom: 0; line-height: inherit; vertical-align: middle; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="field-extras.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="field-extras.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="ExtrasCtrl">
+<h1>The message line, size and label-position of the three fields</h1>
+<form name="f" novalidate>
+    <div class="grid" id="plain">
+        <aui-input ng-model="m.ip" input-style-type="form" show-label label-text="Name"></aui-input>
+        <aui-select ng-model="m.sp" options="options" show-label label-text="Hall"></aui-select>
+        <aui-tree-select ng-model="m.tp" options="nodes" show-label label-text="Category"></aui-tree-select>
+    </div>
+    <div class="grid" id="hint">
+        <aui-input name="ih" ng-model="m.ih" input-style-type="form" show-label label-text="Name" hint-text="As on the ID card" required></aui-input>
+        <aui-select name="sh" ng-model="m.sh" options="options" show-label label-text="Hall" hint-text="Where the room is" required></aui-select>
+        <aui-tree-select name="th" ng-model="m.th" options="nodes" show-label label-text="Category" hint-text="The main category" required></aui-tree-select>
+    </div>
+    <div class="grid" id="custom">
+        <aui-input name="ic" ng-model="m.ic" input-style-type="form" value-max-length="5" error-messages="inputMessages" required></aui-input>
+        <aui-select name="sc" ng-model="m.sc" options="options" error-text="Choose one" required></aui-select>
+        <aui-tree-select name="tc" ng-model="m.tc" options="nodes" error-messages="treeMessages" required></aui-tree-select>
+    </div>
+    <div class="grid" id="shared">
+        <aui-input name="pat" ng-model="m.pat" input-style-type="form" pattern="\d+" show-errors></aui-input>
+        <aui-input name="whole" ng-model="m.whole" input-type="number" precision="0" input-style-type="form" show-errors></aui-input>
+        <aui-input name="upto" ng-model="m.upto" input-type="number" max="100" input-style-type="form" show-errors></aui-input>
+    </div>
+    <div class="grid" id="small">
+        <aui-input ng-model="m.is" input-style-type="form" show-label label-text="Small" size="small" clearable></aui-input>
+        <aui-select ng-model="m.ss" options="options" show-label label-text="Small" size="small" clearable></aui-select>
+        <aui-tree-select ng-model="m.ts" options="nodes" show-label label-text="Small" size="small"></aui-tree-select>
+    </div>
+    <div class="grid" id="large">
+        <aui-input ng-model="m.il" input-style-type="form" show-label label-text="Large" size="large" clearable></aui-input>
+        <aui-select ng-model="m.sl" options="options" show-label label-text="Large" size="large" clearable></aui-select>
+        <aui-tree-select ng-model="m.tl" options="nodes" show-label label-text="Large" size="large"></aui-tree-select>
+    </div>
+    <div class="grid" id="small-multi">
+        <span></span>
+        <aui-select ng-model="m.smallMulti" options="options" multiple size="small"></aui-select>
+        <span></span>
+    </div>
+    <div class="grid" id="small-row">
+        <aui-input ng-model="m.is" input-style-type="form" show-label label-text="Count" size="small" clearable show-count value-max-length="9"></aui-input>
+        <aui-input ng-model="m.pws" input-type="password" input-style-type="form" show-label label-text="Password" size="small" show-password clearable></aui-input>
+        <aui-input ng-model="m.ws" input-type="number" input-style-type="form" show-label label-text="Weight" size="small" prefix-text="~" suffix-text="kg" clearable></aui-input>
+    </div>
+    <div class="grid" id="large-row">
+        <aui-input ng-model="m.il" input-style-type="form" show-label label-text="Count" size="large" clearable show-count value-max-length="9"></aui-input>
+        <aui-input ng-model="m.pwl" input-type="password" input-style-type="form" show-label label-text="Password" size="large" show-password clearable></aui-input>
+        <aui-input ng-model="m.wl" input-type="number" input-style-type="form" show-label label-text="Weight" size="large" prefix-text="~" suffix-text="kg" clearable></aui-input>
+    </div>
+    <div class="grid" id="basic-label">
+        <aui-input ng-model="m.basic" placeholder="please enter the product name" clearable></aui-input>
+        <span></span>
+        <span></span>
+    </div>
+    <div class="grid" id="top">
+        <aui-input ng-model="m.it" input-style-type="form" show-label label-text="Name" label-position="top"></aui-input>
+        <aui-select ng-model="m.st" options="options" show-label label-text="Hall" label-position="top"></aui-select>
+        <aui-tree-select ng-model="m.tt" options="nodes" show-label label-text="Category" label-position="top"></aui-tree-select>
+    </div>
+    <div id="ngdis">
+        <aui-input ng-model="m.nd1" input-style-type="form" ng-disabled="m.off"></aui-input>
+        <aui-select ng-model="m.nd2" options="options" ng-disabled="m.off"></aui-select>
+        <aui-tree-select ng-model="m.nd3" options="nodes" ng-disabled="m.off"></aui-tree-select>
+        <aui-date-picker ng-model="m.nd4" ng-disabled="m.off"></aui-date-picker>
+    </div>
+</form>
+<div class="bottom-spacer"></div>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>aui-* family: shared UI</title>
+    <style>
+        body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #f6f7f9; }
+        .host { width: 320px; margin: 10px 0; }
+        #results { font: 12px/1.5 Consolas, monospace; white-space: pre-wrap; background: #fff; padding: 10px; }
+        .spacer { height: 1400px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="family.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="shared-ui.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="UnifyCtrl">
+<div class="host" id="h-s1"><aui-select ng-model="m.s1" options="fruits" on-open="counts.open = counts.open + 1" on-close="counts.close = counts.close + 1"></aui-select></div>
+<div class="host" id="h-s2"><aui-select ng-model="m.s2" options="fruits" drop-down-panel-background-opacity="OPAQUE_LIKE"></aui-select></div>
+<div class="host" id="h-s3"><aui-select ng-model="m.s3" options="many" multiple></aui-select></div>
+<div class="host" id="h-s4"><aui-select ng-model="m.s4" options="many" multiple max-tag-count="responsive" disabled="show.s4Disabled"></aui-select></div>
+<!-- a responsive field in a layout-table cell (auto table layout: the cell is as wide as its content allows) -->
+<table style="width: 640px; border-collapse: collapse;"><tr>
+    <td class="host" id="h-s7"><aui-select ng-if="show.s7" ng-model="m.s7" options="many" multiple max-tag-count="responsive"></aui-select></td>
+    <td style="width: 40%;">a neighbour cell</td>
+</tr></table>
+<div class="host" id="h-s6"><aui-select ng-if="show.s6" ng-model="m.s6" options="fruits" on-close="counts.close6 = counts.close6 + 1"></aui-select></div>
+<div class="host" id="h-t1"><aui-tree-select ng-model="m.t1" options="tree" label-field="name" multiple check-strictly></aui-tree-select></div>
+<div class="host" id="h-t2"><aui-tree-select ng-model="m.t2" options="tree" label-field="name" multiple check-strictly max-tag-count="responsive"></aui-tree-select></div>
+<div class="host" id="h-t3"><aui-tree-select ng-model="m.t3" label-field="name" load-children="loadKids($node)" multiple></aui-tree-select></div>
+<div class="spacer"></div>
+<div class="host" id="h-s5"><aui-select ng-model="m.s5" options="fruits"></aui-select></div>
+<div class="host" id="h-s8"><aui-select ng-model="m.s8" options="many" search-placeholder=""></aui-select></div>
+<div class="host" id="h-t4"><aui-tree-select ng-model="m.t4" options="tree" label-field="name" searchable="true" search-placeholder=""></aui-tree-select></div>
+<div class="spacer"></div>
+</body>
+</html>

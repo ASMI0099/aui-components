@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-tree-select: selectable-field</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        .cell .out { margin-top: 6px; font: 11px Consolas, monospace; color: #666; word-break: break-all; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 420px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="selectable.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="selectable.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="SelectableCtrl">
+<h1>aui-tree-select: selectable-field (groups that are shown but never picked)</h1>
+<div class="grid">
+    <div class="cell" id="s-off"><label>Same data, no selectable-field (as before)</label>
+        <aui-tree-select ng-model="m.off" options="data.off" label-field="name" value-field="id" default-expand-level="all"></aui-tree-select>
+        <div class="out">model: {{ m.off | json }}</div>
+    </div>
+    <div class="cell" id="s-single"><label>Single</label>
+        <aui-tree-select ng-model="m.single" options="data.single" label-field="name" value-field="id" selectable-field="selectable"
+                         on-change="onChange"></aui-tree-select>
+        <div class="out">model: {{ m.single | json }}</div>
+    </div>
+    <div class="cell" id="s-auto"><label>Single, required, auto-select-on-single-required</label>
+        <aui-tree-select ng-model="m.auto" options="data.auto" label-field="name" value-field="id" selectable-field="selectable"
+                         required auto-select-on-single-required></aui-tree-select>
+        <div class="out">model: {{ m.auto | json }}</div>
+    </div>
+    <div class="cell" id="s-strict"><label>Multiple, check-strictly</label>
+        <aui-tree-select ng-model="m.strict" options="data.strict" label-field="name" value-field="id" selectable-field="selectable"
+                         multiple check-strictly default-expand-level="all"></aui-tree-select>
+        <div class="out">model: {{ m.strict | json }}</div>
+    </div>
+    <div class="cell" id="s-all"><label>Multiple, linked, value-strategy all</label>
+        <aui-tree-select ng-model="m.all" options="data.all" label-field="name" value-field="id" selectable-field="selectable"
+                         multiple default-expand-level="all"></aui-tree-select>
+        <div class="out">model: {{ m.all | json }}</div>
+    </div>
+    <div class="cell" id="s-parent"><label>Multiple, linked, value-strategy parent</label>
+        <aui-tree-select ng-model="m.parent" options="data.parent" label-field="name" value-field="id" selectable-field="selectable"
+                         multiple value-strategy="parent" default-expand-level="all"></aui-tree-select>
+        <div class="out">model: {{ m.parent | json }}</div>
+    </div>
+    <div class="cell" id="s-child"><label>Multiple, linked, value-strategy child</label>
+        <aui-tree-select ng-model="m.child" options="data.child" label-field="name" value-field="id" selectable-field="selectable"
+                         multiple value-strategy="child" default-expand-level="all"></aui-tree-select>
+        <div class="out">model: {{ m.child | json }}</div>
+    </div>
+    <div class="cell" id="s-mlinked"><label>Saved value is a group (linked)</label>
+        <aui-tree-select ng-model="m.mLinked" options="data.mLinked" label-field="name" value-field="id" selectable-field="selectable"
+                         multiple default-expand-level="all"></aui-tree-select>
+        <div class="out">model: {{ m.mLinked | json }}</div>
+    </div>
+    <div class="cell" id="s-minert"><label>Saved value is a group without children (linked)</label>
+        <aui-tree-select ng-model="m.mInert" options="data.mInert" label-field="name" value-field="id" selectable-field="selectable"
+                         multiple default-expand-level="all"></aui-tree-select>
+        <div class="out">model: {{ m.mInert | json }}</div>
+    </div>
+    <div class="cell" id="s-msingle"><label>Saved value is a group (single)</label>
+        <aui-tree-select ng-model="m.mSingle" options="data.mSingle" label-field="name" value-field="id" selectable-field="selectable"></aui-tree-select>
+        <div class="out">model: {{ m.mSingle | json }}</div>
+    </div>
+    <div class="cell" id="s-mstrict"><label>Saved value is a group (check-strictly)</label>
+        <aui-tree-select ng-model="m.mStrict" options="data.mStrict" label-field="name" value-field="id" selectable-field="selectable"
+                         multiple check-strictly></aui-tree-select>
+        <div class="out">model: {{ m.mStrict | json }}</div>
+    </div>
+    <div class="cell" id="s-dis"><label>Linked, disabled-values</label>
+        <aui-tree-select ng-model="m.dis" options="data.dis" label-field="name" value-field="id" selectable-field="selectable"
+                         multiple disabled-values="disabledValues" default-expand-level="all"></aui-tree-select>
+        <div class="out">model: {{ m.dis | json }}</div>
+    </div>
+    <div class="cell" id="s-toggle"><label>selectable-field set later</label>
+        <aui-tree-select ng-model="m.toggle" options="data.toggle" label-field="name" value-field="id"
+                         selectable-field="{{ p.sf }}" default-expand-level="all"></aui-tree-select>
+        <div class="out">model: {{ m.toggle | json }}</div>
+    </div>
+    <div class="cell" id="s-lazy"><label>Lazy (load-children), single</label>
+        <aui-tree-select ng-model="m.lazy" label-field="name" value-field="id" selectable-field="selectable"
+                         load-children="loadKids($node)"></aui-tree-select>
+        <div class="out">model: {{ m.lazy | json }}</div>
+    </div>
+    <div class="cell" id="s-remote"><label>Lazy, remote-search, multiple linked</label>
+        <aui-tree-select ng-model="m.remote" label-field="name" value-field="id" selectable-field="selectable" multiple
+                         load-children="loadKids($node)" remote-search="searchTree($query)" search-delay="60"></aui-tree-select>
+        <div class="out">model: {{ m.remote | json }}</div>
+    </div>
+</div>
+<div class="bottom-spacer"></div>
+</body>
+</html>

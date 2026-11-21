@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" href="data:,"/>
+    <title>aui-popover</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../assets/examples.css"/>
+    <style>
+        .po-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 32px;
+            align-items: center;
+        }
+
+        .po-table {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 640px;
+            font-size: 13px;
+        }
+
+        .po-table th, .po-table td {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 8px 10px;
+            text-align: left;
+        }
+
+        .po-table tr.is-picked td {
+            background: #f1f5f9;
+        }
+
+        .po-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .po-link {
+            color: #20a0ff;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+            padding: 4px;
+            user-select: none;
+        }
+
+        .po-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 6px;
+            min-width: 120px;
+            max-width: 320px;
+        }
+
+        .po-tag {
+            padding: 3px 8px;
+            border-radius: 3px;
+            background: #eef2f6;
+            font-size: 12px;
+        }
+
+        .po-box {
+            height: 30px;
+            width: 150px;
+            border: 1px solid #d6dce5;
+            border-radius: 3px;
+            padding: 0 8px;
+            cursor: pointer;
+        }
+
+        .po-log {
+            max-height: 180px;
+            overflow: auto;
+            font: 12px/1.6 ui-monospace, Consolas, monospace;
+            color: #334155;
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 6px 10px;
+        }
+
+        .po-value {
+            margin: 6px 0 0;
+            font: 12px/1.5 ui-monospace, Consolas, monospace;
+            color: #475569;
+        }
+    </style>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="../assets/examples.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="popover.js"></script>
+</head>
+<body class="ex" ng-app="auiExamples" ng-controller="PopoverCtrl as vm">
+<ex-page heading="aui-popover"
+         lead="A card next to its trigger: a title, the page's content, Cancel and Confirm (or the page's own footer). It opens under the trigger's start, moves to the other side without room, stays inside the screen, and no container of the page clips it. Escape, a press outside, Cancel and Confirm close it; on-open and on-confirm can refuse.">
+
+    <section class="ex-example" id="ex-rows">
+        <h2>An edit icon in a table's rows</h2>
+        <p class="ex-example__text">The rows open on a click (the picked row is grey); a click on the icon or in the
+            card does not pick the row. The box takes the focus at once, and Enter saves. The save waits for the server (a
+            spinner on Save): a number over 9999 fails there and the card stays as it was; an empty box is refused at once
+            (on-confirm returns false). close-on-click-outside="false": what is typed is kept until Cancel, Save or Escape.
+            Jasmine is locked (disabled).</p>
+        <table class="po-table">
+            <tr>
+                <th>Product</th>
+                <th>Stock</th>
+            </tr>
+            <tr ng-repeat="row in vm.rows" ng-click="vm.picked = row.id" ng-class="{'is-picked': vm.picked === row.id}">
+                <td>{{ row.name }}</td>
+                <td>
+                    <div class="po-cell">
+                        <span style="min-width: 40px;">{{ row.stock }}</span>
+                        <aui-popover close-on-click-outside="false"
+                                     on-open="vm.startEdit(row)"
+                                     on-confirm="vm.saveEdit(row)"
+                                     on-close="vm.log('on-close', row.name)"
+                                     confirm-text="Save"
+                                     disabled="row.locked"
+                                     title-text="Stock of {{ row.name }}"
+                                     width="280">
+                            <popover-content>
+                                <aui-input input-style-type="form" show-label="true" label-text="Stock" input-type="text"
+                                           ng-model="vm.draft.stock" clearable="true" placeholder="A number"></aui-input>
+                            </popover-content>
+                        </aui-popover>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    </section>
+
+    <section class="ex-example" id="ex-own">
+        <h2>The popover's own trigger</h2>
+        <p class="ex-example__text">trigger-icon (each icon alone: hover it for its name), trigger-text with
+            trigger-icon-position and show-trigger-text, trigger-tone (link, muted, text, danger).</p>
+        <div class="po-row">
+            <aui-popover ng-repeat="name in vm.icons" trigger-icon="{{ name }}">
+                <popover-content>trigger-icon="{{ name }}"</popover-content>
+                <popover-footer></popover-footer>
+            </aui-popover>
+        </div>
+        <div class="po-row" style="margin-top: 16px;">
+            <aui-popover trigger-text="Change the price" show-trigger-text="vm.showText" title-text="Activity price" width="280"
+                         on-confirm="vm.log('on-confirm', 'price')">
+                <popover-content>
+                    <aui-input input-style-type="form" show-label="true" label-text="Price" input-type="text"
+                               ng-model="vm.f.price" clearable="true"></aui-input>
+                </popover-content>
+            </aui-popover>
+            <aui-popover trigger-icon="filter" trigger-text="Filter" trigger-icon-position="end" trigger-tone="text">
+                <popover-content>trigger-tone="text", the icon after the text</popover-content>
+                <popover-footer></popover-footer>
+            </aui-popover>
+            <aui-popover trigger-icon="delete" trigger-text="Delete" trigger-tone="danger" confirm-intent="danger"
+                         confirm-text="Delete" title-text="Delete this product?" on-confirm="vm.log('on-confirm', 'deleted')">
+                <popover-content>It cannot be undone.</popover-content>
+            </aui-popover>
+            <aui-popover trigger-icon="info" trigger-text="How stock works" trigger-on="hover" placement="bottom" width="300">
+                <popover-content>trigger-on="hover": the mouse resting on the trigger opens it, leaving it and the card
+                    closes it. A press keeps it open. A long note wraps at the card's width.</popover-content>
+                <popover-footer></popover-footer>
+            </aui-popover>
+            <label><input type="checkbox" ng-model="vm.showText"> show-trigger-text</label>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-triggers">
+        <h2>The page's own trigger</h2>
+        <p class="ex-example__text">popover-trigger keeps the page's look: a read-only box (the focus goes to it, Enter
+            opens; its tags bring their own padding: content-padding="none"), a button of the page.</p>
+        <div class="po-row">
+            <aui-popover show-title="false" content-padding="none">
+                <popover-trigger>
+                    <label style="display: flex; margin: 0;">
+                        <input class="po-box" readonly
+                               placeholder="{{ vm.tags.length ? 'Selected: ' + vm.tags.length : 'Nothing selected' }}">
+                    </label>
+                </popover-trigger>
+                <popover-content>
+                    <div class="po-tags">
+                        <span class="po-tag" ng-repeat="tag in vm.tags">{{ tag }}</span>
+                        <span ng-if="!vm.tags.length" style="color: #64748b; font-size: 12px;">Nothing selected</span>
+                    </div>
+                </popover-content>
+                <popover-footer></popover-footer>
+            </aui-popover>
+
+            <aui-popover>
+                <popover-trigger>
+                    <aui-button variant="outline" intent="neutral" size="sm">A button of the page</aui-button>
+                </popover-trigger>
+                <popover-title><span>With a select and a date</span></popover-title>
+                <popover-content>
+                    <aui-select ng-model="vm.f.kind" options="vm.kinds" label-field="name" value-field="id"
+                                show-label label-text="Kind" clearable></aui-select>
+                    <aui-date-picker ng-model="vm.f.day" show-label label-text="Day" clearable></aui-date-picker>
+                </popover-content>
+            </aui-popover>
+        </div>
+        <p class="po-value">price: {{ vm.f.price | json }} · kind: {{ vm.f.kind | json }} · day: {{ vm.f.day | json
+            }}</p>
+    </section>
+
+    <section class="ex-example" id="ex-page">
+        <h2>Opened and closed by the page</h2>
+        <p class="ex-example__text">is-open and api. "Refuse to open" makes on-open return false.</p>
+        <div class="po-row">
+            <aui-popover is-open="vm.open" api="vm.api" on-open="vm.mayOpen()" on-close="vm.log('on-close', 'bound')">
+                <popover-trigger><span class="po-link">Bound to the page</span></popover-trigger>
+                <popover-title><span>is-open: {{ vm.open }}</span></popover-title>
+                <popover-content>The page's value follows what the user does.</popover-content>
+                <popover-footer>
+                    <div style="display: flex; justify-content: flex-end; padding: 4px 16px 12px;">
+                        <aui-button size="sm" ng-click="vm.open = false">Close (the page's own footer)</aui-button>
+                    </div>
+                </popover-footer>
+            </aui-popover>
+            <aui-button size="sm" variant="outline" intent="neutral" ng-click="vm.open = !vm.open">is-open = {{ !vm.open
+                }}
+            </aui-button>
+            <aui-button size="sm" variant="outline" intent="neutral" ng-click="vm.api.open()">api.open()</aui-button>
+            <aui-button size="sm" variant="outline" intent="neutral" ng-click="vm.api.close()">api.close()</aui-button>
+            <label><input type="checkbox" ng-model="vm.refuse"> Refuse to open</label>
+        </div>
+        <p class="po-value">is-open as the page has it: {{ vm.open }}</p>
+    </section>
+
+    <section class="ex-example" id="ex-places">
+        <h2>Places</h2>
+        <div class="po-row">
+            <aui-popover ng-repeat="place in vm.places" placement="{{ place }}">
+                <popover-trigger><span class="po-link"
+                                       style="border: 1px dashed #94a3b8; border-radius: 4px; padding: 6px 10px;">{{ place
+                    }}</span></popover-trigger>
+                <popover-content>placement="{{ place }}"</popover-content>
+                <popover-footer></popover-footer>
+            </aui-popover>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-log">
+        <h2>Calls</h2>
+        <div class="po-log">
+            <div ng-repeat="line in vm.lines track by $index">{{ line }}</div>
+            <div ng-if="!vm.lines.length">Nothing yet</div>
+        </div>
+    </section>
+</ex-page>
+</body>
+</html>

@@ -1,0 +1,848 @@
+/*
+ * aui-select (and the parts aui-tree-select shares): chevron, panel, list, rows, tags, search marks, states.
+ */
+
+/* Centred by its margin, so that transform only turns it: a transform without !important animates on the compositor
+   (an !important one is animated on the main thread, repainting the page on every frame). */
+.aui-select__chevron {
+    position: absolute !important;
+    right: 8px !important;
+    top: 50% !important;
+    margin-top: -8px !important;
+    transform: none;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    width: 16px !important;
+    height: 16px !important;
+    display: block !important;
+    background-color: #6b7280 !important;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 6L8 10.5L12.5 6'/%3E%3C/svg%3E") center / 12px 12px no-repeat !important;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 6L8 10.5L12.5 6'/%3E%3C/svg%3E") center / 12px 12px no-repeat !important;
+    pointer-events: none !important;
+    /* Only the turn moves, on the compositor, which gives the chevron a layer of its own while it turns; still, it is
+       drawn with the field, on its whole pixels (a layer kept for good placed it on the field's fractions of a pixel,
+       drawn soft, and made the page split its layers). Its colour changes at once (a colour fade repainted the page
+       on every frame of the turn). */
+    transition: transform var(--aui-motion-duration) var(--aui-motion-ease);
+}
+
+.aui-select__trigger:hover .aui-select__chevron {
+    background-color: #4b5563 !important;
+}
+
+
+.aui-select--open .aui-select__chevron {
+    transform: rotate(180deg);
+    background-color: var(--aui-control-accent-color) !important;
+}
+
+/* loading: the field is busy (it does not open meanwhile): a small spinner in the chevron's place */
+.aui-select__trigger--busy {
+    cursor: progress;
+}
+
+.aui-select__trigger--busy .aui-select__chevron {
+    visibility: hidden !important;
+}
+
+.aui-select__busy {
+    position: absolute;
+    right: 9px;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin-top: -7px;
+    box-sizing: border-box;
+    border: 2px solid var(--aui-control-accent-a15);
+    border-top-color: var(--aui-control-accent-color);
+    border-right-color: var(--aui-control-accent-color);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: aui-select-busy-spin 0.7s linear infinite;
+}
+
+@keyframes aui-select-busy-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aui-select__busy {
+        animation-duration: 1.6s;
+    }
+}
+
+
+.aui-select__panel {
+    display: none;
+    padding: 4px 0;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 10px;
+    background-color: var(--aui-control-background-color);
+    z-index: 1050;
+    max-width: inherit;
+    box-sizing: border-box;
+    /* the panel's own text, not the page's size, colour or alignment (a field in a centred table cell): its rows have the
+       field's value size (a row picked reads as the field shows it; small and large follow), its helper texts (the
+       search box, status and empty texts) a size smaller, set on them. --aui-control-option-size, when a page sets it,
+       gives the rows a size of their own. */
+    color: var(--aui-control-value-color);
+    font-size: var(--aui-control-option-size, var(--aui-control-value-size));
+    text-align: left;
+    opacity: 0;
+    pointer-events: none;
+    transform: scaleY(0.96);
+    transform-origin: top center;
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    /* opacity and transform only: the compositor animates them without repainting (its corners change at once) */
+    transition: opacity var(--aui-motion-duration) var(--aui-motion-ease),
+                transform var(--aui-motion-duration-shape) var(--aui-motion-ease);
+    box-shadow: 0 2px 4px -1px rgba(15, 23, 42, 0.05),
+                0 8px 16px -4px rgba(15, 23, 42, 0.08),
+                0 24px 48px -12px rgba(15, 23, 42, 0.18),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.aui-select__panel--open {
+    transform: scaleY(1);
+}
+
+.aui-select__panel--open {
+    display: block;
+    pointer-events: auto;
+}
+
+.aui-select__panel--top {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    transform-origin: bottom center;
+    box-shadow: 0 -2px 4px -1px rgba(15, 23, 42, 0.05),
+                0 -8px 16px -4px rgba(15, 23, 42, 0.08),
+                0 -24px 48px -12px rgba(15, 23, 42, 0.16),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.aui-select__trigger--top {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.aui-select__panel--bottom {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    box-shadow: 0 2px 4px -1px rgba(15, 23, 42, 0.05),
+                0 8px 16px -4px rgba(15, 23, 42, 0.08),
+                0 24px 48px -12px rgba(15, 23, 42, 0.18);
+}
+
+.aui-select__trigger--bottom {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+
+.aui-select__search {
+    position: relative;
+    padding: 10px;
+    border-bottom: 1px solid #f1f3f5;
+}
+
+.aui-select__search-icon {
+    position: absolute !important;
+    left: 20px !important;
+    top: 50% !important;
+    margin-top: -7px !important;
+    width: 14px !important;
+    height: 14px !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    display: block !important;
+    background-color: #4b5563 !important;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='7' cy='7' r='4.5'/%3E%3Cpath d='M13.5 13.5l-3-3'/%3E%3C/svg%3E") center / 14px 14px no-repeat !important;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='7' cy='7' r='4.5'/%3E%3Cpath d='M13.5 13.5l-3-3'/%3E%3C/svg%3E") center / 14px 14px no-repeat !important;
+    pointer-events: none !important;
+    z-index: 1;
+}
+
+.aui-select__search:focus-within .aui-select__search-icon {
+    background-color: var(--aui-control-accent-color) !important;
+}
+
+
+.aui-select .aui-select__search .aui-select__search-input,
+.aui-select__search .aui-select__search-input,
+.aui-select__search-input {
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 8px 10px 8px 34px !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 8px !important;
+    outline: 0 !important;
+    box-sizing: border-box !important;
+    font-family: inherit !important;
+    font-size: calc(var(--aui-font-13) * 1px) !important;
+    font-weight: normal !important;
+    font-style: normal !important;
+    line-height: 1.5 !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+    text-indent: 0 !important;
+    color: var(--aui-control-value-color) !important;
+    background-color: var(--aui-control-background-color) !important;
+    background-image: none !important;
+    box-shadow: none;
+    /* No transition (nor on its icon), a page's neither: the search box is in the panel, which is still animating when
+       it gets the focus ring; an animated ring would repaint the whole panel on every frame of the opening. */
+    transition: none !important;
+}
+
+.aui-select .aui-select__search .aui-select__search-input:hover,
+.aui-select__search-input:hover {
+    border-color: #cbd0d6 !important;
+}
+
+.aui-select .aui-select__search .aui-select__search-input:focus,
+.aui-select__search-input:focus {
+    outline: 0 !important;
+    border-color: var(--aui-control-accent-color) !important;
+    box-shadow: 0 0 0 3px var(--aui-control-accent-a12),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5) !important;
+    background-color: var(--aui-control-background-color) !important;
+}
+
+.aui-select__search-input::placeholder {
+    color: var(--aui-control-placeholder-color) !important;
+    font-weight: normal !important;
+    font-style: normal !important;
+    opacity: 1;
+}
+
+.aui-select__search-input {
+    caret-color: var(--aui-control-accent-color);
+}
+
+
+.aui-select__search-input:-webkit-autofill,
+.aui-select__search-input:-webkit-autofill:hover,
+.aui-select__search-input:-webkit-autofill:focus,
+.aui-select__search-input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px var(--aui-control-background-color) inset !important;
+    -webkit-text-fill-color: var(--aui-control-value-color) !important;
+    caret-color: var(--aui-control-accent-color);
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+
+.aui-select__options {
+    list-style: none;
+    margin: 0;
+    padding: 4px;
+    overflow-y: auto;
+    max-height: 300px;
+}
+
+/* In an open panel the list is never taller than the room on the panel's side (--aui-panel-list-max, set by the
+   panel engine), so the panel stays on the screen. Browsers without min() keep the 300px above. */
+.aui-select__panel .aui-select__options {
+    max-height: min(300px, var(--aui-panel-list-max, 300px));
+}
+
+.aui-select__options::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.aui-select__options::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 2px 0;
+}
+
+.aui-select__options::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, 0.18);
+    border-radius: 3px;
+}
+
+.aui-select__options::-webkit-scrollbar-thumb:hover {
+    background: rgba(15, 23, 42, 0.32);
+}
+
+/* Chromium and Safari: the slim scrollbar of the parts above, 4px whatever the page's root font size (aui-scroll's
+   width is in rem), no arrow buttons. Firefox, which has no such parts: its thin scrollbar (scrollbar-width or
+   scrollbar-color here would turn the parts off in Chromium, its arrow buttons back). */
+.aui-select__options::-webkit-scrollbar {
+    width: 4px !important;
+    height: 4px !important;
+}
+
+.aui-select__options::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    .aui-select__options {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(15, 23, 42, 0.18) transparent;
+    }
+}
+
+.aui-select__option {
+    position: relative;
+    margin: 1px 0;
+    /* 32px rows at the 14px text (20px line, 6px above and below), 33px apart: compact, as a list of choices is; the
+       line follows the text's size (a page's option size, --aui-font-scale) */
+    padding: 6px 12px;
+    border-radius: 7px;
+    color: var(--aui-control-value-color);
+    cursor: pointer;
+    line-height: calc(1em + 6px);
+    /* One line per option (a long label ends in an ellipsis and shows in full as a tooltip): every row has the
+       same height, which the scroll window over long lists relies on. */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    /* The highlight (pointer, keyboard) changes at once, as a native list's does: a fade of the row's colours was drawn
+       on the main thread, and every frame of it repainted the page while the pointer moved over the rows. */
+    user-select: none;
+}
+
+
+.aui-select__option::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 7px;
+    bottom: 7px;
+    width: 3px;
+    background-color: var(--aui-control-accent-color);
+    border-radius: 0 2px 2px 0;
+    transform: scaleY(0);
+    transform-origin: center;
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.aui-select__option:hover {
+    background-color: var(--aui-control-accent-a06);
+}
+
+/* The selected row's text: the accent's text shade (#0a58ca), the next darker step of the accent blue. The accent itself on
+   the row's tint is below the 4.5:1 that text needs; its text shade is 5.2:1 or more on every tint (selected, hovered,
+   keyboard). */
+.aui-select__option--selected {
+    background: linear-gradient(135deg, var(--aui-control-accent-a05), var(--aui-control-accent-a12));
+    color: var(--aui-control-accent-text);
+    font-weight: 600;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.aui-select__option--selected::after {
+    transform: scaleY(1);
+}
+
+.aui-select__option--selected:hover {
+    background: linear-gradient(135deg, var(--aui-control-accent-a08), var(--aui-control-accent-a16));
+}
+
+/* Several values (aui-select multiple, aui-tree-select multiple): the checkbox shows the state; a checked row keeps the
+   tint and the text shade, in the list's normal weight (bold widened the text as it was ticked: the label moved, its
+   ellipsis changed) */
+.aui-select__panel--multiple .aui-select__option--selected,
+.aui-tree-select__panel--multiple .aui-select__option--selected {
+    font-weight: inherit;
+    text-shadow: none;
+}
+
+/* Multi-mode uses the checkbox indicator instead of the accent bar: the row's ::after is the checkbox's checked face
+   (below) */
+
+
+.aui-select__option--disabled,
+.aui-select__option--disabled:hover {
+    color: var(--aui-control-disabled-color);
+    cursor: not-allowed;
+    background-color: transparent;
+}
+
+/* Multi-select option — refined checkbox with depth */
+.aui-select__panel--multiple .aui-select__option {
+    padding-left: 38px;
+}
+
+.aui-select__panel--multiple .aui-select__option::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    /* centred in the row by layout (its insets and auto margins), on whole pixels: a translate of half its 17px put it
+       on a half pixel, its border drawn soft */
+    top: 0;
+    bottom: 0;
+    margin: auto 0;
+    width: 17px;
+    height: 17px;
+    border: 1px solid #8792a2;   /* aui-checkbox's unchecked border: 3:1 against white */
+    border-radius: 4px;
+    background-color: var(--aui-control-background-color);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 13px 13px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    /* it never moves (as aui-checkbox: a hover scale redrew its border at a fractional size); hovered, its border takes
+       the accent at once */
+}
+
+/* The checked face: the same box in the checked look, laid over it, faded in and out by its opacity. A fade of the box's
+   own colours was drawn on the main thread, and every frame of it repainted the page at each check (with several
+   values picked one after another, all the time). Not given a box-sizing of its own: it sizes as the box does (a
+   page's border-box rule applies to both). */
+.aui-select__panel--multiple .aui-select__option::after {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 0;
+    bottom: 0;
+    margin: auto 0;
+    width: 17px;
+    height: 17px;
+    border: 1.5px solid var(--aui-control-accent-color);
+    border-radius: 4px;
+    background-color: var(--aui-control-accent-color);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.5 3.5L13 5'/%3E%3C/svg%3E");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 13px 13px;
+    box-shadow: 0 2px 4px -1px var(--aui-control-accent-a32),
+                inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    opacity: 0;
+    /* a compositor layer of its own for good (a small one, on the rows drawn only): a layer made for each fade and
+       dropped at its end changed the layers, and that repainted the page */
+    will-change: opacity;
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aui-select__panel--multiple .aui-select__option:hover::before {
+    border-color: var(--aui-control-accent-color);
+}
+
+.aui-select__panel--multiple .aui-select__option--selected::after {
+    opacity: 1;
+}
+
+.aui-select__panel--multiple .aui-select__option--disabled::before,
+.aui-select__panel--multiple .aui-select__option--disabled:hover::before {
+    background-color: #f5f7fa;
+    border-color: #e5e7eb;
+    box-shadow: none;
+}
+
+/* a checked option that is disabled: the muted check, as aui-tree-select's */
+.aui-select__panel--multiple .aui-select__option--disabled::after {
+    background-color: #f5f7fa;
+    border-color: #e5e7eb;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23b4bac4' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.5 3.5L13 5'/%3E%3C/svg%3E");
+    box-shadow: none;
+}
+
+
+/* No Results */
+.aui-select__no-results {
+    padding: 20px 12px;
+    color: var(--aui-control-muted-color);
+    text-align: center;
+    font-size: calc(var(--aui-font-13) * 1px);
+}
+
+/* load-disabled-text: what the user has to do before anything can load (guidance, not an error). The text wraps
+   (never cut off) and is dark enough to read (contrast about 6:1 on white). */
+.aui-select__notice {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 8px;
+    padding: 18px 16px;
+    color: #586474;
+    font-size: calc(var(--aui-font-13) * 1px);
+    line-height: 20px;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    list-style: none;
+    cursor: default;
+}
+
+.aui-select__notice-icon {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    margin-top: 2px;
+    background-color: #6b8bb5;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6.25'/%3E%3Cpath d='M8 7.4v3.6M8 4.9v.01'/%3E%3C/svg%3E") center / 16px 16px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round'%3E%3Ccircle cx='8' cy='8' r='6.25'/%3E%3Cpath d='M8 7.4v3.6M8 4.9v.01'/%3E%3C/svg%3E") center / 16px 16px no-repeat;
+}
+
+.aui-select__notice-text {
+    min-width: 0;
+}
+
+/* Tags (Multiple Selection) */
+.aui-select__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+}
+
+.aui-select__tag {
+    background: rgba(15, 23, 42, 0.05);
+    color: #4b5563;
+    padding: 2px 4px 2px 10px;
+    border-radius: 12px;
+    font-size: calc(var(--aui-font-12) * 1px);
+    line-height: 1.5;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    max-width: 94%;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    /* its hovered look changes at once: a colour fade repainted the page on every frame */
+}
+
+.aui-select__tag:hover {
+    background: rgba(15, 23, 42, 0.08);
+    border-color: rgba(15, 23, 42, 0.14);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.aui-select__tag-text {
+    display: inline-block;
+    max-width: 92%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    user-select: none;
+}
+
+.aui-select__tag-remove {
+    cursor: pointer;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    width: 14px !important;
+    height: 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    color: #6b7280;
+    margin-left: 2px;
+    background-color: transparent;
+    /* only its size moves (on the compositor, a layer only meanwhile); its colours change at once */
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.aui-select__tag-remove::before {
+    content: "" !important;
+    display: block !important;
+    width: 8px !important;
+    height: 8px !important;
+    flex-shrink: 0 !important;
+    background-color: currentColor !important;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 3.5l9 9M3.5 12.5L12.5 3.5'/%3E%3C/svg%3E") center / 8px 8px no-repeat !important;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 3.5l9 9M3.5 12.5L12.5 3.5'/%3E%3C/svg%3E") center / 8px 8px no-repeat !important;
+    pointer-events: none !important;
+}
+
+.aui-select__tag-remove:hover {
+    color: #fff;
+    background-color: #596273;
+    transform: scale(1.1);
+}
+
+.aui-select__tag-remove:active {
+    background-color: #434955;
+    transform: scale(0.95);
+}
+
+/* "+N" tag: selected items beyond max-tag-count, collapsed into one count */
+.aui-select__tag--count {
+    padding: 2px 10px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    user-select: none;
+    font-variant-numeric: tabular-nums;
+}
+
+/* max-tag-count="responsive": one line of tags; the ones that do not fit are counted in the "+N" tag */
+/* contain: inline-size - the row adds nothing to the field's natural width. Without it a field whose width comes from
+   its content (a layout-table cell, a flex item without a width) grew with its tags, and the fit went in a circle:
+   every fit changed the width, every width changed the fit. The field now takes the width its layout gives it. */
+.aui-select__tags--responsive {
+    flex-wrap: nowrap;
+    overflow: hidden;
+    min-width: 0;
+    contain: inline-size;
+}
+
+.aui-select__tags--responsive > .aui-select__tag {
+    flex-shrink: 0;
+}
+
+/* When even the first tag does not fit, it is cut with an ellipsis, as long as a readable part of its text is left
+   (else only the count tag shows: kit.createTagFit) */
+.aui-select__tags--responsive > .aui-select__tag:first-child:not(.aui-select__tag--count) {
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+/* Hidden copy of the tags that the responsive mode measures (plain DOM, kit.createTagFit): a clipped 0 x 0 box, so it
+   never adds scrolling */
+.aui-select__tags-measure {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.aui-select__tags-measure > .aui-select__tags {
+    width: max-content;
+    flex-wrap: nowrap;
+}
+
+.aui-select__tags-measure .aui-select__tag {
+    max-width: none;
+    flex-shrink: 0;
+}
+
+/* Search match (aui-select options, aui-tree-select rows) */
+.aui-select__hit {
+    border-radius: 3px;
+    background-color: var(--aui-control-accent-a12);
+    color: var(--aui-control-accent-text);
+}
+
+/* A selected (or checked) row already has a blue tint and blue text: a stronger box and darker text keep the match visible */
+.aui-select__option--selected .aui-select__hit {
+    background-color: var(--aui-control-accent-a24);
+    color: var(--aui-control-accent-strong);
+}
+
+/* Where supported, the highlight box spans the capitals to the baseline plus equal space above and below, instead
+   of the font's uneven ascent and descent (row height and text position stay the same) */
+@supports (text-box: trim-both cap alphabetic) {
+    .aui-select__hit {
+        display: inline-block;
+        text-box: trim-both cap alphabetic;
+        padding: 0.25em 0;
+    }
+}
+
+
+/* Readonly (aui-select, aui-tree-select): the value shows and the field takes the focus, but nothing opens or changes;
+   the look of aui-input's readonly */
+.aui-select--readonly .aui-select__trigger {
+    background-color: var(--aui-control-readonly-background-color);
+    cursor: default;
+}
+
+.aui-select--readonly .aui-select__display-text,
+.aui-select--readonly .aui-select__tag-text {
+    color: var(--aui-control-muted-color);
+}
+
+.aui-select--readonly .aui-select__chevron {
+    opacity: 0.5;
+}
+
+/* Disabled State */
+.aui-select--disabled .aui-select__trigger {
+    background-color: var(--aui-control-readonly-background-color);
+    border-color: #dbe3ec;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+.aui-select--disabled .aui-select__trigger:hover {
+    border-color: #dbe3ec;
+    background-color: var(--aui-control-readonly-background-color);
+    box-shadow: none;
+}
+
+/* no focus look (no skin) */
+.aui-select--disabled .aui-select__trigger::after {
+    display: none;
+}
+
+.aui-select--disabled .aui-select__display-text {
+    color: var(--aui-control-disabled-color);
+}
+
+.aui-select--disabled .aui-select__chevron {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* Loading State */
+.aui-select__loading {
+    padding: 16px 12px;
+    text-align: center;
+    color: var(--aui-control-muted-color);
+    font-size: calc(var(--aui-font-13) * 1px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.aui-select__spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--aui-control-accent-a15);
+    border-radius: 50%;
+    border-top-color: var(--aui-control-accent-color);
+    border-right-color: var(--aui-control-accent-color);
+    will-change: transform;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Options from the server: scroll window spacers, pinned selection, placeholders, status rows, progress line */
+.aui-select__spacer {
+    display: block;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    pointer-events: none;
+}
+
+/* Selected values pinned above a paged list: a thin line under the last one (no extra height, the rows keep one pitch) */
+.aui-select__option.aui-select__option--pinned-last {
+    box-shadow: 0 3px 0 -2px rgba(15, 23, 42, 0.1);
+}
+
+/* A label that is still loading: a soft bar instead of the raw value */
+.aui-select__pending {
+    display: inline-block;
+    width: 6em;
+    max-width: 100%;
+    height: 0.8em;
+    border-radius: 4px;
+    vertical-align: middle;
+    background: linear-gradient(90deg, #eceff3 25%, #f6f7f9 37%, #eceff3 63%);
+    background-size: 400% 100%;
+    animation: aui-select-shimmer 1.4s ease infinite;
+}
+
+.aui-select__tag-text.aui-select__pending {
+    width: 4em;
+}
+
+.aui-select__skeleton {
+    margin: 1px 0;
+    padding: 8px 12px;
+    line-height: 1.4;
+    list-style: none;
+    pointer-events: none;
+}
+
+.aui-select__panel--multiple .aui-select__skeleton {
+    padding-left: 38px;
+}
+
+.aui-select__skeleton .aui-select__pending {
+    display: block;
+    height: 0.9em;
+    margin: 0.25em 0;
+}
+
+.aui-select__status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 12px;
+    color: var(--aui-control-muted-color);
+    font-size: calc(var(--aui-font-13) * 1px);
+    line-height: 1.4;
+    list-style: none;
+}
+
+.aui-select__status--retry {
+    cursor: pointer;
+}
+
+.aui-select__retry-link {
+    color: var(--aui-control-accent-color);
+    text-decoration: underline;
+}
+
+/* Rows of the previous query while the new one loads */
+.aui-select__options--stale .aui-select__option {
+    opacity: 0.55;
+    transition: opacity 0.15s ease;
+}
+
+/* New results or a background refresh on the way: a thin moving line at the top of the panel */
+.aui-select__progress {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 12px;
+    right: 12px;
+    height: 2px;
+    overflow: hidden;
+    border-radius: 2px;
+    background: var(--aui-control-accent-a12);
+    pointer-events: none;
+}
+
+.aui-select__progress::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 35%;
+    border-radius: 2px;
+    background: var(--aui-control-accent-color);
+    animation: aui-select-progress 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes aui-select-shimmer {
+    from {
+        background-position: 100% 50%;
+    }
+    to {
+        background-position: 0 50%;
+    }
+}
+
+@keyframes aui-select-progress {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(290%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aui-select__pending,
+    .aui-select__progress::after {
+        animation: none;
+    }
+}

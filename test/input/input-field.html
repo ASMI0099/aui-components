@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-input: the page form, options, show-count</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(3, 300px); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 300px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="input-field.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="input-field.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="InputCtrl">
+<h1>aui-input in a page form, its options, show-count</h1>
+<form name="f" novalidate>
+    <div class="grid">
+        <div class="cell" id="auto"><label>autofocus</label>
+            <aui-input ng-model="m.auto" input-style-type="form" autofocus></aui-input></div>
+        <div class="cell" id="named"><label>required, named</label>
+            <aui-input name="title" ng-model="m.title" input-style-type="form" required></aui-input></div>
+        <div class="cell" id="anon"><label>no name</label>
+            <aui-input ng-model="m.anon" input-style-type="form"></aui-input></div>
+        <div class="cell" id="pattern"><label>pattern \d+, clearable</label>
+            <aui-input name="code" ng-model="m.code" input-style-type="form" pattern="\d+" clearable></aui-input></div>
+        <div class="cell" id="dirty"><label>pattern \d+, pristine</label>
+            <aui-input name="digits" ng-model="m.digits" input-style-type="form" pattern="\d+"></aui-input></div>
+        <div class="cell" id="len"><label>value-max-length 7, show-count</label>
+            <aui-input name="short" ng-model="m.short" input-style-type="form" value-max-length="7" show-count></aui-input></div>
+        <div class="cell" id="range"><label>number 0..100</label>
+            <aui-input name="qty" ng-model="m.qty" input-type="number" min="0" max="100" input-style-type="form"></aui-input></div>
+        <div class="cell" id="flags"><label>bare show-label, readonly, clearable</label>
+            <aui-input ng-model="m.flags" input-style-type="form" show-label label-text="Bare" readonly clearable></aui-input></div>
+        <div class="cell" id="flags-off"><label>the same options "false"</label>
+            <aui-input ng-model="m.off" input-style-type="form" show-label="false" label-text="Off" readonly="false" disabled="false" clearable="false"></aui-input></div>
+        <div class="cell" id="dis"><label>bare disabled</label>
+            <aui-input ng-model="m.dis" input-style-type="form" disabled></aui-input></div>
+        <div class="cell" id="count-free"><label>show-count, no limit, clearable</label>
+            <aui-input ng-model="m.free" input-style-type="form" show-count clearable></aui-input></div>
+        <div class="cell" id="count-basic"><label>basic style, value-max-length 5, show-count, clearable</label>
+            <aui-input ng-model="m.cb" value-max-length="5" show-count clearable></aui-input></div>
+        <div class="cell" id="count-off"><label>value-max-length 5, no show-count</label>
+            <aui-input ng-model="m.co" input-style-type="form" value-max-length="5"></aui-input></div>
+        <div class="cell" id="dyn"><label>options from expressions</label>
+            <aui-input ng-model="m.dyn" input-style-type="form" show-label="state.label" readonly="state.ro" show-count="state.count" label-text="Dyn"></aui-input></div>
+        <div class="cell" id="num"><label>number, clearable, optional</label>
+            <aui-input name="amount" ng-model="m.amount" input-type="number" input-style-type="form" clearable></aui-input></div>
+        <div class="cell" id="ntext"><label>number, a numeric text from the page</label>
+            <aui-input name="ntext" ng-model="m.ntext" input-type="number" input-style-type="form"></aui-input></div>
+        <div class="cell" id="digits3"><label>number, value-max-length 3, max 100</label>
+            <aui-input name="d3" ng-model="m.d3" input-type="number" value-max-length="3" max="100" input-style-type="form"></aui-input></div>
+        <div class="cell" id="nml"><label>number, value-max-length 5 and maxlength 5 on the element (as some server-side templates write it)</label>
+            <aui-input name="nml" ng-model="m.nml" input-type="number" value-max-length="5" maxlength="5" input-style-type="form" show-count></aui-input></div>
+        <div class="cell" id="finish"><label>on-finish</label>
+            <aui-input ng-model="m.fin" input-style-type="form" on-finish="finished($event)"></aui-input></div>
+        <div class="cell" id="basic-req"><label>basic style, required</label>
+            <aui-input name="breq" ng-model="m.breq" required placeholder="Basic"></aui-input></div>
+        <div class="cell" id="over-fresh"><label>value-max-length 5, show-count, never left</label>
+            <aui-input name="fresh" ng-model="m.fresh" input-style-type="form" value-max-length="5" show-count></aui-input></div>
+        <div class="cell" id="strict-text"><label>value-max-length 7, enforce-limits</label>
+            <aui-input name="st" ng-model="m.st" input-style-type="form" value-max-length="7" show-count enforce-limits></aui-input></div>
+        <div class="cell" id="strict-num"><label>number -50..100, enforce-limits</label>
+            <aui-input name="sn" ng-model="m.sn" input-type="number" min="-50" max="100" input-style-type="form" enforce-limits></aui-input></div>
+        <div class="cell" id="loose-num"><label>number max 100, no enforce-limits</label>
+            <aui-input name="ln" ng-model="m.ln" input-type="number" max="100" input-style-type="form"></aui-input></div>
+        <div class="cell" id="strict-dyn"><label>value-max-length 4, enforce-limits from an expression</label>
+            <aui-input ng-model="m.sd" input-style-type="form" value-max-length="4" enforce-limits="state.enforce"></aui-input></div>
+        <div class="cell" id="affix"><label>prefix icon + text, suffix text, clearable</label>
+            <aui-input name="price" ng-model="m.price" input-type="number" input-style-type="form" show-label label-text="Price"
+                       prefix-icon="t-icon" prefix-text="$" suffix-text="kg" clearable></aui-input></div>
+        <div class="cell" id="affix-basic"><label>basic style, suffix text, clearable</label>
+            <aui-input ng-model="m.rate" suffix-text="%" clearable placeholder="Rate"></aui-input></div>
+        <div class="cell" id="pw"><label>password, show-password, clearable, show-count</label>
+            <aui-input name="pw" ng-model="m.pw" input-type="password" input-style-type="form" show-password clearable show-count></aui-input></div>
+        <div class="cell" id="pw-plain"><label>password without show-password</label>
+            <aui-input ng-model="m.pw2" input-type="password" input-style-type="form"></aui-input></div>
+        <div class="cell" id="pass"><label>autocomplete off, inputmode numeric, spellcheck false</label>
+            <aui-input ng-model="m.pass" input-style-type="form" autocomplete="email" inputmode="numeric" spellcheck="false"></aui-input></div>
+        <div class="cell" id="api"><label>api, on-clear, on-focus, on-blur</label>
+            <aui-input ng-model="m.apiv" input-style-type="form" api="apiObj" clearable
+                       on-clear="events.push('clear:' + ($event ? $event.type : 'api'))" on-focus="events.push('focus')"
+                       on-blur="events.push('blur:' + $value)"></aui-input></div>
+        <div class="cell" id="prec"><label>number, precision 2, value-max-length 8</label>
+            <aui-input name="amt" ng-model="m.amt" input-type="number" precision="2" value-max-length="8" input-style-type="form"></aui-input></div>
+        <div class="cell" id="prec0"><label>number, precision 0</label>
+            <aui-input name="whole" ng-model="m.whole" input-type="number" precision="0" input-style-type="form"></aui-input></div>
+        <div class="cell" id="prec-page"><label>number, precision 2, a page value with 3 decimals</label>
+            <aui-input name="amtp" ng-model="m.amtp" input-type="number" precision="2" input-style-type="form"></aui-input></div>
+    </div>
+</form>
+<div class="bottom-spacer"></div>
+</body>
+</html>

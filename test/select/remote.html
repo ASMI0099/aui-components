@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-select: remote data</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        .cell .out { margin-top: 6px; font: 11px Consolas, monospace; color: #666; word-break: break-all; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 420px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="remote.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="remote.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="RemoteSelectCtrl">
+<h1>aui-select: options from a server</h1>
+<div class="grid">
+    <div class="cell" id="s-single"><label>Paged (20), server search, lookup, single</label>
+        <aui-select ng-model="m.single" selected-items="m.singleItems" label-field="name" value-field="id" clearable
+                    load-options="loadProducts($request)" load-params="{brand: p.single, tag: 'single'}" load-enabled="!!p.single"
+                    page-size="20" search-delay="100" lookup-enabled on-change="onChange" placeholder="Single"></aui-select>
+        <div class="out">model: {{ m.single | json }}</div>
+    </div>
+    <div class="cell" id="s-multi"><label>Paged (20), multiple, disabled-field, lookup</label>
+        <aui-select ng-model="m.multi" selected-items="m.multiItems" label-field="name" value-field="id" multiple clearable
+                    load-options="loadProducts($request)" load-params="{brand: p.multi, tag: 'multi'}"
+                    page-size="20" search-delay="100" lookup-enabled disabled-field="disabled" placeholder="Multiple"></aui-select>
+        <div class="out">model: {{ m.multi | json }}</div>
+    </div>
+    <div class="cell" id="s-small"><label>Page size 3 (fills the panel by itself)</label>
+        <aui-select ng-model="m.small" label-field="name" value-field="id"
+                    load-options="loadProducts($request)" load-params="{brand: p.small, tag: 'small'}" page-size="3"
+                    placeholder="Small pages"></aui-select>
+    </div>
+    <div class="cell" id="s-all"><label>Load everything at once (brand B), local search</label>
+        <aui-select ng-model="m.all" label-field="name" value-field="id"
+                    load-options="loadProducts($request)" load-params="{brand: p.all, tag: 'all'}" placeholder="All"></aui-select>
+    </div>
+    <div class="cell" id="s-dedicated"><label>Dedicated lookup-options (loading not enabled)</label>
+        <aui-select ng-model="m.dedicated" label-field="name" value-field="id"
+                    load-options="loadProducts($request)" load-params="{brand: 'A', tag: 'dedicated'}" load-enabled="p.dedicated"
+                    page-size="20" lookup-options="lookupProducts($request)" placeholder="Dedicated"></aui-select>
+    </div>
+    <div class="cell" id="s-min"><label>search-min-length 2</label>
+        <aui-select ng-model="m.min" label-field="name" value-field="id"
+                    load-options="loadProducts($request)" load-params="{brand: p.min, tag: 'min'}" page-size="20"
+                    search-delay="100" search-min-length="2" placeholder="Min length"></aui-select>
+    </div>
+    <div class="cell" id="s-timeout"><label>load-timeout 300</label>
+        <aui-select ng-model="m.timeout" label-field="name" value-field="id"
+                    load-options="loadProducts($request)" load-params="{brand: p.timeout, tag: 'timeout'}" page-size="20"
+                    load-timeout="300" placeholder="Timeout"></aui-select>
+    </div>
+    <div class="cell" id="s-reset"><label>reset-on-params="clear"</label>
+        <aui-select ng-model="m.reset" label-field="name" value-field="id" on-change="onChange"
+                    load-options="loadProducts($request)" load-params="{brand: p.reset, tag: 'reset'}" page-size="20"
+                    load-enabled="!!p.reset && !p.resetPaused"
+                    lookup-enabled reset-on-params="clear" placeholder="Reset"></aui-select>
+        <div class="out">model: {{ m.reset | json }}</div>
+    </div>
+    <div class="cell" id="s-vo"><label>value-options from the record (no lookup)</label>
+        <aui-select ng-model="m.vo" label-field="name" value-field="id"
+                    load-options="loadProducts($request)" load-params="{brand: p.vo, tag: 'vo'}" page-size="20"
+                    value-options="[{id: m.vo, name: m.voName}]" placeholder="Value options"></aui-select>
+    </div>
+    <div class="cell" id="s-auto"><label>auto-select-on-single-required (brand C has one product)</label>
+        <aui-select ng-model="m.auto" label-field="name" value-field="id" required auto-select-on-single-required
+                    load-options="loadProducts($request)" load-params="{brand: p.auto, tag: 'auto'}" page-size="20"
+                    preload placeholder="Auto"></aui-select>
+    </div>
+    <div class="cell" id="s-ttl"><label>cache-ttl 400</label>
+        <aui-select ng-model="m.ttl" label-field="name" value-field="id"
+                    load-options="loadProducts($request)" load-params="{brand: p.ttl, tag: 'ttl'}" page-size="20"
+                    cache-ttl="400" placeholder="TTL"></aui-select>
+    </div>
+    <div class="cell" id="s-api"><label>api (reload)</label>
+        <aui-select ng-model="m.api" label-field="name" value-field="id" api="sApi"
+                    load-options="loadProducts($request)" load-params="{brand: p.api, tag: 'api'}" page-size="20"
+                    placeholder="Api"></aui-select>
+    </div>
+    <div class="cell" id="s-preload"><label>preload (when enabled)</label>
+        <aui-select ng-model="m.preload" label-field="name" value-field="id"
+                    load-options="loadProducts($request)" load-params="{brand: 'A', tag: 'preload'}" load-enabled="p.preload"
+                    page-size="20" preload placeholder="Preload"></aui-select>
+    </div>
+    <div class="cell" id="s-many"><label>Page size 100 (brand D, 300 products): scroll window</label>
+        <aui-select ng-model="m.many" label-field="name" value-field="id"
+                    load-options="loadProducts($request)" load-params="{brand: p.many, tag: 'many'}" page-size="100"
+                    placeholder="Many"></aui-select>
+    </div>
+    <div class="cell" id="s-destroy"><label>Destroyed while loading (ng-if)</label>
+        <aui-select ng-if="show.destroyable" ng-model="m.destroy" label-field="name" value-field="id"
+                    load-options="loadProducts($request)" load-params="{brand: p.destroy, tag: 'destroy'}" page-size="20"
+                    lookup-enabled placeholder="Destroyable"></aui-select>
+    </div>
+    <div class="cell" id="s-choice"><label>The choice when the list arrives after the opening (No. 350 of 400)</label>
+        <aui-select ng-model="m.choice" label-field="name" value-field="id" load-options="loadChoice()" placeholder="Choice"></aui-select>
+    </div>
+    <div class="cell" id="s-static"><label>Static options + lookup-options</label>
+        <aui-select ng-model="m.static" label-field="name" value-field="id" options="staticOptions"
+                    lookup-options="lookupProducts($request)" load-params="{tag: 'static'}" placeholder="Static"></aui-select>
+    </div>
+    <div class="cell" id="s-group"><label>lookup-group: one lookup for every row</label>
+        <div ng-repeat="row in groupRows track by row.id" class="group-row">
+            <aui-select ng-model="row.value" label-field="name" value-field="id" lookup-group="rows"
+                        load-options="loadProducts($request)" load-params="{brand: p.group, tag: 'group'}" page-size="20"
+                        lookup-enabled placeholder="Row"></aui-select>
+        </div>
+    </div>
+</div>
+<div class="bottom-spacer"></div>
+</body>
+</html>

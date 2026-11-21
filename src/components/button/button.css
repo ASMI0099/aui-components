@@ -1,0 +1,477 @@
+/*
+ * aui-button.
+ */
+
+/* aui-button: the element is the button's place on the page (a margin, a width, a class of the page work on it); the
+   native <button> inside fills it. Brand is the family's accent (its shades from the field tokens: a page or container
+   that sets --aui-control-accent-color gets matching buttons); the other intents are plain colours, which every browser
+   reads. The page's own font, the family's sizes (md: the fields' 34px). Hover and press change colour at once and
+   nothing moves (a fade of a colour repaints the page each frame; a press scale or a hover lift redrew the text and
+   the icon at a fractional size: the icon hopped about a pixel against its text); the focus ring is the family's. A
+   disabled button keeps the pointer: its "not allowed" cursor and its tooltip show, and the click stops there. */
+aui-button {
+    display: inline-flex;
+    max-width: 100%;
+    vertical-align: middle;
+}
+
+.aui-button-host--block {
+    display: flex;
+    width: 100%;
+}
+
+.aui-button {
+    --aui-button-gray-0: #ffffff;
+    --aui-button-gray-50: #f4f5f7;
+    --aui-button-gray-100: #eef0f3;
+    --aui-button-gray-150: #e7eaef;
+    --aui-button-gray-200: #dfe3e8;
+    --aui-button-gray-300: #c8ccd2;
+    --aui-button-gray-500: #7b8694;
+    --aui-button-gray-600: #5b6573;
+    --aui-button-gray-700: #4a5360;
+    --aui-button-gray-900: #11151a;
+    --aui-button-radius-base: 4px;
+    --aui-button-height: 34px;
+    --aui-button-padding-x: 14px;
+    --aui-button-font-size: calc(var(--aui-font-14) * 1px);
+    --aui-button-gap: 7px;
+    --aui-button-radius: var(--aui-button-radius-base);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    height: var(--aui-button-height);
+    padding: 0 var(--aui-button-padding-x);
+    margin: 0;
+    border: 1px solid transparent;
+    border-radius: var(--aui-button-radius);
+    font-family: inherit;
+    font-size: var(--aui-button-font-size);
+    font-style: normal;
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    text-decoration: none;
+    white-space: nowrap;
+    box-sizing: border-box;
+    vertical-align: middle;
+    cursor: pointer;
+    user-select: none;
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.aui-button:focus {
+    outline: none;
+}
+
+.aui-button:focus-visible {
+    box-shadow: 0 0 0 3px var(--aui-button-ring) !important;
+}
+
+.aui-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+/* loading: not dimmed, the spinner says it */
+.aui-button[aria-disabled="true"] {
+    cursor: progress;
+}
+
+/* Intents. Every text passes 4.5:1 on its fill or tint: a solid brand button is the family's accent itself (#0d6efd,
+   white text 4.50:1), the same blue as the checkboxes, focus marks and links. Danger is the fields' error red. */
+.aui-button[data-intent="brand"] {
+    --aui-button-color: var(--aui-control-accent-color);
+    --aui-button-color-hover: var(--aui-control-accent-hover);
+    --aui-button-color-active: var(--aui-control-accent-text);
+    --aui-button-fg: var(--aui-control-accent-text);
+    --aui-button-soft: var(--aui-control-accent-a08);
+    --aui-button-soft-hover: var(--aui-control-accent-a15);
+    --aui-button-border: var(--aui-control-accent-soft);
+    --aui-button-ring: var(--aui-control-accent-a32);
+}
+
+.aui-button[data-intent="neutral"] {
+    --aui-button-color: var(--aui-button-gray-900);
+    --aui-button-color-hover: #20262e;
+    --aui-button-color-active: #2c333c;
+    --aui-button-fg: var(--aui-button-gray-900);
+    --aui-button-soft: var(--aui-button-gray-100);
+    --aui-button-soft-hover: var(--aui-button-gray-150);
+    --aui-button-border: var(--aui-button-gray-200);
+    --aui-button-ring: rgba(17, 21, 26, 0.22);
+}
+
+.aui-button[data-intent="success"] {
+    --aui-button-color: #198754;
+    --aui-button-color-hover: #157347;
+    --aui-button-color-active: #146c43;
+    --aui-button-fg: #146c43;
+    --aui-button-soft: #dcf3e5;
+    --aui-button-soft-hover: #c6ead4;
+    --aui-button-border: #a3cfbb;
+    --aui-button-ring: rgba(25, 135, 84, 0.35);
+}
+
+/* amber, its text dark on the fill; on white an amber dark enough to read */
+.aui-button[data-intent="warning"] {
+    --aui-button-color: #f59e0b;
+    --aui-button-color-hover: #fbbf24;
+    --aui-button-color-active: #e8920a;
+    --aui-button-fg: #b45309;
+    --aui-button-soft: #fef3c7;
+    --aui-button-soft-hover: #fde68a;
+    --aui-button-border: #fcd34d;
+    --aui-button-ring: rgba(245, 158, 11, 0.4);
+}
+
+.aui-button[data-intent="danger"] {
+    --aui-button-color: var(--aui-control-invalid-color);
+    --aui-button-color-hover: var(--aui-control-invalid-strong);
+    --aui-button-color-active: #b02a37;
+    --aui-button-fg: #b02a37;
+    --aui-button-soft: #fde7e9;
+    --aui-button-soft-hover: #f9d0d4;
+    --aui-button-border: #f1aeb5;
+    --aui-button-ring: rgba(220, 53, 69, 0.35);
+}
+
+.aui-button[data-size="xs"] { --aui-button-height: 26px; --aui-button-padding-x: 9px; --aui-button-font-size: calc(var(--aui-font-12) * 1px); --aui-button-gap: 5px; --aui-button-radius: calc(var(--aui-button-radius-base) - 2px); }
+.aui-button[data-size="sm"] { --aui-button-height: 30px; --aui-button-padding-x: 11px; --aui-button-font-size: calc(var(--aui-font-13) * 1px); --aui-button-gap: 6px; --aui-button-radius: calc(var(--aui-button-radius-base) - 1px); }
+.aui-button[data-size="lg"] { --aui-button-height: 40px; --aui-button-padding-x: 18px; --aui-button-font-size: calc(var(--aui-font-15) * 1px); --aui-button-gap: 8px; --aui-button-radius: calc(var(--aui-button-radius-base) + 1px); }
+.aui-button[data-size="xl"] { --aui-button-height: 48px; --aui-button-padding-x: 24px; --aui-button-font-size: calc(var(--aui-font-16) * 1px); --aui-button-gap: 9px; --aui-button-radius: calc(var(--aui-button-radius-base) + 2px); }
+
+/* hover and press: only while it can be pressed (not disabled, not loading) */
+.aui-button[data-variant="solid"] {
+    background: var(--aui-button-color);
+    color: #fff;
+    border-color: transparent;
+}
+.aui-button[data-variant="solid"]:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--aui-button-color-hover); }
+.aui-button[data-variant="solid"]:active:not(:disabled):not([aria-disabled="true"]) { background: var(--aui-button-color-active); }
+.aui-button[data-intent="warning"][data-variant="solid"] { color: var(--aui-button-gray-900); }
+
+.aui-button[data-variant="soft"] {
+    background: var(--aui-button-soft);
+    color: var(--aui-button-fg);
+    border-color: transparent;
+}
+.aui-button[data-variant="soft"]:hover:not(:disabled):not([aria-disabled="true"]),
+.aui-button[data-variant="soft"]:active:not(:disabled):not([aria-disabled="true"]) { background: var(--aui-button-soft-hover); }
+
+.aui-button[data-variant="outline"] {
+    background: var(--aui-button-gray-0);
+    color: var(--aui-button-fg);
+    border-color: var(--aui-button-border);
+}
+.aui-button[data-variant="outline"]:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--aui-button-soft); border-color: var(--aui-button-color); }
+.aui-button[data-variant="outline"]:active:not(:disabled):not([aria-disabled="true"]) { background: var(--aui-button-soft-hover); }
+.aui-button[data-intent="neutral"][data-variant="outline"] { color: var(--aui-button-gray-700); }
+/* neutral: the fields' hover border (a soft grey, not its near-black colour) */
+.aui-button[data-intent="neutral"][data-variant="outline"]:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--aui-control-border-hover-color); }
+
+.aui-button[data-variant="ghost"] {
+    background: transparent;
+    color: var(--aui-button-fg);
+    border-color: transparent;
+}
+.aui-button[data-variant="ghost"]:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--aui-button-soft); }
+.aui-button[data-variant="ghost"]:active:not(:disabled):not([aria-disabled="true"]) { background: var(--aui-button-soft-hover); }
+.aui-button[data-intent="neutral"][data-variant="ghost"] { color: var(--aui-button-gray-700); }
+
+.aui-button[data-variant="link"] {
+    height: auto;
+    padding: 2px;
+    border-color: transparent;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--aui-button-fg);
+}
+.aui-button[data-variant="link"]:hover:not(:disabled):not([aria-disabled="true"]) { text-decoration: underline; text-underline-offset: 3px; }
+
+.aui-button[data-variant="elevated"] {
+    background: var(--aui-button-gray-0);
+    color: var(--aui-button-fg);
+    border-color: var(--aui-button-gray-150);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.1) !important;
+}
+/* raised by its shadow when hovered, pressed flat in the pressed tone; it never moves */
+.aui-button[data-variant="elevated"]:hover:not(:disabled):not([aria-disabled="true"]) {
+    border-color: var(--aui-button-gray-200);
+    box-shadow: 0 3px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px rgba(15, 23, 42, 0.08) !important;
+}
+.aui-button[data-variant="elevated"]:active:not(:disabled):not([aria-disabled="true"]) {
+    background: var(--aui-button-soft-hover);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08) !important;
+}
+.aui-button[data-intent="neutral"][data-variant="elevated"] { color: var(--aui-button-gray-900); }
+.aui-button[data-variant="elevated"]:focus-visible {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 0 0 3px var(--aui-button-ring) !important;
+}
+
+.aui-button[data-variant="dashed"] {
+    background: var(--aui-button-gray-0);
+    color: var(--aui-button-fg);
+    border: 1px dashed var(--aui-button-border);
+}
+.aui-button[data-variant="dashed"]:hover:not(:disabled):not([aria-disabled="true"]) {
+    border-color: var(--aui-button-color);
+    background: var(--aui-button-soft);
+}
+.aui-button[data-variant="dashed"]:active:not(:disabled):not([aria-disabled="true"]) { background: var(--aui-button-soft-hover); }
+.aui-button[data-intent="neutral"][data-variant="dashed"] { color: var(--aui-button-gray-600); border-color: var(--aui-button-gray-300); }
+.aui-button[data-intent="neutral"][data-variant="dashed"]:hover:not(:disabled):not([aria-disabled="true"]) { color: var(--aui-button-gray-900); border-color: var(--aui-button-gray-500); background: var(--aui-button-gray-50); }
+
+.aui-button[data-shape="pill"] { --aui-button-radius: 999px; }
+.aui-button[data-shape="square"],
+.aui-button--icon-only:not([data-variant="link"]) { flex: none; width: var(--aui-button-height); padding: 0; }
+.aui-button[data-block="true"] { width: 100%; }
+
+/* its parts, and the <span> Angular wraps its text in (marked aui-button__text): a page's span rules (padding, size,
+   weight, colour, display) do not reach them (a span of the page's own keeps its look) */
+.aui-button__inner,
+.aui-button__label,
+.aui-button__icon,
+.aui-button__text {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: none !important;
+    color: inherit !important;
+    font-family: inherit !important;
+    font-size: inherit !important;
+    font-style: inherit !important;
+    font-weight: inherit !important;
+    letter-spacing: inherit !important;
+    text-transform: inherit !important;
+    float: none !important;
+}
+
+.aui-button__text {
+    display: inline !important;
+    line-height: inherit !important;
+    vertical-align: baseline !important;
+}
+
+.aui-button__inner {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--aui-button-gap);
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* the text: one line, cut with an ellipsis when its place is narrower */
+.aui-button__label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: normal;
+}
+.aui-button__label:empty {
+    display: none;
+}
+
+.aui-button__icon {
+    position: relative !important;
+    display: inline-flex !important;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+.aui-button__icon > i {
+    font-size: 1.17em;
+    font-style: normal;
+    line-height: 1;
+}
+/* the icon's box: 1.25em (17.5px at 14px text); the line icons fill 16 of its 24 units, about 12px drawn - as
+   heavy as the text beside them, and still clear on a small button */
+.aui-button__svg {
+    display: block !important;
+    width: 1.25em;
+    height: 1.25em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.aui-button__svg path {
+    fill: none !important;
+    stroke: inherit !important;
+}
+
+/* loading: the spinner over the icon, or over the text (hidden meanwhile, its place kept) */
+.aui-button__spinner {
+    position: absolute !important;
+    top: 50%;
+    left: 50%;
+    display: block !important;
+    box-sizing: border-box;
+    width: 1.14em;
+    height: 1.14em;
+    margin: -0.57em 0 0 -0.57em !important;
+    padding: 0 !important;
+    border: 2px solid currentColor !important;
+    border-top-color: transparent !important;
+    border-radius: 50%;
+    background: none !important;
+    animation: aui-button-spin 0.6s linear infinite, aui-button-fade-in 0.15s ease;
+}
+.aui-button[data-loading="true"] .aui-button__icon > :not(.aui-button__spinner),
+.aui-button--text-hidden .aui-button__label {
+    opacity: 0;
+}
+/* the icon and the spinner cross-fade (as aui-tree-select's caret and its spinner): the icon fades out and back, the
+   spinner fades in */
+.aui-button__icon > :not(.aui-button__spinner) {
+    transition: opacity 0.15s ease;
+}
+@keyframes aui-button-fade-in {
+    from { opacity: 0; }
+}
+
+/* expanded: the family chevron points right while closed and turns down when open (as aui-tree-select's rows); the turn
+   is a transform (the compositor: smooth while the page's digest runs) */
+/* the chevron is a narrow mark: its box is narrower than the drawing (0.75em, the drawing centred, its empty sides
+   overflowing), so its gap to the text matches the other icons' */
+.aui-button__icon--disclosure {
+    width: 0.75em;
+}
+.aui-button__icon--disclosure .aui-button__svg {
+    flex: none;
+    transform: rotate(-90deg);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.15s ease;
+}
+.aui-button[aria-expanded="true"] .aui-button__icon--disclosure .aui-button__svg {
+    transform: none;
+}
+/* expand-icon="show-more" (one chevron) and "show-more-double" (two): after the text, down while closed, turning up
+   when open (more shown below). Pointing down the drawing is wide: its box is 1em, so that its gap to the text matches
+   the gap of an icon before its text (about 9px at 14px, not 7) */
+.aui-button__icon--disclosure[data-expand="show-more"],
+.aui-button__icon--disclosure[data-expand="show-more-double"] {
+    width: 1em;
+}
+.aui-button__icon--disclosure[data-expand="show-more"] .aui-button__svg,
+.aui-button__icon--disclosure[data-expand="show-more-double"] .aui-button__svg {
+    transform: none;
+}
+.aui-button[aria-expanded="true"] .aui-button__icon--disclosure[data-expand="show-more"] .aui-button__svg,
+.aui-button[aria-expanded="true"] .aui-button__icon--disclosure[data-expand="show-more-double"] .aui-button__svg {
+    transform: rotate(180deg);
+}
+/* expand-icon="caret": a filled triangle (its corners rounded by the line), turned as the chevron */
+.aui-button__svg .aui-icon-fill {
+    fill: currentColor !important;
+}
+/* expand-icon="plus": a box (its own full width) with a plus; open, its vertical bar fades out: a minus. It does not turn */
+.aui-button__icon--disclosure[data-expand="plus"] {
+    width: auto;
+}
+.aui-button__icon--disclosure[data-expand="plus"] .aui-button__svg {
+    transform: none;
+}
+.aui-button__svg .aui-icon-plus-bar {
+    transition: opacity 0.15s ease;
+}
+.aui-button[aria-expanded="true"] .aui-icon-plus-bar {
+    opacity: 0;
+}
+/* copy-text / done-text: for a moment after a click, a ring with a check (or with a cross) in place of the icon, and
+   back. The done mark draws itself in: the ring (0.3s), then the check (0.2s); the cross comes at once (a failure is no
+   moment for motion), faded in as the icon coming back is. On a button without a fill the mark takes the success green
+   (#198754, 4.5:1 on white) or the error red; on a filled one it keeps the text colour (a green mark on a blue fill
+   would not read) */
+.aui-button__icon--swap > :not(.aui-button__spinner):not(.aui-button__svg--draw) {
+    animation: aui-button-fade-in 0.15s ease;
+}
+/* the marks a little larger than an icon (106% of the 1.25em box: a ring 15.5px across at 14px text): a ring reads
+   smaller than a square of its size, and the mark is the moment's news; a scale, so the icon's box - the button's
+   width and its text - stays where it is */
+.aui-button__svg--mark {
+    transform: scale(1.06);
+}
+.aui-button__svg--draw path {
+    stroke-dasharray: 1;
+    animation: aui-button-draw 0.3s ease-out both;
+}
+.aui-button__svg--draw path + path {
+    animation-duration: 0.2s;
+    animation-delay: 0.26s;
+}
+@keyframes aui-button-draw {
+    from { stroke-dashoffset: 1; }
+    to { stroke-dashoffset: 0; }
+}
+.aui-button[data-feedback="done"]:not([data-variant="solid"]):not([data-variant="elevated"]) .aui-button__icon {
+    color: #198754 !important;
+}
+.aui-button[data-feedback="failed"]:not([data-variant="solid"]):not([data-variant="elevated"]) .aui-button__icon {
+    color: var(--aui-control-invalid-color, #dc3545) !important;
+}
+/* a text button with copy-text / done-text holds the room of the feedback's text from the start: a hidden copy of it,
+   no height, under the label (the label as wide as the longer of the two) - the button does not grow when it shows */
+.aui-button__label[data-room]::after {
+    content: attr(data-room);
+    display: block;
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+}
+/* the status element (aria-live) that reads the feedback to screen readers: present, not seen */
+.aui-button__status {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+}
+@media (prefers-reduced-motion: reduce) {
+    .aui-button__icon--disclosure .aui-button__svg,
+    .aui-button__icon > :not(.aui-button__spinner),
+    .aui-button__svg .aui-icon-plus-bar {
+        transition: none;
+    }
+    /* the marks shown whole at once */
+    .aui-button__icon--swap > :not(.aui-button__spinner),
+    .aui-button__svg--draw path {
+        animation: none;
+    }
+}
+
+/* loading-text: the spinner's own place (no icon) the size of an icon; the label out, the loading text in its place */
+.aui-button__icon--spinner {
+    width: 1.25em;
+    height: 1.25em;
+}
+.aui-button--loading-text .aui-button__label:not(.aui-button__label--loading) {
+    display: none;
+}
+
+@keyframes aui-button-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (forced-colors: active) {
+    .aui-button {
+        border-color: ButtonText;
+    }
+}

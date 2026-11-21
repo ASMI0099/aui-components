@@ -1,0 +1,1297 @@
+/*
+ * aui-date-picker and aui-time-picker.
+ */
+
+/* The field is the select's (.aui-select: its box, label, sizes, clear button, invalid, open, disabled and readonly
+   looks), with text boxes in its display. The boxes are reset against a page's input styles, as aui-input's are. */
+/* a range: its two boxes and the arrow between them (4px + 18px + 4px) */
+.aui-date-picker .aui-date-picker__boxes {
+    gap: 4px;
+}
+
+.aui-date-picker .aui-select__trigger {
+    cursor: text;
+}
+
+.aui-date-picker input.aui-date-picker__input {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    flex: 1 1 0% !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: var(--aui-control-inner-height) !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    box-sizing: border-box !important;
+    color: var(--aui-control-value-color);
+    font-family: inherit !important;
+    font-size: var(--aui-control-value-size) !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+    font-variant-numeric: tabular-nums;
+    line-height: var(--aui-control-inner-height) !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+    text-indent: 0 !important;
+    transition: none !important;
+    cursor: text;
+}
+
+/* a text still too long for its box once shown shorter (fitTexts): an ellipsis, never a character cut in half */
+.aui-date-picker input.aui-date-picker__input {
+    text-overflow: ellipsis !important;
+}
+
+/* a box a little too narrow for its text (fitTexts): the letters closer by a fortieth of the font's size (TIGHT_SPACING) */
+.aui-date-picker input.aui-date-picker__input.aui-date-picker__input--tight {
+    letter-spacing: -0.025em !important;
+}
+
+.aui-date-picker input.aui-date-picker__input::placeholder {
+    color: var(--aui-control-placeholder-color);
+    font-size: var(--aui-control-value-size);
+    font-weight: 400;
+    opacity: 1;
+}
+
+.aui-date-picker input.aui-date-picker__input:disabled {
+    color: var(--aui-control-disabled-color);
+    -webkit-text-fill-color: var(--aui-control-disabled-color);
+    caret-color: transparent;   /* no caret at a pressed character (see the disabled boxes in field.css) */
+    cursor: not-allowed;
+}
+
+/* focused after a pick with the pointer, the field looks as it does without focus (kit.quietPointerFocus): no ring (the
+   selects' rule) and no caret, until a key is pressed; open, the caret shows (the box is typed in) */
+.aui-select:not(.aui-select--open) .aui-date-picker__trigger.aui-select__trigger--pointer-focus input.aui-date-picker__input {
+    caret-color: transparent;
+}
+
+/* a text that is not a date: in the invalid colour (the field shows invalid once touched, with its message) */
+.aui-date-picker input.aui-date-picker__input--bad {
+    color: var(--aui-control-invalid-color);
+}
+
+/* a range being set: the underline under the text of the end the next pick sets, about 3.5px below it at every size
+   (moved by transform: no repaint; in the boxes' area, which clips it), and a pick under the pointer shown muted in
+   the boxes (nothing taken yet) */
+.aui-date-picker .aui-date-picker__boxes {
+    position: relative;
+}
+
+.aui-date-picker__bar {
+    position: absolute;
+    left: 0;
+    bottom: calc((var(--aui-control-inner-height) - var(--aui-control-value-size)) / 2 - 4px);
+    width: 100px;
+    height: 2px;
+    border-radius: 1px;
+    background-color: var(--aui-control-accent-color);
+    transform-origin: left center;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
+    transition: transform var(--aui-motion-duration-shape) var(--aui-motion-ease),
+                opacity var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-date-picker--editing .aui-date-picker__bar {
+    opacity: 1;
+}
+
+.aui-date-picker input.aui-date-picker__input.aui-date-picker__input--preview {
+    color: var(--aui-control-placeholder-color);
+}
+
+/* a range: the two boxes centred, an arrow between them */
+.aui-date-picker--range input.aui-date-picker__input {
+    text-align: center;
+}
+
+.aui-date-picker:not(.aui-date-picker--range) .aui-date-picker__input--end,
+.aui-date-picker:not(.aui-date-picker--range) .aui-date-picker__to {
+    display: none !important;
+}
+
+/* the arrow between a range's ends (the field, the ends above the months): a thin, long line with one barb above - "to",
+   not a direction to go */
+.aui-date-picker__to {
+    flex: none;
+    width: 18px;
+    height: 11px;
+    background-color: var(--aui-control-muted-color);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.5 8h17M18.5 8l-4.5-4'/%3E%3C/svg%3E") center / 18px 11px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12' fill='none' stroke='black' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1.5 8h17M18.5 8l-4.5-4'/%3E%3C/svg%3E") center / 18px 11px no-repeat;
+}
+
+/* in the chevron's place: a calendar, which does not turn as the panel opens */
+.aui-date-picker .aui-select__chevron.aui-date-picker__icon {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.5' y='3.5' width='11' height='10' rx='2'/%3E%3Cpath d='M2.5 7h11M5.5 2v3M10.5 2v3'/%3E%3C/svg%3E") center / 14px 14px no-repeat !important;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2.5' y='3.5' width='11' height='10' rx='2'/%3E%3Cpath d='M2.5 7h11M5.5 2v3M10.5 2v3'/%3E%3C/svg%3E") center / 14px 14px no-repeat !important;
+}
+
+.aui-date-picker.aui-select--open .aui-select__chevron.aui-date-picker__icon {
+    transform: none !important;
+    background-color: var(--aui-control-accent-color) !important;
+}
+
+/* start-model / end-model: the hidden field the page's form checks */
+.aui-date-picker .aui-date-picker__mirror {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    border: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* The panel: the select panel's surface and motion, its own width */
+.aui-select__panel.aui-date-picker__panel {
+    padding: 0;
+    width: auto;
+    border-radius: 10px;
+    font-size: calc(var(--aui-font-13) * 1px);
+    line-height: normal;
+}
+
+/* Joined to the field, as the selects' panels: no gap, square where the two meet, the panel's shadow away from the
+   field. The panel has its own width (a range's months wider than the field, one month often narrower): a corner of
+   either past the other's edge stays round (--wide-start / --wide-end, measured after each placement). */
+.aui-select__panel.aui-date-picker__panel--bottom {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    box-shadow: 0 2px 4px -1px rgba(15, 23, 42, 0.05),
+                0 8px 16px -4px rgba(15, 23, 42, 0.08),
+                0 24px 48px -12px rgba(15, 23, 42, 0.18);
+}
+
+.aui-select__panel.aui-date-picker__panel--top {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    box-shadow: 0 -2px 4px -1px rgba(15, 23, 42, 0.05),
+                0 -8px 16px -4px rgba(15, 23, 42, 0.08),
+                0 -24px 48px -12px rgba(15, 23, 42, 0.16),
+                inset 0 -1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.aui-select__panel.aui-date-picker__panel--bottom.aui-date-picker__panel--wide-start {
+    border-top-left-radius: 10px;
+}
+
+.aui-select__panel.aui-date-picker__panel--bottom.aui-date-picker__panel--wide-end {
+    border-top-right-radius: 10px;
+}
+
+.aui-select__panel.aui-date-picker__panel--top.aui-date-picker__panel--wide-start {
+    border-bottom-left-radius: 10px;
+}
+
+.aui-select__panel.aui-date-picker__panel--top.aui-date-picker__panel--wide-end {
+    border-bottom-right-radius: 10px;
+}
+
+.aui-select__trigger.aui-date-picker__trigger--bottom {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.aui-select__trigger.aui-date-picker__trigger--top {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.aui-select__trigger.aui-date-picker__trigger--bottom.aui-date-picker__trigger--wide-start {
+    border-bottom-left-radius: var(--aui-date-picker-corner-start);
+}
+
+.aui-select__trigger.aui-date-picker__trigger--bottom.aui-date-picker__trigger--wide-end {
+    border-bottom-right-radius: var(--aui-date-picker-corner-end);
+}
+
+.aui-select__trigger.aui-date-picker__trigger--top.aui-date-picker__trigger--wide-start {
+    border-top-left-radius: var(--aui-date-picker-corner-start);
+}
+
+.aui-select__trigger.aui-date-picker__trigger--top.aui-date-picker__trigger--wide-end {
+    border-top-right-radius: var(--aui-date-picker-corner-end);
+}
+
+.aui-date-picker__panel button {
+    appearance: none;
+    -webkit-appearance: none;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    box-shadow: none;
+    background: transparent;
+    font: inherit;
+    line-height: normal;
+    letter-spacing: normal;
+    text-transform: none;
+    min-width: 0;
+    min-height: 0;
+    color: inherit;
+    cursor: pointer;
+}
+
+.aui-date-picker__panel button:disabled {
+    cursor: not-allowed;
+}
+
+.aui-date-picker__panel button:focus {
+    outline: none;
+}
+
+/* The edges and focus rings the panel's buttons draw with box-shadow are !important: a page's own
+   button { box-shadow: none !important } (a global rule of some pages) would wipe them; more specific, these win. */
+
+.aui-date-picker__body {
+    display: flex;
+    align-items: stretch;
+}
+
+.aui-date-picker__shortcuts {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 8px;
+    border-right: 1px solid #eef1f5;
+    min-width: 116px;
+}
+
+.aui-date-picker__panel .aui-date-picker__shortcut {
+    padding: 7px 10px;
+    border-radius: 6px;
+    text-align: left;
+    white-space: nowrap;
+    color: var(--aui-control-value-color);
+    transition: background-color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__shortcut:hover:not(:disabled) {
+    background-color: var(--aui-control-accent-a08);
+    color: var(--aui-control-accent-text);
+}
+
+.aui-date-picker__panel .aui-date-picker__shortcut:disabled {
+    color: var(--aui-control-disabled-color);
+}
+
+.aui-date-picker__main {
+    padding: 8px 12px 8px;
+}
+
+.aui-date-picker__calendars {
+    display: flex;
+    gap: 24px;
+}
+
+.aui-date-picker__calendar,
+.aui-date-picker__picker {
+    width: 252px;
+}
+
+/* the month and year views fill the calendars' place: the panel keeps its size from view to view */
+.aui-date-picker__picker {
+    display: flex;
+    flex-direction: column;
+    min-height: 286px;
+}
+
+.aui-date-picker__panel--two .aui-date-picker__picker {
+    width: 528px;
+}
+
+/* the header: year and month arrows, the title (its month and year open their views) */
+.aui-date-picker__header {
+    display: flex;
+    align-items: center;
+    height: 34px;
+    margin-bottom: 2px;
+}
+
+.aui-date-picker__arrows {
+    display: flex;
+    flex: none;
+    width: 58px;
+    gap: 2px;
+}
+
+.aui-date-picker__arrows--end {
+    justify-content: flex-end;
+}
+
+.aui-date-picker__panel .aui-date-picker__arrow {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    transition: background-color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-date-picker__arrow::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    background-color: var(--aui-control-muted-color);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3.5L10.5 8L6 12.5'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 3.5L10.5 8L6 12.5'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+}
+
+.aui-date-picker__arrow--prev-year::before,
+.aui-date-picker__arrow--next-year::before {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 3.5L8 8l-4.5 4.5M8.5 3.5L13 8l-4.5 4.5'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 3.5L8 8l-4.5 4.5M8.5 3.5L13 8l-4.5 4.5'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+}
+
+.aui-date-picker__arrow--prev::before,
+.aui-date-picker__arrow--prev-year::before {
+    transform: scaleX(-1);
+}
+
+.aui-date-picker__panel .aui-date-picker__arrow:hover {
+    background-color: var(--aui-control-accent-a08);
+}
+
+.aui-date-picker__arrow:hover::before {
+    background-color: var(--aui-control-accent-color);
+}
+
+.aui-date-picker__title {
+    flex: 1 1 auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-width: 0;
+    font-size: calc(var(--aui-font-14) * 1px);
+    font-weight: 600;
+    color: var(--aui-control-value-color);
+}
+
+.aui-date-picker__title-piece {
+    display: inline-flex;
+}
+
+.aui-date-picker__panel .aui-date-picker__title-part {
+    padding: 4px 5px;
+    border-radius: 6px;
+    font-weight: 600;
+    transition: background-color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__title-part:hover {
+    background-color: var(--aui-control-accent-a06);
+    color: var(--aui-control-accent-text);
+}
+
+.aui-date-picker__title-text {
+    white-space: pre;
+}
+
+/* The day grid: always six weeks, so the panel keeps its height from month to month */
+.aui-date-picker__grid {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 2px;
+    table-layout: fixed;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.aui-date-picker__grid th {
+    height: 30px;
+    padding: 0;
+    border: 0;
+    text-align: center;
+    font-size: calc(var(--aui-font-12) * 1px);
+    font-weight: 500;
+    color: var(--aui-control-muted-color);
+}
+
+.aui-date-picker__grid td {
+    height: 34px;
+    padding: 0;
+    border: 0;
+    text-align: center;
+    background: transparent;
+}
+
+.aui-date-picker__panel .aui-date-picker__day {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 34px;
+    padding: 0;
+    color: var(--aui-control-value-color);
+    font-variant-numeric: tabular-nums;
+}
+
+.aui-date-picker__day > span {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 8px;
+    transition: background-color var(--aui-motion-duration) var(--aui-motion-ease-color),
+                color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-date-picker__day:hover > span {
+    background-color: var(--aui-control-accent-a08);
+}
+
+.aui-date-picker__panel .aui-date-picker__day--outside {
+    color: var(--aui-control-placeholder-color);
+}
+
+.aui-date-picker__day--today > span {
+    box-shadow: inset 0 0 0 1px var(--aui-control-accent-color);
+    color: var(--aui-control-accent-text);
+    font-weight: 600;
+}
+
+/* a range: a band from its start to its end (from the middle of each end), lighter while the end is being picked.
+   Every day has the band's box from the start, painted almost clear (white at 0.4%: no pixel of the panel changes); a
+   range only colours it and sets its ends. A box made - or one so clear the browser does not paint it - that turned
+   into a band as the pointer moved made the browser lay the whole page's layers out again (18 ms a move, busy page) */
+.aui-date-picker__day::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 0;
+    right: 0;
+    background-color: rgba(255, 255, 255, 0.004);
+}
+
+.aui-date-picker__day--in-range::before,
+.aui-date-picker__day--band-start::before,
+.aui-date-picker__day--band-end::before {
+    background-color: var(--aui-control-accent-a12);
+}
+
+.aui-date-picker__day--band-start::before {
+    left: 50%;
+}
+
+.aui-date-picker__day--band-end::before {
+    right: 50%;
+}
+
+/* while the end is being chosen (the pointer on a day): a tint a little lighter than the chosen range's (8% / 12%) with
+   dashed top and bottom edges - the edges keep it seen on any screen (a plain 6% tint vanished on washed-out ones), and
+   with the lighter tint they say it is not chosen yet */
+.aui-date-picker__day--previewing.aui-date-picker__day--in-range::before,
+.aui-date-picker__day--previewing.aui-date-picker__day--band-start::before,
+.aui-date-picker__day--previewing.aui-date-picker__day--band-end::before {
+    background-color: var(--aui-control-accent-a08);
+    border-top: 1px dashed var(--aui-control-accent-soft);
+    border-bottom: 1px dashed var(--aui-control-accent-soft);
+}
+
+.aui-date-picker__day--in-range > span {
+    color: var(--aui-control-accent-strong);
+}
+
+.aui-date-picker__panel .aui-date-picker__day--selected > span,
+.aui-date-picker__panel .aui-date-picker__day--selected:hover > span {
+    background-color: var(--aui-control-accent-color);
+    box-shadow: none;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+/* the range taken before, while another is set: its ends outlined (what Escape goes back to) */
+.aui-date-picker__panel .aui-date-picker__day--was > span,
+.aui-date-picker__panel .aui-date-picker__unit--was > .aui-date-picker__unit-in {
+    outline: 1px dashed var(--aui-control-accent-soft);
+    outline-offset: -1px;
+}
+
+/* a day of the next or the last month: the value and a range drawn on it as on any day, lighter (its number stays
+   muted); in a range's two months, the days one month shows of the other are left out (each date once, the place kept) */
+.aui-date-picker__panel .aui-date-picker__day--outside.aui-date-picker__day--selected > span {
+    background-color: var(--aui-control-accent-soft);
+    color: #ffffff;
+}
+
+.aui-date-picker__panel .aui-date-picker__day--outside.aui-date-picker__day--in-range > span {
+    color: var(--aui-control-placeholder-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__day--hidden {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.aui-date-picker__panel .aui-date-picker__day--disabled {
+    color: #c3c8d0;
+    cursor: not-allowed;
+}
+
+.aui-date-picker__day--disabled > span,
+.aui-date-picker__day--disabled:hover > span {
+    background-color: rgba(15, 23, 42, 0.025);
+    box-shadow: none;
+    font-weight: 400;
+}
+
+/* the keyboard's day */
+.aui-date-picker__day:focus-visible > span {
+    box-shadow: 0 0 0 2px var(--aui-control-accent-a45);
+}
+
+/* The month and year views */
+.aui-date-picker__cells {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    align-content: space-evenly;
+    gap: 10px 6px;
+    padding: 6px 0;
+}
+
+.aui-date-picker__panel .aui-date-picker__cell {
+    height: 40px;
+    border-radius: 8px;
+    color: var(--aui-control-value-color);
+    transition: background-color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__cell:hover:not(:disabled) {
+    background-color: var(--aui-control-accent-a08);
+}
+
+.aui-date-picker__panel .aui-date-picker__cell--current {
+    color: var(--aui-control-accent-text);
+    font-weight: 600;
+}
+
+.aui-date-picker__panel .aui-date-picker__cell--edge {
+    color: var(--aui-control-placeholder-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__cell--selected,
+.aui-date-picker__panel .aui-date-picker__cell--selected:hover:not(:disabled) {
+    background-color: var(--aui-control-accent-color);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.aui-date-picker__panel .aui-date-picker__cell:disabled {
+    color: var(--aui-control-disabled-color);
+}
+
+.aui-date-picker__footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid #eef1f5;
+}
+
+.aui-date-picker__panel .aui-date-picker__link {
+    padding: 5px 10px;
+    border-radius: 6px;
+    color: var(--aui-control-accent-text);
+    transition: background-color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__link:hover:not(:disabled) {
+    background-color: var(--aui-control-accent-a06);
+}
+
+/* Clear, next to OK (pushed there in a footer whose other parts do not fill it) */
+.aui-date-picker__panel .aui-date-picker__clear {
+    margin-left: auto;
+}
+
+.aui-date-picker__panel .aui-date-picker__link:disabled {
+    color: var(--aui-control-disabled-color);
+}
+
+/* The time types: the months (or none) and the time columns side by side */
+.aui-date-picker__content {
+    display: flex;
+    align-items: stretch;
+}
+
+.aui-date-picker__clock {
+    display: flex;
+    flex: none;
+    gap: 12px;
+}
+
+.aui-date-picker__content > .aui-date-picker__calendars ~ .aui-date-picker__clock,
+.aui-date-picker__content > .aui-date-picker__picker ~ .aui-date-picker__clock {
+    margin-left: 12px;
+    padding-left: 8px;
+    border-left: 1px solid #eef1f5;
+}
+
+.aui-date-picker__time-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.aui-date-picker__time-group + .aui-date-picker__time-group {
+    padding-left: 12px;
+    border-left: 1px solid #eef1f5;
+}
+
+.aui-date-picker__time-title {
+    height: 28px;
+    line-height: 28px;
+    text-align: center;
+    font-size: calc(var(--aui-font-12) * 1px);
+    font-weight: 500;
+    color: var(--aui-control-muted-color);
+}
+
+.aui-date-picker__columns {
+    display: flex;
+}
+
+/* the time of the end whose day was just picked is set next: its columns outlined (a large area: a fill would be
+   heavier than on the end's tab, and the chosen options would stand out less), with a short glow as each step begins */
+.aui-date-picker__clock--step .aui-date-picker__columns {
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px var(--aui-control-accent-a24);
+}
+
+.aui-date-picker__clock--pulse-0 .aui-date-picker__columns {
+    animation: aui-date-picker-step-0 700ms ease-out;
+}
+
+.aui-date-picker__clock--pulse-1 .aui-date-picker__columns {
+    animation: aui-date-picker-step-1 700ms ease-out;
+}
+
+/* two names for one glow: a step begun right after another plays it again */
+@keyframes aui-date-picker-step-0 {
+    from {
+        background-color: var(--aui-control-accent-a08);
+        box-shadow: inset 0 0 0 1.5px var(--aui-control-accent-color);
+    }
+}
+
+@keyframes aui-date-picker-step-1 {
+    from {
+        background-color: var(--aui-control-accent-a08);
+        box-shadow: inset 0 0 0 1.5px var(--aui-control-accent-color);
+    }
+}
+
+/* a column: its chosen option at its top, as far as the column goes (it ends at its last option: no empty room after
+   it); a slim scrollbar, its thumb only while the pointer is over the column, no arrow buttons */
+.aui-date-picker__column {
+    position: relative;
+    flex: none;
+    width: 56px;
+    height: 232px;
+    padding: 4px 0;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* Chromium and Safari: their own scrollbar parts (scrollbar-width or scrollbar-color on the column would turn these
+   off in Chromium, its arrow buttons back: those are for Firefox only, below) */
+.aui-date-picker__column::-webkit-scrollbar {
+    width: 4px !important;
+    height: 4px !important;
+}
+
+.aui-date-picker__column::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.aui-date-picker__column::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
+.aui-date-picker__column::-webkit-scrollbar-thumb {
+    border-radius: 2px;
+    background-color: transparent;
+}
+
+.aui-date-picker__column:hover::-webkit-scrollbar-thumb {
+    background-color: rgba(15, 23, 42, 0.2);
+}
+
+.aui-date-picker__column::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(15, 23, 42, 0.32);
+}
+
+/* Firefox (no such parts): its thin scrollbar, the thumb only while the pointer is over the column */
+@supports not selector(::-webkit-scrollbar) {
+    .aui-date-picker__column {
+        scrollbar-width: thin;
+        scrollbar-color: transparent transparent;
+    }
+
+    .aui-date-picker__column:hover {
+        scrollbar-color: rgba(15, 23, 42, 0.2) transparent;
+    }
+}
+
+.aui-date-picker__column + .aui-date-picker__column {
+    border-left: 1px solid #f3f5f8;
+}
+
+/* beside the months: as tall as they are */
+.aui-date-picker__content > .aui-date-picker__calendars ~ .aui-date-picker__clock .aui-date-picker__column,
+.aui-date-picker__content > .aui-date-picker__picker ~ .aui-date-picker__clock .aui-date-picker__column {
+    height: 286px;
+}
+
+.aui-date-picker__column--slots {
+    width: 112px;
+}
+
+.aui-date-picker__panel .aui-date-picker__time {
+    display: block;
+    width: calc(100% - 8px);
+    height: 32px;
+    margin: 0 4px;
+    padding: 0;
+    border-radius: 6px;
+    text-align: center;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--aui-control-value-color);
+    transition: background-color var(--aui-motion-duration) var(--aui-motion-ease-color),
+                color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__time:hover:not(:disabled) {
+    background-color: var(--aui-control-accent-a08);
+}
+
+.aui-date-picker__panel .aui-date-picker__time--selected,
+.aui-date-picker__panel .aui-date-picker__time--selected:hover:not(:disabled) {
+    background-color: var(--aui-control-accent-a12);
+    color: var(--aui-control-accent-text);
+    font-weight: 600;
+}
+
+.aui-date-picker__panel .aui-date-picker__time:disabled {
+    color: #c3c8d0;
+    background-color: transparent;
+}
+
+.aui-date-picker__panel .aui-date-picker__time:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--aui-control-accent-a45) !important;
+}
+
+/* a date-time range: its start and end above the months, the one the time columns set marked */
+.aui-date-picker__ends {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eef1f5;
+}
+
+.aui-date-picker__panel .aui-date-picker__end {
+    flex: 1 1 0%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    min-width: 0;
+    padding: 5px 10px;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px #e3e7ee !important;
+    text-align: left;
+    transition: box-shadow var(--aui-motion-duration) var(--aui-motion-ease-color),
+                background-color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__end:hover {
+    box-shadow: inset 0 0 0 1px var(--aui-control-accent-soft) !important;
+}
+
+.aui-date-picker__panel .aui-date-picker__end--active,
+.aui-date-picker__panel .aui-date-picker__end--active:hover {
+    background-color: var(--aui-control-accent-a05);
+    box-shadow: inset 0 0 0 1.5px var(--aui-control-accent-color) !important;
+}
+
+.aui-date-picker__end-label {
+    font-size: calc(var(--aui-font-11) * 1px);
+    color: var(--aui-control-muted-color);
+}
+
+.aui-date-picker__end-value {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    color: var(--aui-control-value-color);
+}
+
+.aui-date-picker__end-value--empty {
+    color: var(--aui-control-placeholder-color);
+}
+
+/* what the pick under the pointer would make of an end (nothing taken): muted, as in the field's boxes */
+.aui-date-picker__end-value--preview {
+    color: var(--aui-control-placeholder-color);
+}
+
+/* Now, the duration chips, what to choose next (or the length), why the draft cannot be taken, OK; a range of days
+   or units has the same footer without Now */
+.aui-date-picker__footer--time,
+.aui-date-picker__footer--range {
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+}
+
+.aui-date-picker__status {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: calc(var(--aui-font-12) * 1px);
+    color: var(--aui-control-muted-color);
+    font-variant-numeric: tabular-nums;
+}
+
+.aui-date-picker__durations {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.aui-date-picker__panel .aui-date-picker__duration {
+    padding: 3px 8px;
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px #e3e7ee !important;
+    font-size: calc(var(--aui-font-12) * 1px);
+    color: var(--aui-control-value-color);
+    transition: background-color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__duration:hover:not(:disabled) {
+    background-color: var(--aui-control-accent-a06);
+    color: var(--aui-control-accent-text);
+}
+
+.aui-date-picker__panel .aui-date-picker__duration:disabled {
+    color: var(--aui-control-disabled-color);
+}
+
+/* the length of the range a pick would make, beside the pointer */
+.aui-date-picker__tip {
+    position: absolute;
+    z-index: 3;
+    margin-top: -4px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    transform: translate(-50%, -100%);
+    background-color: rgba(15, 23, 42, 0.88);
+    color: #ffffff;
+    font-size: calc(var(--aui-font-12) * 1px);
+    line-height: 18px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+}
+
+.aui-date-picker__problem {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
+    font-size: calc(var(--aui-font-12) * 1px);
+    color: var(--aui-control-invalid-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__ok {
+    flex: none;
+    min-width: 56px;
+    padding: 5px 14px;
+    border-radius: 6px;
+    background-color: var(--aui-control-accent-color);
+    color: #ffffff;
+    font-weight: 500;
+    transition: background-color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__ok:hover:not(:disabled) {
+    background-color: var(--aui-control-accent-text);
+}
+
+.aui-date-picker__panel .aui-date-picker__ok:focus-visible {
+    box-shadow: 0 0 0 2px var(--aui-control-accent-a45) !important;
+}
+
+.aui-date-picker__panel .aui-date-picker__ok:disabled {
+    background-color: #e9ecf1;
+    color: var(--aui-control-disabled-color);
+}
+
+/* Week numbers (ISO, Monday weeks) before the days; the month and year views keep the calendar's width */
+.aui-date-picker__calendar--weeks,
+.aui-date-picker__panel--weeks .aui-date-picker__picker {
+    width: 284px;
+}
+
+.aui-date-picker__panel--two.aui-date-picker__panel--weeks .aui-date-picker__picker {
+    width: 592px;
+}
+
+.aui-date-picker__grid .aui-date-picker__week-head,
+.aui-date-picker__grid .aui-date-picker__week-no {
+    width: 32px;
+    font-size: calc(var(--aui-font-11) * 1px);
+    font-weight: 500;
+    color: var(--aui-control-placeholder-color);
+    font-variant-numeric: tabular-nums;
+}
+
+/* a week: its whole row is picked, the days of the last or next month in it too; a day alone is not marked */
+.aui-date-picker__panel.aui-date-picker__panel--week .aui-date-picker__day--outside::before {
+    display: block;
+}
+
+.aui-date-picker__panel.aui-date-picker__panel--week .aui-date-picker__day--outside.aui-date-picker__day--selected > span {
+    background-color: var(--aui-control-accent-color);
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.aui-date-picker__panel--week .aui-date-picker__day:not(.aui-date-picker__day--selected):hover > span {
+    background-color: transparent;
+}
+
+/* the week under the pointer: its whole row, rounded at both ends (no end is filled); one week, not a range: the tint
+   only (no dashed edges) */
+.aui-date-picker__panel--week .aui-date-picker__day--previewing::before {
+    border-top: 0;
+    border-bottom: 0;
+}
+.aui-date-picker__panel--week .aui-date-picker__day--previewing.aui-date-picker__day--band-start::before {
+    left: 2px;
+    border-radius: 8px 0 0 8px;
+}
+
+.aui-date-picker__panel--week .aui-date-picker__day--previewing.aui-date-picker__day--band-end::before {
+    right: 2px;
+    border-radius: 0 8px 8px 0;
+}
+
+/* Months, quarters and years: a page of them (a range: two pages), as tall as a month of days */
+.aui-date-picker__units {
+    display: flex;
+    gap: 24px;
+}
+
+.aui-date-picker__unit-page {
+    width: 252px;
+}
+
+.aui-date-picker__unit-cells {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    align-content: space-evenly;
+    row-gap: 6px;
+    min-height: 248px;
+    padding: 4px 0;
+}
+
+.aui-date-picker__unit-cells--quarter {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.aui-date-picker__panel .aui-date-picker__unit {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 48px;
+    padding: 0;
+    color: var(--aui-control-value-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__unit-cells--quarter .aui-date-picker__unit {
+    height: 96px;
+}
+
+.aui-date-picker__unit-in {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-width: 64px;
+    height: 36px;
+    padding: 0 8px;
+    border-radius: 8px;
+    box-sizing: border-box;
+    font-variant-numeric: tabular-nums;
+    transition: background-color var(--aui-motion-duration) var(--aui-motion-ease-color),
+                color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-date-picker__unit-cells--quarter .aui-date-picker__unit-in {
+    min-width: 100px;
+    height: 60px;
+}
+
+.aui-date-picker__unit-label {
+    line-height: 1.2;
+}
+
+.aui-date-picker__unit-cells--quarter .aui-date-picker__unit-label {
+    font-size: calc(var(--aui-font-14) * 1px);
+    font-weight: 600;
+}
+
+.aui-date-picker__unit-sub {
+    font-size: calc(var(--aui-font-11) * 1px);
+    line-height: 1.2;
+    color: var(--aui-control-muted-color);
+}
+
+.aui-date-picker__unit:hover > .aui-date-picker__unit-in {
+    background-color: var(--aui-control-accent-a08);
+}
+
+.aui-date-picker__unit--current > .aui-date-picker__unit-in {
+    box-shadow: inset 0 0 0 1px var(--aui-control-accent-color);
+    color: var(--aui-control-accent-text);
+    font-weight: 600;
+}
+
+/* a range: the band from its first to its last unit (from the middle of each end), lighter while it is picked; every
+   unit has the band's box from the start, painted almost clear (as the days) */
+.aui-date-picker__unit::before {
+    content: "";
+    position: absolute;
+    top: calc(50% - 18px);
+    left: 0;
+    right: 0;
+    height: 36px;
+    background-color: rgba(255, 255, 255, 0.004);
+}
+
+.aui-date-picker__unit-cells--quarter .aui-date-picker__unit::before {
+    top: calc(50% - 30px);
+    height: 60px;
+}
+
+.aui-date-picker__unit--in-range::before,
+.aui-date-picker__unit--band-start::before,
+.aui-date-picker__unit--band-end::before {
+    background-color: var(--aui-control-accent-a12);
+}
+
+.aui-date-picker__unit--band-start::before {
+    left: 50%;
+}
+
+.aui-date-picker__unit--band-end::before {
+    right: 50%;
+}
+
+/* while the end is being chosen: as the days' (a little lighter than the chosen range, dashed top and bottom edges); its
+   height kept */
+.aui-date-picker__unit--previewing.aui-date-picker__unit--in-range::before,
+.aui-date-picker__unit--previewing.aui-date-picker__unit--band-start::before,
+.aui-date-picker__unit--previewing.aui-date-picker__unit--band-end::before {
+    box-sizing: border-box;
+    background-color: var(--aui-control-accent-a08);
+    border-top: 1px dashed var(--aui-control-accent-soft);
+    border-bottom: 1px dashed var(--aui-control-accent-soft);
+}
+
+.aui-date-picker__unit--in-range > .aui-date-picker__unit-in {
+    color: var(--aui-control-accent-strong);
+}
+
+.aui-date-picker__panel .aui-date-picker__unit--selected > .aui-date-picker__unit-in,
+.aui-date-picker__panel .aui-date-picker__unit--selected:hover > .aui-date-picker__unit-in {
+    background-color: var(--aui-control-accent-color);
+    box-shadow: none;
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.aui-date-picker__unit--selected .aui-date-picker__unit-sub {
+    color: rgba(255, 255, 255, 0.85);
+}
+
+/* the years beside a decade: muted, the value and a range drawn on them as on any year, lighter; in a range's two
+   decades, the year one shows of the other is left out (each year once) */
+.aui-date-picker__panel .aui-date-picker__unit--outside {
+    color: var(--aui-control-placeholder-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__unit--outside.aui-date-picker__unit--selected > .aui-date-picker__unit-in {
+    background-color: var(--aui-control-accent-soft);
+    color: #ffffff;
+}
+
+.aui-date-picker__panel .aui-date-picker__unit--outside.aui-date-picker__unit--in-range > .aui-date-picker__unit-in {
+    color: var(--aui-control-placeholder-color);
+}
+
+.aui-date-picker__panel .aui-date-picker__unit--hidden {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.aui-date-picker__panel .aui-date-picker__unit--disabled {
+    color: #c3c8d0;
+    cursor: not-allowed;
+}
+
+.aui-date-picker__unit--disabled > .aui-date-picker__unit-in,
+.aui-date-picker__unit--disabled:hover > .aui-date-picker__unit-in {
+    background-color: rgba(15, 23, 42, 0.025);
+    box-shadow: none;
+    font-weight: 400;
+}
+
+.aui-date-picker__unit--disabled .aui-date-picker__unit-sub {
+    color: inherit;
+}
+
+.aui-date-picker__unit:focus-visible > .aui-date-picker__unit-in {
+    box-shadow: 0 0 0 2px var(--aui-control-accent-a45);
+}
+
+/* Dates: how many are checked, and OK */
+.aui-date-picker__footer--dates {
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.aui-date-picker__count {
+    font-size: calc(var(--aui-font-12) * 1px);
+    color: var(--aui-control-muted-color);
+    font-variant-numeric: tabular-nums;
+}
+
+/* a narrow screen: one month, the shortcuts on top */
+@media (max-width: 640px) {
+    .aui-date-picker__unit-page {
+        width: 280px;
+    }
+
+    .aui-date-picker__calendar--weeks,
+    .aui-date-picker__panel--weeks .aui-date-picker__picker {
+        width: 312px;
+    }
+
+    .aui-date-picker__body {
+        flex-direction: column;
+    }
+
+    .aui-date-picker__shortcuts {
+        flex-direction: row;
+        flex-wrap: wrap;
+        min-width: 0;
+        border-right: 0;
+        border-bottom: 1px solid #eef1f5;
+    }
+
+    .aui-date-picker__calendar,
+    .aui-date-picker__picker {
+        width: 280px;
+    }
+
+    .aui-date-picker__grid td,
+    .aui-date-picker__panel .aui-date-picker__day {
+        height: 40px;
+    }
+
+    .aui-date-picker__day > span {
+        width: 36px;
+        height: 36px;
+    }
+
+    /* the time columns under the month, across its width */
+    .aui-date-picker__content {
+        flex-direction: column;
+    }
+
+    .aui-date-picker__content > .aui-date-picker__calendars ~ .aui-date-picker__clock,
+    .aui-date-picker__content > .aui-date-picker__picker ~ .aui-date-picker__clock {
+        margin: 8px 0 0;
+        padding: 8px 0 0;
+        border-left: 0;
+        border-top: 1px solid #eef1f5;
+    }
+
+    .aui-date-picker__content > .aui-date-picker__calendars ~ .aui-date-picker__clock .aui-date-picker__columns,
+    .aui-date-picker__content > .aui-date-picker__picker ~ .aui-date-picker__clock .aui-date-picker__columns {
+        width: 280px;
+    }
+
+    .aui-date-picker__content > .aui-date-picker__calendars ~ .aui-date-picker__clock .aui-date-picker__column,
+    .aui-date-picker__content > .aui-date-picker__picker ~ .aui-date-picker__clock .aui-date-picker__column {
+        flex: 1 1 0%;
+        height: 168px;
+    }
+
+    .aui-date-picker__panel .aui-date-picker__time {
+        height: 36px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aui-date-picker__day > span,
+    .aui-date-picker__panel .aui-date-picker__arrow,
+    .aui-date-picker__panel .aui-date-picker__title-part,
+    .aui-date-picker__panel .aui-date-picker__shortcut,
+    .aui-date-picker__panel .aui-date-picker__cell,
+    .aui-date-picker__panel .aui-date-picker__link,
+    .aui-date-picker__panel .aui-date-picker__time,
+    .aui-date-picker__panel .aui-date-picker__end,
+    .aui-date-picker__panel .aui-date-picker__ok,
+    .aui-date-picker__unit-in,
+    .aui-date-picker__bar,
+    .aui-date-picker__panel .aui-date-picker__duration {
+        transition: none !important;
+    }
+
+    .aui-date-picker__clock--step .aui-date-picker__columns {
+        animation: none !important;
+    }
+}

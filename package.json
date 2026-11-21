@@ -1,0 +1,57 @@
+{
+  "name": "aui-components",
+  "version": "0.1.0",
+  "description": "Modern UI components for AngularJS 1.5+: select, tree select, date picker, input, modal and more.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ASMI0099/aui-components.git"
+  },
+  "homepage": "https://github.com/ASMI0099/aui-components#readme",
+  "bugs": {
+    "url": "https://github.com/ASMI0099/aui-components/issues"
+  },
+  "keywords": [
+    "angularjs",
+    "angular1",
+    "components",
+    "ui",
+    "select",
+    "tree-select",
+    "date-picker",
+    "modal",
+    "form"
+  ],
+  "main": "dist/aui-components.js",
+  "style": "dist/aui-components.css",
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "dev": "node scripts/dev-server.js",
+    "test": "npm run test:unit && npm run test:browser",
+    "test:unit": "node --test \"test/unit/*.test.js\"",
+    "test:browser": "node scripts/test.js",
+    "test:dist": "node scripts/test.js --dist",
+    "perf": "node scripts/perf.js"
+  },
+  "peerDependencies": {
+    "@floating-ui/dom": "^1.6.3",
+    "angular": "~1.5.3"
+  },
+  "devDependencies": {
+    "@floating-ui/core": "1.6.0",
+    "@floating-ui/dom": "1.6.3",
+    "angular": "1.5.3",
+    "esbuild": "0.28.2",
+    "jquery": "3.6.0"
+  }
+}

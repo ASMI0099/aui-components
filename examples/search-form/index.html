@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" href="data:,"/>
+    <title>A search form: aui-components examples</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../assets/examples.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../assets/examples.js"></script>
+    <script src="search-form.js"></script>
+</head>
+<body class="ex" ng-app="auiExamples" ng-controller="SearchFormExampleCtrl as vm">
+<ex-page heading="A search form" request-log="true"
+         lead="A filter form as a list page has it: fields that depend on each other, each loading from the server only what it needs, and a form that can be filled from saved values.">
+
+    <section class="ex-example" id="ex-form">
+        <h2>Fields that depend on each other</h2>
+        <p class="ex-example__text">The departments follow the store (<code>load-params</code>, <code>load-enabled</code>
+            and <code>reset-on-params="clear"</code>); the products follow the store, the department and the categories,
+            and say in their panel what is still missing (<code>load-disabled-text</code>). The categories load once,
+            as a whole tree. "Fill from saved values" sets ids only: every field looks up its labels.</p>
+
+        <form class="ex-form" name="vm.form" novalidate>
+            <div class="ex-form__grid">
+                <div class="ex-form__field">
+                    <aui-input name="keyword" ng-model="vm.filter.keyword" input-style-type="form" show-label
+                               label-text="Product name" placeholder="Part of the name" value-max-length="40"
+                               clearable></aui-input>
+                </div>
+                <div class="ex-form__field">
+                    <aui-select name="storeId" ng-model="vm.filter.storeId" show-label label-text="Store"
+                                load-options="vm.loadStores($request)" lookup-enabled disabled-field="disabled"
+                                label-field="name" value-field="id" placeholder="Choose a store" clearable></aui-select>
+                </div>
+                <div class="ex-form__field">
+                    <aui-select name="departmentId" ng-model="vm.filter.departmentId" show-label label-text="Department"
+                                load-options="vm.loadDepartments($request)" load-params="{storeId: vm.filter.storeId}"
+                                load-enabled="!!vm.filter.storeId" load-disabled-text="Choose a store first"
+                                reset-on-params="clear" lookup-enabled disabled-field="disabled"
+                                label-field="departmentName" value-field="id" placeholder="Choose a department"
+                                clearable></aui-select>
+                </div>
+                <div class="ex-form__field">
+                    <aui-tree-select name="categoryIds" ng-model="vm.filter.categoryIds" show-label label-text="Categories"
+                                     load-options="vm.loadCategories($request)" lookup-enabled multiple
+                                     value-strategy="parent" max-tag-count="responsive" show-line
+                                     label-field="name" value-field="id" parent-field="parentId"
+                                     placeholder="Any category" clearable></aui-tree-select>
+                </div>
+                <div class="ex-form__field">
+                    <aui-select name="productId" ng-model="vm.filter.productId" show-label label-text="Product"
+                                load-options="vm.loadProducts($request)"
+                                load-params="{storeId: vm.filter.storeId, departmentId: vm.filter.departmentId, categoryIds: vm.filter.categoryIds, keyword: vm.filter.keyword}"
+                                load-enabled="vm.productsReady()" load-disabled-text="{{ vm.productsHint() }}"
+                                page-size="20" lookup-enabled disabled-field="disabled"
+                                label-field="name" value-field="id" placeholder="Choose a product" clearable></aui-select>
+                </div>
+                <div class="ex-form__field">
+                    <aui-date-picker name="period" type="datetimerange" show-label label-text="Period"
+                                     start-model="vm.filter.from" end-model="vm.filter.to" shortcuts clearable></aui-date-picker>
+                </div>
+            </div>
+            <div class="ex-controls">
+                <aui-button variant="outline" intent="neutral" ng-click="vm.fillSaved()">Fill from saved values</aui-button>
+                <aui-button variant="ghost" intent="neutral" ng-click="vm.reset()">Reset</aui-button>
+            </div>
+        </form>
+
+        <pre class="ex-out ex-form__value">filter: {{ vm.filter | json }}</pre>
+    </section>
+
+    <section class="ex-example" id="ex-all-products">
+        <h2>Every product as static options</h2>
+        <p class="ex-example__text">One request fetches every product (60,000); the array goes to <code>options</code>
+            as it is, without <code>load-options</code> or paging. The panel draws only the rows in view, and the search
+            filters all of them.</p>
+
+        <div class="ex-controls ex-controls--toolbar">
+            <span ng-if="vm.all.state === 'loading'">Loading every product...</span>
+            <span ng-if="vm.all.state === 'error'">The products could not be loaded: {{ vm.all.error }}</span>
+            <span ng-if="vm.all.state === 'ready'">{{ vm.all.products.length | number }} products: loaded in
+                {{ vm.all.loadMs }} ms<span ng-if="vm.all.openMs !== null">, last open {{ vm.all.openMs }} ms</span></span>
+            <button type="button" class="ex-link" ng-click="vm.loadAll()" ng-disabled="vm.all.state === 'loading'">Load again</button>
+        </div>
+
+        <div class="ex-example__row">
+            <div>
+                <aui-select ng-model="vm.all.value" selected-items="vm.all.selected" options="vm.all.products"
+                            label-field="name" value-field="id" disabled-field="disabled" clearable
+                            loading="vm.all.state === 'loading'" on-open="vm.measureOpen()"
+                            placeholder="{{ vm.all.state === 'ready' ? 'Choose a product' : 'Loading the products...' }}"></aui-select>
+            </div>
+            <pre class="ex-out">model: {{ vm.all.value | json }}
+selected: {{ vm.all.selected[0] | json }}</pre>
+        </div>
+    </section>
+</ex-page>
+</body>
+</html>

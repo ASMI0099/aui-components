@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Texts: a language defined by the page</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(3, 320px); gap: 14px 18px; align-items: start; margin-bottom: 14px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 420px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="texts.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="texts.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="TextsCtrl">
+<h1>The components' texts in a language the page defines</h1>
+<div class="grid">
+    <aui-select id="t-select" ng-model="m.s" options="options"></aui-select>
+    <aui-tree-select id="t-tree" ng-model="m.t" options="nodes"></aui-tree-select>
+    <aui-input id="t-input" ng-model="m.i" input-style-type="form" clearable></aui-input>
+    <aui-date-picker id="t-date" type="date" ng-model="m.d"></aui-date-picker>
+    <aui-date-picker id="t-d12" type="datetime" format="YYYY-MM-DD hh:mm A" ng-model="m.d12"></aui-date-picker>
+    <aui-date-picker id="t-dtr" type="datetimerange" ng-model="m.dtr"></aui-date-picker>
+</div>
+<aui-modal id="t-modal" is-open="open.modal" size="small" show-confirm-button="true">
+    <header><span>Texts</span></header>
+    <content><div style="padding: 8px;">A body</div></content>
+</aui-modal>
+<div class="bottom-spacer"></div>
+</body>
+</html>

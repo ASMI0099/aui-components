@@ -1,0 +1,148 @@
+/*
+ * aui-input: the table-cell style, aui-textarea, bold text.
+ */
+
+/* input-style-type="cell": the form style for a table cell (an editable column): 28px, no label, no border or
+   background until the pointer is over it or it has the focus (then the fields' ring); invalid keeps its red border.
+   Its rules come after those of the form style's states (readonly, disabled) on purpose: a cell is plain text there. */
+.aui-input--cell .aui-input__form-trigger {
+    min-height: 28px;
+    padding: 1px 6px;
+    border-color: transparent;
+    background-color: transparent;
+    box-shadow: none;
+}
+
+/* under the pointer: its border only (no shadow); not while readonly or invalid (a cell keeps its look there). Focused (a
+   cell is focused by a click, so the pointer is still over it), the focused skin lies over it. */
+.aui-input--cell:not(.aui-input--disabled):not(.aui-input--readonly) .aui-input__form-trigger:not(.aui-input__form-trigger--invalid):hover {
+    border-color: var(--aui-control-border-hover-color);
+    box-shadow: none;
+}
+
+/* focused: the box gets its white at once, the focused skin fades in over it */
+.aui-input--cell .aui-input__form-trigger:focus-within {
+    background-color: var(--aui-control-background-color);
+}
+
+.aui-input--cell .aui-input__form-trigger.aui-input__form-trigger--invalid {
+    border-color: var(--aui-control-invalid-color);
+    box-shadow: none;
+}
+
+/* an invalid cell has no red halo of its own: its focused skin draws the whole 0.2 halo */
+.aui-input--cell .aui-input__form-trigger.aui-input__form-trigger--invalid::after {
+    box-shadow: 0 0 0 3px var(--aui-control-invalid-a20), inset 0 0 0 1px var(--aui-control-invalid-color);
+}
+
+/* aui-textarea: the form style's box around a <textarea>. The label stays at the top line; the clear button sits in
+   the top right corner and the count in the bottom right one, with the text kept clear of both. */
+.aui-input__form-trigger.aui-input__form-trigger--textarea {
+    align-items: flex-start;
+}
+
+.aui-input.aui-input--form .aui-input__form-trigger > textarea.aui-input__form-field {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    flex: 1 1 0% !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: auto;
+    min-height: 24px;
+    margin: 0 !important;
+    padding: 2px 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    box-sizing: border-box !important;
+    color: var(--aui-control-value-color);
+    font-family: inherit !important;
+    font-size: var(--aui-control-value-size) !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+    line-height: 20px !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+    text-indent: 0 !important;
+    resize: vertical;
+    overflow-y: auto;
+}
+
+.aui-input.aui-input--form textarea.aui-input__form-field::placeholder {
+    color: var(--aui-control-placeholder-color);
+    font-size: var(--aui-control-value-size);
+    font-weight: 400;
+    font-style: normal;
+    opacity: 1;
+}
+
+.aui-input--readonly textarea.aui-input__form-field,
+.aui-input textarea.aui-input__form-field[readonly] {
+    color: var(--aui-control-muted-color) !important;
+    cursor: default;
+}
+
+.aui-input--disabled textarea.aui-input__form-field,
+.aui-input textarea.aui-input__form-field:disabled {
+    cursor: not-allowed;
+    color: var(--aui-control-disabled-color) !important;
+}
+
+/* input-text-bold: the text bold and black, in every style (stronger than the boxes' own !important weight and colour);
+   readonly and disabled keep their grey */
+.aui-input.aui-input--text-bold .aui-input-container > input.aui-input-field,
+.aui-input.aui-input--text-bold .aui-input__form-trigger > input.aui-input__form-field,
+.aui-input.aui-input--text-bold .aui-input__form-trigger > textarea.aui-input__form-field {
+    font-weight: 700 !important;
+}
+
+.aui-input.aui-input--text-bold .aui-input-container > input.aui-input-field:not([readonly]):not(:disabled),
+.aui-input.aui-input--text-bold .aui-input__form-trigger > input.aui-input__form-field:not([readonly]):not(:disabled),
+.aui-input.aui-input--text-bold .aui-input__form-trigger > textarea.aui-input__form-field:not([readonly]):not(:disabled) {
+    color: #000 !important;
+}
+
+/* no handle to drag: auto-height (the height is the text's, fitTextarea), disabled, readonly. As specific as the
+   textarea's own rule above (which gives the handle), and after it. */
+.aui-input.aui-input--auto-height .aui-input__form-trigger > textarea.aui-input__form-field,
+.aui-input.aui-input--disabled .aui-input__form-trigger > textarea.aui-input__form-field,
+.aui-input.aui-input--readonly .aui-input__form-trigger > textarea.aui-input__form-field {
+    resize: none;
+}
+
+.aui-input__form-trigger--textarea .aui-control-clear {
+    top: 6px !important;
+    transform: none !important;
+}
+
+.aui-input__form-trigger--textarea .aui-control-clear:active {
+    transform: scale(0.92) !important;
+}
+
+.aui-input.aui-input--clearable-active .aui-input__form-trigger--textarea > textarea.aui-input__form-field,
+.aui-input:has(.aui-control-clear:not(.aui-control-clear--hidden)) .aui-input__form-trigger--textarea > textarea.aui-input__form-field {
+    padding-right: 28px !important;
+}
+
+/* the count in the bottom right corner, left of the textarea's resize handle (none with auto-height, disabled, readonly) */
+.aui-input__form-trigger--textarea .aui-input__count {
+    position: absolute;
+    right: 22px;
+    bottom: 3px;
+    margin: 0;
+    line-height: 16px;
+}
+
+.aui-input--auto-height .aui-input__form-trigger--textarea .aui-input__count,
+.aui-input--disabled .aui-input__form-trigger--textarea .aui-input__count,
+.aui-input--readonly .aui-input__form-trigger--textarea .aui-input__count {
+    right: 8px;
+}
+
+.aui-input.aui-input--with-count .aui-input__form-trigger--textarea > textarea.aui-input__form-field {
+    padding-bottom: 18px !important;
+}

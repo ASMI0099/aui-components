@@ -1,0 +1,176 @@
+/*
+ * aui-input: the count, the row, prefix and suffix, the password eye.
+ */
+
+/* aui-input show-count: the length of the text ("3/7") closes the row. The clear button stands before it, in the row as
+   well (not over the text's right end), so that the text never runs under either of them. */
+.aui-input__count {
+    flex: 0 0 auto;
+    margin-left: 8px;
+    color: var(--aui-control-muted-color);
+    font-size: calc(var(--aui-font-12) * 1px);
+    font-weight: 400;
+    line-height: var(--aui-control-inner-height);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    user-select: none;
+    transition: color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+/* longer than value-max-length (its check fails): the count in the invalid red */
+.aui-input__count--over {
+    color: var(--aui-control-invalid-color);
+}
+
+.aui-input--disabled .aui-input__count {
+    color: var(--aui-control-disabled-color);
+}
+
+/* aui-input--row: the box's row holds more than the text and the clear button (a count, a prefix or suffix, the
+   password eye): all of them in the flow, so that the text never runs under any of them */
+.aui-input--row .aui-input-container {
+    display: flex;
+    align-items: center;
+}
+
+.aui-input.aui-input--row .aui-input-container > input.aui-input-field {
+    flex: 1 1 auto;
+    min-width: 0 !important;
+}
+
+.aui-input--row .aui-control-clear {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    transform: none !important;
+    margin-left: 4px !important;
+}
+
+.aui-input--row .aui-control-clear:active {
+    transform: scale(0.92) !important;
+}
+
+/* aui-input basic style: its line is the text's own (16.8px for 14px text, the underline over its last 2px), shorter
+   than the 24px button with its 18px circle, which so hung over the underline. There the button fits the text: a 14px
+   circle (the text's size; the cross as thick as in the form style), centred on the text above the underline. */
+.aui-input--basic .aui-control-clear {
+    width: 16px !important;
+    height: 16px !important;
+    top: calc(50% - 1px) !important;
+}
+
+.aui-input--basic .aui-control-clear-svg {
+    width: 14px !important;
+    height: 14px !important;
+}
+
+.aui-input--basic .aui-control-clear-cross {
+    stroke-width: 1.6;
+}
+
+.aui-input--basic.aui-input--row .aui-control-clear {
+    top: -1px !important;
+}
+
+/* no room kept at the text's right end for a clear button over it (the rules above): it is in the row */
+.aui-input.aui-input--row .aui-input__form-trigger > input.aui-input__form-field,
+.aui-input.aui-input--row .aui-input-container > input.aui-input-field {
+    padding-right: 0 !important;
+}
+
+/* aui-input prefix / suffix: an icon or a short text in the box, before / after the text (a search icon, the unit of
+   a value: "kg", "%"); muted, the value's size. The clear button stands between the text and the suffix. */
+.aui-input__affix {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--aui-control-muted-color);
+    font-size: var(--aui-control-value-size);
+    font-weight: 400;
+    line-height: var(--aui-control-inner-height);
+    white-space: nowrap;
+    user-select: none;
+    cursor: text;
+}
+
+.aui-input__affix--prefix {
+    margin-right: 8px;
+}
+
+.aui-input__affix--suffix {
+    margin-left: 8px;
+}
+
+.aui-input__affix-icon {
+    font-size: calc(var(--aui-font-14) * 1px);
+    line-height: 1;
+}
+
+.aui-input--disabled .aui-input__affix {
+    color: var(--aui-control-disabled-color);
+    cursor: not-allowed;
+}
+
+/* aui-input show-password: the eye (slashed while the password is hidden, open while it is shown), at the end of the
+   row; a 24px button as the clear button, its focus ring that of the fields. Under .aui-input (0,2,0): a page's rules
+   for [role="button"] (a border, a background, padding; as strong as one class) do not reach it, nor does a page's
+   outline for every focused element (*:focus, with !important too). */
+.aui-input .aui-input__eye {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 24px;
+    height: 24px;
+    margin: 0 0 0 4px;
+    padding: 0;
+    border: 0 none;
+    border-radius: 50%;
+    background-color: transparent;
+    box-shadow: none;
+    color: var(--aui-control-muted-color);
+    text-decoration: none;
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--aui-motion-duration) var(--aui-motion-ease-color),
+                background-color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-input .aui-input__eye:hover {
+    color: #334155;
+    background-color: #edf1f5;
+}
+
+.aui-input .aui-input__eye:focus-visible {
+    outline: 2px solid var(--aui-control-accent-color) !important;
+    outline-offset: 1px !important;
+}
+
+.aui-input .aui-input__eye:focus:not(:focus-visible) {
+    outline: none !important;
+}
+
+.aui-input__eye-svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
+}
+
+.aui-input__eye--on .aui-input__eye-slash {
+    display: none;
+}
+
+/* Microsoft Edge draws a reveal button of its own in every password box: with the field's eye there would be two. A
+   rule of its own (a browser that does not know the pseudo-element drops the whole rule it is in); a password field
+   without show-password keeps the browser's button. */
+.aui-input--with-eye input::-ms-reveal {
+    display: none;
+}

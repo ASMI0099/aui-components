@@ -1,0 +1,27 @@
+/* A deliberately hostile page stylesheet, loaded after aui-components.css (test/shared/css-guard): general element and
+   attribute rules of the kind old page CSS and frameworks have. The fields must keep every box and their look under
+   them. The page's font family is left as it is: the fields take it from the page by design. */
+* { box-sizing: content-box; transition: all 0.3s; }
+html { font-size: 62.5%; }
+body { font-size: 15px; line-height: 2; color: #800; letter-spacing: 0.05em; }
+div { line-height: 3; }
+span { display: block; padding: 2px; font-weight: bold; }
+label { display: block; float: left; width: 120px; margin: 0 0 8px; font-weight: bold; text-transform: uppercase; color: purple; }
+input, textarea { height: 40px; padding: 8px 12px; margin: 4px; border: 2px solid #f0f; border-radius: 12px; background: #ffd;
+    color: #00f; font-size: 18px; box-shadow: 0 0 6px #f0f; line-height: 1.8; text-indent: 5px; }
+input:focus, textarea:focus { outline: 3px solid red; box-shadow: 0 0 10px red; border-color: red; }
+input::placeholder { color: green; font-style: italic; }
+ul, ol { padding-left: 40px; margin: 12px 0; list-style: disc outside; }
+li { float: left; margin: 2px 10px; padding: 6px; line-height: 2.5; border-bottom: 1px dotted #999; }
+svg { width: 100%; height: auto; display: block; }
+path, circle { fill: #f80; stroke: #0f0; }
+i { font-style: italic; font-size: 20px; }
+a, [role="button"] { color: red; text-decoration: underline; cursor: help; }
+[role="button"] { display: inline-block; padding: 6px 12px; border: 1px solid #333; border-radius: 0; background: #eee; }
+*:focus { outline: 4px dashed orange !important; }
+[aria-hidden="true"] { display: inline-block; }
+table, td { border: 3px double #0a0; padding: 10px; }
+/* a global button rule of some pages: its border width and box-shadow with !important */
+button, input[type='button'] { font-size: 13px; padding: 4px 9px; line-height: 1.39; border-width: 1px !important; margin: 0 5px 5px 0;
+    box-shadow: none !important; word-break: keep-all; white-space: nowrap; }
+button:focus { box-shadow: none !important; }

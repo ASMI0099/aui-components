@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: dropdown placement</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 0; background: #f6f7f9; color: #222; }
+        /* Each field sits at a fixed distance from the bottom of the screen (room below = that distance - 38px) */
+        .at { position: absolute; left: 40px; width: 360px; }
+        .scroller { position: absolute; left: 480px; top: 0; width: 360px; height: 3000px; }
+        /* A list taller than either side of the screen: the panel must shorten it instead of running off */
+        #p-tall .aui-select__panel .aui-select__options { max-height: min(2000px, var(--aui-panel-list-max, 2000px)); }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="placement.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="placement.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="PlacementCtrl">
+<div class="at" id="p-tree-low" style="top: calc(100vh - 330px)">
+    <aui-tree-select ng-model="m.a" load-options="loadTree($request)" placeholder="Tree, 292px below"></aui-tree-select>
+</div>
+<div class="at" id="p-tree-high" style="top: calc(100vh - 470px)">
+    <aui-tree-select ng-model="m.b" load-options="loadTree($request)" placeholder="Tree, 432px below"></aui-tree-select>
+</div>
+<div class="at" id="p-search" style="top: calc(100vh - 260px)">
+    <aui-select ng-model="m.c" options="many" placeholder="100 options, 222px below"></aui-select>
+</div>
+<div class="at" id="p-few" style="top: calc(100vh - 260px)">
+    <aui-select ng-model="m.d" options="few" placeholder="3 options, 222px below"></aui-select>
+</div>
+<div class="at" id="p-remote" style="top: calc(100vh - 300px)">
+    <aui-select ng-model="m.e" load-options="loadList($request)" placeholder="Server list, 262px below"></aui-select>
+</div>
+<div class="at" id="p-tall" style="top: calc(50vh - 19px)">
+    <aui-select ng-model="m.f" options="many" placeholder="Taller than either side"></aui-select>
+</div>
+<div class="at" id="p-half" style="top: 120px; left: 400.5px; width: 259.5px">
+    <aui-select ng-model="m.h" options="few" placeholder="At a fractional position"></aui-select>
+</div>
+<div class="scroller"><div class="at" id="p-scroll" style="top: 1200px; left: 0">
+    <aui-select ng-model="m.g" options="many" placeholder="Scrolled page"></aui-select>
+</div></div>
+</body>
+</html>

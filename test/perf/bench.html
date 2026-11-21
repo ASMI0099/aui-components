@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>aui-tree-select: bench</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <style>
+        body { font: 14px/1.4 Arial, sans-serif; margin: 24px; background: #f6f7f9; }
+        .host { width: 420px; margin-bottom: 16px; }
+        #results { font: 12px/1.5 Consolas, monospace; white-space: pre-wrap; background: #fff; padding: 10px; }
+    </style>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="perf.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="bench.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="BenchCtrl">
+<div class="host" ng-if="cfg.kind === 'single'">
+    <aui-tree-select ng-model="m.v" options="data" label-field="name" api="api" clearable></aui-tree-select>
+</div>
+<div class="host" ng-if="cfg.kind === 'single-flat'">
+    <aui-tree-select ng-model="m.v" options="data" label-field="name" parent-field="pid" api="api" clearable></aui-tree-select>
+</div>
+<div class="host" ng-if="cfg.kind === 'multi'">
+    <aui-tree-select ng-model="m.v" options="data" label-field="name" api="api" multiple clearable
+                     max-tag-count="3" value-strategy="{{ cfg.strategy || 'all' }}"></aui-tree-select>
+</div>
+<div class="host" ng-if="cfg.kind === 'multi-strict'">
+    <aui-tree-select ng-model="m.v" options="data" label-field="name" api="api" multiple clearable
+                     check-strictly></aui-tree-select>
+</div>
+<div class="host" ng-if="cfg.kind === 'multi-strict-limited'">
+    <aui-tree-select ng-model="m.v" options="data" label-field="name" api="api" multiple clearable
+                     check-strictly max-tag-count="3"></aui-tree-select>
+</div>
+<div class="host" ng-if="cfg.kind === 'select'">
+    <aui-select ng-model="m.v" options="data" label-field="name" multiple clearable></aui-select>
+</div>
+<pre id="results">running...</pre>
+</body>
+</html>

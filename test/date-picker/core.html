@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-date-picker: core</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <style>
+        .dp-test { display: grid; grid-template-columns: repeat(3, 320px); gap: 12px 16px; padding: 12px; }
+        .dp-test .dp-wide { grid-column: span 2; }
+    </style>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="core.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="core.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="DateCtrl">
+<h1>aui-date-picker: core</h1>
+<form name="pageForm" novalidate class="dp-test">
+    <aui-date-picker id="p-day" ng-model="f.day" clearable show-label label-text="Day"
+                     on-change="log('day', $value, $text, $timestamp, $triggerSource, $byUser)"></aui-date-picker>
+    <aui-date-picker id="p-limits" ng-model="f.limited" min="2026-11-10" max="2026-11-20" disabled-date="weekend($parts)"></aui-date-picker>
+    <aui-date-picker id="p-week" ng-model="f.week" week-start="0" format="DD/MM/YYYY"></aui-date-picker>
+    <aui-date-picker id="p-range" class="dp-wide" type="daterange" ng-model="f.range" value-format="YYYY-MM-DD HH:mm:ss" format="YYYY-MM-DD"
+                     on-change="log('range', $value, $timestamps, $duration, $triggerSource, $byUser)"></aui-date-picker>
+    <aui-date-picker id="p-stamp" ng-model="f.stamp" value-type="timestamp"></aui-date-picker>
+    <aui-date-picker id="p-two" class="dp-wide" type="daterange" name="promo" start-model="f.start" end-model="f.end" required clearable
+                     value-format="YYYY-MM-DD HH:mm:ss" format="YYYY-MM-DD"></aui-date-picker>
+    <aui-date-picker id="p-server" ng-model="f.server"></aui-date-picker>
+    <aui-date-picker id="p-max" class="dp-wide" type="daterange" name="maxr" ng-model="f.maxr" max-range="7d"></aui-date-picker>
+    <aui-date-picker id="p-api" ng-model="f.api" api="api"></aui-date-picker>
+    <aui-date-picker id="p-short" class="dp-wide" type="daterange" ng-model="f.short" min="today" shortcuts="['next7Days', 'last7Days']"></aui-date-picker>
+    <aui-date-picker id="p-stay" class="dp-wide" type="daterange" name="stay" ng-model="f.stay" disabled-date="weekend($parts)"
+                     range-crosses-disabled="false"></aui-date-picker>
+    <aui-date-picker id="p-narrow" type="daterange" ng-model="f.narrow" start-placeholder="" end-placeholder=""></aui-date-picker>
+    <aui-date-picker id="p-given" ng-model="f.given" placeholder="Day"></aui-date-picker>
+    <aui-date-picker id="p-nohint" class="dp-wide" type="daterange" ng-model="f.nohint" show-placeholder="false"></aui-date-picker>
+    <aui-date-picker id="p-dur" class="dp-wide" type="daterange" ng-model="f.dur" durations="['7d', '1M']"></aui-date-picker>
+    <aui-date-picker id="p-nights" class="dp-wide" type="daterange" ng-model="f.nights" min-range="2d" max-range="14d"></aui-date-picker>
+    <aui-date-picker id="p-tight" type="datetimerange" ng-model="f.tight" show-label label-text="Time" clearable></aui-date-picker>
+    <aui-date-picker id="p-dyn" ng-model="f.dyn" min="{{ f.dynMin }}"></aui-date-picker>
+    <aui-date-picker id="p-req" name="req" ng-model="f.req" required clearable></aui-date-picker>
+    <aui-date-picker id="p-tsr" class="dp-wide" type="daterange" ng-model="f.tsr" value-type="timestamp" clearable></aui-date-picker>
+    <aui-date-picker id="p-edge" ng-model="f.edge"></aui-date-picker>
+    <aui-date-picker id="p-parts" ng-model="f.parts" disabled-date="$parts.d === 15 || $parts.day === 16"></aui-date-picker>
+</form>
+<p id="page-value">{{ f.day }}</p>
+</body>
+</html>

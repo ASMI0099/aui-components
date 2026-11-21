@@ -1,0 +1,169 @@
+/*
+ * The trigger of the list fields (aui-select, aui-tree-select): states, placeholder, value.
+ */
+
+/* Base Styles */
+.aui-select {
+    --aui-control-radius: var(--aui-select-border-radius, var(--aui-control-radius-default));
+    position: relative;
+    width: 100%;
+    font-size: 1em;
+    line-height: normal;
+    min-height: var(--aui-control-height);
+}
+
+.aui-select__hidden-input {
+    position: absolute;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+
+.aui-select__trigger {
+    position: relative;
+    padding: 4px 5px 4px 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.aui-select__trigger--multiple {
+    /*  padding: 4px 36px 4px 12px;
+      min-height: 38px;*/
+}
+
+
+/* Required state (mimic native :required) */
+.aui-select__trigger--required {
+
+}
+
+
+.aui-select__trigger--invalid,
+.aui-input__form-trigger--invalid {
+    border-color: var(--aui-control-invalid-color);
+    box-shadow: 0 0 0 3px var(--aui-control-invalid-a12);
+}
+
+/* An invalid field stays red in every state: hovered (a little stronger red, instead of the normal hover look), focused
+   and while its panel is open (a 2px ring in red: without it the focus could not be told). The focused skin lies over
+   the box's own red halo, so its halo adds only the rest: 0.091 over the resting 0.12, 0.048 over the hovered 0.16,
+   both give the focused 0.2. */
+.aui-select__trigger--invalid:hover,
+.aui-input__form-trigger--invalid:hover {
+    border-color: var(--aui-control-invalid-strong);
+    box-shadow: 0 0 0 3px var(--aui-control-invalid-a16);
+}
+
+.aui-select__trigger--invalid::after,
+.aui-input__form-trigger--invalid::after {
+    border-color: var(--aui-control-invalid-color);
+    box-shadow: 0 0 0 3px var(--aui-control-invalid-a091), inset 0 0 0 1px var(--aui-control-invalid-color);
+}
+
+.aui-select__trigger--invalid:hover::after,
+.aui-input__form-trigger--invalid:hover::after {
+    box-shadow: 0 0 0 3px var(--aui-control-invalid-a048), inset 0 0 0 1px var(--aui-control-invalid-color);
+}
+
+/* Focused after pointer input (a choice made with the mouse): the field keeps the focus but shows it only once the
+   keyboard is used, as a native select does (kit.quietPointerFocus). Until then it looks as it does without focus:
+   resting, hovered, or invalid (no focused skin). Not while open (the open look) or disabled. */
+.aui-select:not(.aui-select--open):not(.aui-select--disabled) .aui-select__trigger.aui-select__trigger--pointer-focus:focus-within::after {
+    opacity: 0;
+    visibility: hidden;
+    will-change: auto;
+    transition: opacity var(--aui-motion-duration) var(--aui-motion-ease-color),
+                visibility 0s linear var(--aui-motion-duration);
+}
+
+/* Open: the focused skin (above), on the box's white */
+.aui-select--open .aui-select__trigger {
+    background-color: var(--aui-control-background-color);
+}
+
+/* The trigger draws its focus itself (the ring): a page's outline for every focused element (*:focus, with !important
+   too) stays off it. In forced colours the outline is its focus look again (below, stronger). */
+.aui-select .aui-select__trigger {
+    outline: 0 !important;
+}
+
+/* Windows high contrast (forced colours) drops every box-shadow and gives all borders one colour, so the focus ring
+   would be gone: there the focus shows as a 2px outline in the system highlight colour, inside the border as well. */
+@media (forced-colors: active) {
+    .aui-input__form-trigger:focus-within,
+    .aui-select .aui-select__trigger:focus-within,
+    .aui-select.aui-select--open .aui-select__trigger {
+        outline: 2px solid Highlight !important;
+        outline-offset: -2px !important;
+    }
+
+    .aui-checkbox--container-border:has(.aui-checkbox__native:focus-visible) {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
+
+    .aui-select:not(.aui-select--open):not(.aui-select--disabled) .aui-select__trigger.aui-select__trigger--pointer-focus:focus-within {
+        outline: none !important;
+    }
+}
+
+.aui-select__selected-display {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding-right: 28px;
+}
+
+.aui-select__trigger--clearable .aui-select__selected-display,
+.aui-select__trigger:has(.aui-control-clear:not(.aui-control-clear--hidden)) .aui-select__selected-display {
+    padding-right: 52px;
+}
+
+/* Placeholder */
+/* The placeholder of all the fields: the value's size and weight (no jump when a value comes); its lighter colour tells
+   it from a value */
+.aui-select__placeholder {
+    color: var(--aui-control-placeholder-color);
+    font-size: var(--aui-control-value-size);
+    font-weight: 400;
+    flex-grow: 1;
+    display: inline-block;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+}
+
+/* Display text  */
+.aui-select__display-text {
+    display: inline-block;
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    user-select: none;
+    color: var(--aui-control-value-color);
+    font-size: var(--aui-control-value-size);
+    /* regular, as every field's value (typed or picked): a medium weight is drawn medium by fonts that have it and
+       regular by those that do not, so the same value looked bold on one machine and regular on another */
+    font-weight: 400;
+}

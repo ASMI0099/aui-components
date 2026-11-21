@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" href="data:,"/>
+    <title>aui-button</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../assets/examples.css"/>
+    <style>
+        .bt-grid { display: grid; grid-template-columns: 90px repeat(5, max-content); gap: 10px 12px; align-items: center; }
+        .bt-grid > .bt-head { font: 12px/1.4 ui-monospace, Consolas, monospace; color: #64748b; }
+        .bt-row { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; }
+        .bt-code { padding: 4px 8px; border-radius: 4px; background: #f1f5f9; color: #1f2328; font-size: 13px; }
+        .bt-table { border-collapse: collapse; width: 100%; max-width: 560px; font-size: 13px; }
+        .bt-table td { border-bottom: 1px solid #e5e7eb; padding: 8px 10px; }
+        .bt-table tr { cursor: pointer; }
+        .bt-table tr.is-picked td { background-color: var(--aui-control-accent-a05); }
+        .bt-products { border-collapse: collapse; width: 100%; max-width: 620px; font-size: 13px; }
+        .bt-products th { text-align: left; font-weight: 500; color: #64748b; padding: 6px 10px; border-bottom: 1px solid #e5e7eb; }
+        .bt-products td { border-bottom: 1px solid #e5e7eb; padding: 6px 10px; }
+        .bt-products .bt-variant td { background: #f8fafc; color: #475569; }
+        .bt-products .bt-variant td:nth-child(2) { padding-left: 26px; }
+        .bt-green { --aui-control-accent-color: #198754; display: inline-flex; gap: 10px; }
+        .bt-log { max-height: 140px; overflow: auto; font: 12px/1.6 ui-monospace, Consolas, monospace; color: #334155;
+                  background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; }
+    </style>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="../assets/examples.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="button.js"></script>
+</head>
+<body class="ex" ng-app="auiExamples" ng-controller="ButtonCtrl as vm">
+<ex-page heading="aui-button"
+         lead="A button with a native button inside; the element itself is its place on the page. Brand is the accent colour; every variant and intent meets WCAG AA contrast.">
+
+    <section class="ex-example" id="ex-looks">
+        <h2>Variants and intents</h2>
+        <div class="bt-grid">
+            <span class="bt-head"></span>
+            <span class="bt-head" ng-repeat="intent in vm.intents">{{ intent }}</span>
+            <div style="display: contents;" ng-repeat="variant in vm.variants">
+                <span class="bt-head">{{ variant }}</span>
+                <aui-button ng-repeat="intent in vm.intents" variant="{{ variant }}" intent="{{ intent }}">{{ intent === 'brand' ? 'Save' : 'Action' }}</aui-button>
+            </div>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-sizes">
+        <h2>Sizes, shapes, block</h2>
+        <div class="bt-row">
+            <aui-button ng-repeat="size in vm.sizes" size="{{ size }}">Size {{ size }}</aui-button>
+        </div>
+        <div class="bt-row" style="margin-top: 12px;">
+            <aui-button shape="pill" variant="soft">Pill</aui-button>
+            <aui-button shape="square" variant="outline" icon="settings" aria-label="Settings"></aui-button>
+            <div style="width: 240px;"><aui-button block="true" variant="outline" intent="neutral">Block: as wide as its place</aui-button></div>
+            <div style="width: 110px;"><aui-button block="true" variant="outline">A label longer than its place</aui-button></div>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-icons">
+        <h2>Icons</h2>
+        <p class="ex-example__text">The built-in icons by name (the popover's trigger icons too), or icon classes. An icon alone is square, named and with its tooltip by the icon (hover one).</p>
+        <div class="bt-row">
+            <aui-button ng-repeat="name in vm.icons" icon="{{ name }}" variant="outline" intent="neutral" size="sm">{{ name }}</aui-button>
+        </div>
+        <div class="bt-row" style="margin-top: 12px;">
+            <aui-button ng-repeat="name in vm.icons" icon="{{ name }}" variant="ghost" intent="neutral"></aui-button>
+        </div>
+        <div class="bt-row" style="margin-top: 12px;">
+            <aui-button icon="add">New product</aui-button>
+            <aui-button icon="download" icon-position="right" variant="outline">Export</aui-button>
+            <aui-button icon="delete" intent="danger" variant="soft">Delete</aui-button>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-copy">
+        <h2>Copy buttons</h2>
+        <p class="ex-example__text">copy-text copies the text with a click and shows a check and "Copied" for 2 seconds (a cross and
+            "Copy failed" when the browser refuses); a text button keeps its width. copy-feedback="none" copies and keeps its
+            look: here the page confirms with a notice. done-text shows the check after on-click's promise.</p>
+        <div class="bt-row">
+            <code class="bt-code">{{ vm.code }}</code>
+            <aui-button icon="copy" variant="ghost" intent="neutral" size="sm" copy-text="{{ vm.code }}"></aui-button>
+            <aui-button icon="copy" variant="outline" copy-text="{{ vm.link }}" on-copy="vm.note('copied: ' + $success)">Copy link</aui-button>
+            <aui-button icon="copy" variant="ghost" copy-text="{{ vm.code }}" copy-feedback="none"
+                        on-copy="vm.copiedQuietly($success)" aria-label="Copy the code (fixed icon)"></aui-button>
+            <aui-button icon="upload" on-click="vm.save()" done-text="Saved">Save, with done-text</aui-button>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-states">
+        <h2>Loading, waiting, disabled</h2>
+        <p class="ex-example__text">Loading keeps the width and the focus (Tab to a button, press Enter) and takes no click. on-click
+            returning a promise waits by itself: no second click, no double submit. loading-text shows a text of its own
+            meanwhile. Disabled keeps its tooltip.</p>
+        <div class="bt-row">
+            <aui-button loading="vm.busy" ng-click="vm.toggleBusy()">Toggle loading</aui-button>
+            <aui-button loading="vm.busy" icon="refresh" variant="outline">Refresh</aui-button>
+            <aui-button loading="vm.busy" variant="soft" intent="danger">Delete</aui-button>
+            <aui-button on-click="vm.save()" icon="upload">Save (waits 1.5 s)</aui-button>
+            <aui-button on-click="vm.save()" loading-text="Saving...">Save, with loading-text</aui-button>
+            <aui-button disabled="true" title="Pick a row first" variant="outline">Disabled, with a tooltip</aui-button>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-expand">
+        <h2>Opening a row's variants (expanded)</h2>
+        <p class="ex-example__text">expanded="row.open": the chevron points right while closed and turns down when open; the button
+            flips the value itself. The variants come from the server on the first opening: on-click returns the request, the
+            spinner shows in the chevron's place, and the row opens once they arrive ("Desk lamp" fails once: it stays
+            closed). Expand all sets the values from the page.</p>
+        <div class="bt-row" style="margin-bottom: 8px">
+            <aui-button variant="outline" intent="neutral" size="sm" ng-click="vm.expandAll(true)">Expand all</aui-button>
+            <aui-button variant="outline" intent="neutral" size="sm" ng-click="vm.expandAll(false)">Collapse all</aui-button>
+            <span style="margin-left: 16px"></span>
+            <aui-button variant="link" expanded="vm.linkOpen" on-click="vm.loadLink($expanded)">Variants (3)</aui-button>
+            <aui-button variant="link" expanded="vm.looks.more" expand-icon="show-more">Show more</aui-button>
+            <aui-button variant="link" expanded="vm.looks.double" expand-icon="show-more-double">Show all</aui-button>
+            <aui-button variant="link" expanded="vm.looks.caret" expand-icon="caret">Variants (3)</aui-button>
+            <aui-button variant="link" expanded="vm.looks.plus" expand-icon="plus">Variants (3)</aui-button>
+            <aui-button variant="link" icon="pencil">Change the price</aui-button>
+        </div>
+        <table class="bt-products">
+            <thead><tr><th style="width: 40px"></th><th>Product</th><th>Price</th><th>Stock</th></tr></thead>
+            <tbody ng-repeat="g in vm.products track by g.id">
+                <tr>
+                    <td><aui-button variant="ghost" intent="neutral" size="sm" expanded="g.open" controls="{{ 'variants-' + g.id }}"
+                                    on-click="vm.loadVariants(g, $expanded)"></aui-button></td>
+                    <td>{{ g.name }}</td><td>{{ g.price }}</td><td>{{ g.stock }}</td>
+                </tr>
+                <tr class="bt-variant" ng-repeat="s in g.variants" ng-if="g.open" ng-attr-id="{{ $first ? 'variants-' + g.id : undefined }}"><td></td><td>{{ s.name }}</td><td>{{ s.price }}</td><td>{{ s.stock }}</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section class="ex-example" id="ex-row">
+        <h2>In a clickable row</h2>
+        <p class="ex-example__text">A click on a row picks it. A disabled or loading button in it takes the click itself: the row is not picked.</p>
+        <table class="bt-table">
+            <tr ng-repeat="row in vm.rows" ng-class="{'is-picked': row.picked}" ng-click="row.picked = !row.picked">
+                <td>{{ row.name }}</td>
+                <td style="text-align: right;">
+                    <aui-button size="sm" variant="link" icon="edit" ng-click="$event.stopPropagation(); vm.note('edit ' + row.name)">Edit</aui-button>
+                    <aui-button size="sm" variant="link" intent="danger" disabled="row.stock > 0" title="Only an empty item can be deleted"
+                                ng-click="$event.stopPropagation(); vm.note('delete ' + row.name)">Delete</aui-button>
+                </td>
+            </tr>
+        </table>
+    </section>
+
+    <section class="ex-example" id="ex-accent">
+        <h2>The accent colour</h2>
+        <p class="ex-example__text">A container that sets --aui-control-accent-color gets matching brand buttons (and fields).</p>
+        <span class="bt-green">
+            <aui-button>Green</aui-button>
+            <aui-button variant="soft">Soft</aui-button>
+            <aui-button variant="outline">Outline</aui-button>
+        </span>
+    </section>
+
+    <section class="ex-example" id="ex-log">
+        <h2>Clicks</h2>
+        <div class="bt-log"><div ng-repeat="line in vm.lines track by $index">{{ line }}</div><div ng-if="!vm.lines.length">Nothing yet</div></div>
+    </section>
+</ex-page>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-input: aui-textarea, search, cell style</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(3, 300px); gap: 14px 18px; align-items: start; margin-bottom: 14px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        table { border-collapse: collapse; background: #fff; }
+        td { border: 1px solid #e2e8f0; padding: 4px; width: 200px; }
+        .bottom-spacer { height: 360px; }
+        /* a page's general label rules, as CSS frameworks and admin themes write them */
+        label { float: left; width: 100px; text-align: left; line-height: 30px; }
+        label { display: inline-block; margin-bottom: 5px; }
+        label { font-weight: normal; font-size: 13px; }
+        td > label, th > label { margin-bottom: 0; line-height: inherit; vertical-align: middle; }
+        /* a page's label colour in a form block (bootstrap-like), stronger than a class */
+        .form-group label { color: #333; font-weight: 700; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="input-more.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="input-more.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="MoreCtrl">
+<h1>aui-textarea, the search preset, the cell style</h1>
+<form name="f" novalidate>
+    <div class="grid">
+        <div id="ta"><aui-textarea name="note" ng-model="m.note" show-label label-text="Note" required value-max-length="20" show-count
+                                   rows="3" clearable on-finish="finished($event)"></aui-textarea></div>
+        <div id="ta-auto"><aui-textarea ng-model="m.auto" auto-height rows="2" max-rows="5" placeholder="Grows with its text"></aui-textarea></div>
+        <div id="ta-strict"><aui-textarea ng-model="m.strict" value-max-length="5" enforce-limits show-count></aui-textarea></div>
+        <div id="ta-top"><aui-textarea ng-model="m.top" show-label label-text="On top" label-position="top" hint-text="A hint"></aui-textarea></div>
+        <div id="ta-rep"><aui-textarea ng-repeat="r in rows track by $index" name="rep{{ $index }}" id="rep{{ $index }}" class="rep-wrap"
+                                       ng-model="r.v" required rows="2"></aui-textarea></div>
+        <div id="search"><aui-input ng-model="m.q" input-style-type="form" search on-search="searched($value)" clearable
+                                    search-debounce="80" searching="state.busy" placeholder="Search"></aui-input></div>
+        <div id="search2"><aui-input ng-model="m.q2" input-style-type="form" search on-search="searched2($value)" placeholder="Search on Enter"></aui-input></div>
+        <div id="bold-form"><aui-input ng-model="m.bold" input-style-type="form" input-text-bold="true"></aui-input></div>
+        <div id="bold-basic"><aui-input ng-model="m.bold" input-text-bold="true" placeholder="Bold"></aui-input></div>
+        <div id="bold-ta"><aui-textarea ng-model="m.bold" input-text-bold="true"></aui-textarea></div>
+        <div id="bold-ro"><aui-input ng-model="m.bold" input-style-type="form" input-text-bold="true" readonly></aui-input></div>
+        <div id="plain"><aui-input ng-model="m.bold" input-style-type="form"></aui-input></div>
+        <div id="basic-group" class="form-group"><aui-input ng-model="m.basic" placeholder="Enter the reason"></aui-input></div>
+        <div id="type-file"><aui-input ng-model="m.typeFile" input-style-type="form" input-type="file" clearable></aui-input></div>
+        <div id="type-range"><aui-input ng-model="m.typeRange" input-type="range"></aui-input></div>
+        <div id="type-email"><aui-input ng-model="m.typeEmail" input-style-type="form" input-type="email"></aui-input></div>
+        <div id="type-tel"><aui-input ng-model="m.typeTel" input-style-type="form" input-type="tel"></aui-input></div>
+        <div id="type-num"><aui-input ng-model="m.typeNum" input-style-type="form" input-type="number"></aui-input></div>
+    </div>
+    <table>
+        <tr>
+            <td id="cell"><aui-input name="cellv" ng-model="m.cellValue" input-style-type="cell" show-label label-text="Hidden" required></aui-input></td>
+            <td id="cell-empty"><aui-input name="celle" ng-model="m.cellEmpty" input-style-type="cell" required></aui-input></td>
+        </tr>
+    </table>
+</form>
+<div class="bottom-spacer"></div>
+</body>
+</html>

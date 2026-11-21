@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: aui-input, aui-select, aui-tree-select alike</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(3, 300px); gap: 12px 16px; margin-bottom: 14px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 420px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="field-parity.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="field-parity.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="ParityCtrl">
+<h1>aui-input next to aui-select and aui-tree-select</h1>
+<form name="f" novalidate>
+    <div class="grid" id="empty">
+        <aui-input ng-model="m.ie" input-style-type="form" show-label="true" label-text="Hall" placeholder="Type a hall"></aui-input>
+        <aui-select ng-model="m.se" options="options" show-label label-text="Hall" placeholder="Pick a hall"></aui-select>
+        <aui-tree-select ng-model="m.te" options="nodes" show-label label-text="Hall" placeholder="Pick a hall"></aui-tree-select>
+    </div>
+    <div class="grid" id="required">
+        <aui-input name="ireq" ng-model="m.ireq" input-style-type="form" show-label="true" label-text="Hall" required></aui-input>
+        <aui-select name="sreq" ng-model="m.sreq" options="options" show-label label-text="Hall" required></aui-select>
+        <aui-tree-select name="treq" ng-model="m.treq" options="nodes" show-label label-text="Hall" required></aui-tree-select>
+    </div>
+    <div class="grid" id="readonly">
+        <aui-input ng-model="m.iro" input-style-type="form" show-label="true" label-text="Hall" readonly="state.ro"></aui-input>
+        <aui-select ng-model="m.sro" options="options" show-label label-text="Hall" clearable readonly="state.ro"></aui-select>
+        <aui-tree-select ng-model="m.tro" options="nodes" show-label label-text="Hall" clearable readonly="state.ro"></aui-tree-select>
+    </div>
+    <div class="grid" id="readonly-multi">
+        <span></span>
+        <aui-select ng-model="m.smro" options="options" multiple clearable readonly="state.ro"></aui-select>
+        <aui-tree-select ng-model="m.tmro" options="nodes" multiple check-strictly clearable readonly="state.ro"></aui-tree-select>
+    </div>
+    <div class="grid" id="readonly-auto">
+        <span></span>
+        <aui-select name="sauto" ng-model="m.sauto" options="one" required auto-select-on-single-required="true" readonly></aui-select>
+        <aui-tree-select name="tauto" ng-model="m.tauto" options="oneNode" required auto-select-on-single-required readonly></aui-tree-select>
+    </div>
+    <div class="grid" id="disabled">
+        <span></span>
+        <aui-select ng-model="m.sdis" options="options" disabled="state.dis"></aui-select>
+        <aui-tree-select ng-model="m.tdis" options="nodes" disabled="state.dis"></aui-tree-select>
+    </div>
+    <div class="grid" id="long-label">
+        <aui-input ng-model="m.il" input-style-type="form" show-label="true" label-text="Belongs product category of the hall" placeholder="Text"></aui-input>
+        <aui-select ng-model="m.sl" options="options" show-label label-text="Belongs product category of the hall" placeholder="Pick"></aui-select>
+        <aui-tree-select ng-model="m.tl" options="nodes" show-label label-text="Belongs product category of the hall" placeholder="Pick"></aui-tree-select>
+    </div>
+</form>
+<div class="bottom-spacer"></div>
+</body>
+</html>

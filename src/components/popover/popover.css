@@ -1,0 +1,264 @@
+/*
+ * aui-popover.
+ */
+
+/* aui-popover: a trigger (the page's own, or an edit icon) and a card next to it. The card is shown in the top layer
+   (popover="manual": no container of the page clips or covers it; a browser without the Popover API: fixed or
+   absolute, over the page) with --shown, and in its open pose with --in: opacity and transform only, which the
+   compositor animates. It comes from the trigger's side (data-side). The class names popover-container,
+   popover-trigger and popover-panel are the ones pages select. The content keeps the page's own text and spacing: only
+   the title and the footer are the card's own. */
+.aui-popover {
+    position: relative;
+    width: fit-content;
+    max-width: 100%;
+}
+
+/* the trigger: a block of its own width, as before. A page's rules for [role="button"], links and :focus do not reach it. */
+.aui-popover .aui-popover__trigger {
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background-color: transparent;
+    color: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    transition: color var(--aui-motion-duration) var(--aui-motion-ease-color),
+                background-color var(--aui-motion-duration) var(--aui-motion-ease-color),
+                box-shadow var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+/* The popover's own trigger (a trigger of the page's own keeps the page's look). An icon alone: a 24px target around
+   the icon (1.25em of the trigger's text, as aui-button's icons: 16px at 13px), which keeps its own place in the line
+   (the negative margin, half the room between them). An icon with its text: one target, as high as the text, the icon
+   at the text's size, 4px between them. */
+.aui-popover .aui-popover__trigger--icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 24px;
+    max-width: none;   /* its place in the line is the icon's: 100% of it would cut the target to the icon */
+    height: 24px;
+    margin: calc((1.25em - 24px) / 2);
+    font-size: calc(var(--aui-font-13) * 1px);   /* the components' type, not the page's text around it */
+}
+
+/* (the family's own type, as the fields': a page's sizes, line heights and letter spacing do not reach it; its target
+   reaches 4px past its place on each side, so its text keeps all of that place, under any box-sizing of the page) */
+.aui-popover .aui-popover__trigger--labelled {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-sizing: border-box;
+    max-width: calc(100% + 8px);
+    padding: 2px 4px;
+    margin: -2px -4px;
+    font-size: calc(var(--aui-font-13) * 1px);
+    font-style: normal;
+    font-weight: 400;
+    line-height: 18px;
+    letter-spacing: normal;
+    text-transform: none;
+    white-space: nowrap;
+}
+
+/* its text: cut with an ellipsis when its room is too narrow (a narrow cell; then its tooltip); a page's span rule
+   (padding, bold) does not reach it */
+.aui-popover .aui-popover__trigger-text {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    overflow: hidden;
+    font-weight: inherit;
+    text-overflow: ellipsis;
+}
+
+/* the line icons at 1.25em of the trigger's text, as aui-button's */
+.aui-popover__icon {
+    display: block;
+    flex: none;
+    width: 1.25em;
+    height: 1.25em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* (a page's path rule, its fill and stroke, does not reach the icon's line) */
+.aui-popover__icon path {
+    fill: none;
+    stroke: inherit;
+}
+
+/* its tone (trigger-tone): link (a trigger with a text), muted (an icon alone), text (the page's text colour), danger;
+   on hover and while its card is open, blue (danger: red) on a soft tint */
+.aui-popover .aui-popover__trigger--link { color: var(--aui-control-accent-color); }
+.aui-popover .aui-popover__trigger--muted { color: var(--aui-control-muted-color); }
+.aui-popover .aui-popover__trigger--text { color: inherit; }
+.aui-popover .aui-popover__trigger--danger { color: var(--aui-control-invalid-color); }
+
+.aui-popover .aui-popover__trigger--icon:hover:not(.aui-popover__trigger--disabled),
+.aui-popover .aui-popover__trigger--labelled:hover:not(.aui-popover__trigger--disabled),
+.aui-popover .aui-popover__trigger--icon.aui-popover__trigger--open,
+.aui-popover .aui-popover__trigger--labelled.aui-popover__trigger--open {
+    background-color: var(--aui-control-accent-a08);
+    color: var(--aui-control-accent-color);
+}
+
+.aui-popover .aui-popover__trigger--danger:hover:not(.aui-popover__trigger--disabled),
+.aui-popover .aui-popover__trigger--danger.aui-popover__trigger--open {
+    background-color: var(--aui-control-invalid-a091);
+    color: var(--aui-control-invalid-color);
+}
+
+/* disabled: the trigger does not open it */
+.aui-popover .aui-popover__trigger--disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+}
+
+/* the keyboard's focus only, and the card's own (a page's *:focus outline does not reach them) */
+.aui-popover .aui-popover__trigger:focus,
+.aui-popover .aui-popover__panel:focus {
+    outline: none !important;
+}
+
+/* (not while its card is open: the open look shows where it is, and a press on the trigger focused by the keyboard
+   would keep the ring) */
+.aui-popover .aui-popover__trigger:focus-visible:not(.aui-popover__trigger--open) {
+    box-shadow: 0 0 0 2px var(--aui-control-accent-color);
+}
+
+/* High contrast (forced colours): no shadows there; the focus shows as an outline */
+@media (forced-colors: active) {
+    .aui-popover .aui-popover__trigger:focus-visible {
+        outline: 2px solid CanvasText !important;
+        outline-offset: 1px;
+    }
+}
+
+.aui-popover__panel {
+    display: none;
+    position: fixed;
+    right: auto;
+    bottom: auto;
+    z-index: 1060;
+    box-sizing: border-box;
+    width: max-content;
+    height: auto;
+    min-width: 160px;
+    /* a reading width (a long note wraps; --aui-popover-max-width on the popover or a container: another), never wider
+       than the screen */
+    max-width: calc(100vw - 16px);
+    max-width: min(var(--aui-popover-max-width, 480px), calc(100vw - 16px));
+    margin: 0;
+    padding: 0;
+    overflow: visible;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 10px;
+    background-color: var(--aui-control-background-color);
+    /* the card's own text colour on its own background (a popover in a dark bar of the page stays readable) */
+    color: var(--aui-control-value-color);
+    text-align: left;
+    white-space: normal;
+    cursor: default;
+    box-shadow: 0 2px 4px -1px rgba(15, 23, 42, 0.05),
+                0 8px 16px -4px rgba(15, 23, 42, 0.08),
+                0 24px 48px -12px rgba(15, 23, 42, 0.18);
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.96);
+    will-change: transform, opacity;
+    /* the close: shorter than the opening (--in) */
+    transition: opacity 0.12s var(--aui-motion-ease-color), transform 0.12s var(--aui-motion-ease-color);
+}
+
+.aui-popover__panel--shown {
+    display: block;
+}
+
+/* its closed pose: a little towards the trigger, and it grows out of that side (data-side: set with its place) */
+.aui-popover__panel[data-side="bottom"] { transform: translateY(-4px) scale(0.96); transform-origin: top; }
+.aui-popover__panel[data-side="top"] { transform: translateY(4px) scale(0.96); transform-origin: bottom; }
+.aui-popover__panel[data-side="right"] { transform: translateX(-4px) scale(0.96); transform-origin: left; }
+.aui-popover__panel[data-side="left"] { transform: translateX(4px) scale(0.96); transform-origin: right; }
+
+.aui-popover__panel.aui-popover__panel--in {
+    opacity: 1;
+    pointer-events: auto;
+    transform: none;
+    transition: opacity var(--aui-motion-duration) var(--aui-motion-ease-color),
+                transform var(--aui-motion-duration-shape) var(--aui-motion-ease);
+}
+
+/* taller than the room on its side: it scrolls */
+.aui-popover__panel--scroll {
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aui-popover .aui-popover__panel[data-side] {
+        transform: none;
+    }
+}
+
+.aui-popover__title {
+    padding: 12px 16px 0;
+    color: var(--aui-control-value-color);
+    font-size: calc(var(--aui-font-14) * 1px);
+    font-weight: 600;
+    font-style: normal;
+    line-height: 1.45;
+    letter-spacing: normal;
+    text-transform: none;
+}
+
+/* The content's room (content-padding): 16px from the sides as the title and the footer, 12px above and below (8px
+   under a title); compact: smaller; none: the content brings its own. Its parts one under the other, 12px apart (:where:
+   any margin rule of the page wins). (> .aui-popover__body >: a popover in the content keeps its own.) */
+.aui-popover__content {
+    position: relative;
+    padding: 12px 16px;
+}
+
+.aui-popover__title + .aui-popover__content {
+    padding-top: 8px;
+}
+
+.aui-popover__panel[data-padding="compact"] > .aui-popover__body > .aui-popover__content {
+    padding: 8px 12px;
+}
+
+.aui-popover__panel[data-padding="none"] > .aui-popover__body > .aui-popover__content {
+    padding: 0;
+}
+
+.aui-popover__content > popover-content {
+    display: block;
+}
+
+:where(.aui-popover__content > popover-content > * + *) {
+    margin-top: 12px;
+}
+
+.aui-popover__footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 4px 16px 12px;
+}
+
+/* the span Angular puts around a button's text: a page's span rule (padding, bold) does not reach it */
+.aui-popover__footer .aui-button__label > span {
+    padding: 0;
+    font-weight: inherit;
+}

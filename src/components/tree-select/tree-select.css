@@ -1,0 +1,424 @@
+/*
+ * aui-tree-select.
+ */
+
+/* The root carries both .aui-select and .aui-tree-select: the trigger, panel, search box, tags, clear button,
+   chevron, loading and empty states use the aui-select rules above, so both dropdowns look and move the same.
+   Rows reuse .aui-select__option (hover, selected, disabled, accent bar); only tree-specific parts follow. */
+.aui-tree-select {
+    --aui-tree-select-indent: 18px;
+}
+
+.aui-tree-select__spacer {
+    display: block;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    pointer-events: none;
+}
+
+/* The panel keeps aui-select's transitions (opacity and transform; its corners change at once) and adds height, used
+   only while it resizes (a branch opening or closing); its height is otherwise automatic, so nothing else animates. */
+.aui-select__panel.aui-tree-select__panel {
+    transition: opacity var(--aui-motion-duration) var(--aui-motion-ease),
+                transform var(--aui-motion-duration-shape) var(--aui-motion-ease),
+                height var(--aui-motion-duration-shape) var(--aui-motion-ease);
+}
+
+.aui-select__panel.aui-tree-select__panel--resizing {
+    overflow: hidden !important;
+}
+
+/* Tree row: one line, indented by depth */
+.aui-select__option.aui-tree-select__node {
+    display: flex;
+    align-items: center;
+    padding-left: calc(6px + var(--aui-tree-depth, 0) * var(--aui-tree-select-indent, 18px));
+    white-space: nowrap;
+}
+
+/* Multiple mode uses the checkbox indicator: hide the accent bar (as in aui-select) */
+.aui-tree-select__panel--multiple .aui-select__option::after {
+    display: none;
+}
+
+/* Keyboard position, shown only while the keyboard is used */
+/* Keyboard highlight of the active option (aui-select options, aui-tree-select rows) */
+.aui-select__panel--keyboard .aui-select__option--active {
+    background-color: var(--aui-control-accent-a06);
+    box-shadow: inset 0 0 0 1.5px var(--aui-control-accent-a45);
+}
+
+/* Rows of the previous search: Enter / Space do not act on them, so none looks like the keyboard's target */
+.aui-select__panel--keyboard .aui-select__options--stale .aui-select__option--active {
+    box-shadow: none;
+}
+
+/* Expand / collapse caret */
+.aui-tree-select__caret {
+    position: relative;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    width: 18px;
+    height: 18px;
+    margin-right: 4px;
+    border-radius: 4px;
+    align-items: center;
+    justify-content: center;
+    color: #6b7280;
+    cursor: pointer;
+    /* its hovered colours change at once (a fade repainted the page on every frame); its turn moves (::before) */
+}
+
+/* its display under .aui-tree-select (0,2,0): the caret is aria-hidden, and a page's rule for [aria-hidden="true"] (as
+   strong as one class) must not change its box (its states change only its visibility) */
+.aui-tree-select .aui-tree-select__caret {
+    display: inline-flex;
+}
+
+.aui-tree-select__caret::before {
+    content: "";
+    display: block;
+    width: 12px;
+    height: 12px;
+    opacity: 1;
+    background-color: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 6L8 10.5L12.5 6'/%3E%3C/svg%3E") center / 12px 12px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 6L8 10.5L12.5 6'/%3E%3C/svg%3E") center / 12px 12px no-repeat;
+    transform: rotate(-90deg);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.15s ease;
+}
+
+/* Spinner, crossfaded with the chevron while children load */
+.aui-tree-select__caret::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    box-sizing: border-box;
+    width: 11px;
+    height: 11px;
+    margin: -5.5px 0 0 -5.5px;
+    border: 2px solid var(--aui-control-accent-a15);
+    border-top-color: var(--aui-control-accent-color);
+    border-right-color: var(--aui-control-accent-color);
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    pointer-events: none;
+}
+
+.aui-tree-select__caret:hover {
+    background-color: rgba(15, 23, 42, 0.06);
+    color: #4b5563;
+}
+
+.aui-tree-select__node--expanded > .aui-tree-select__caret::before {
+    transform: rotate(0deg);
+}
+
+.aui-tree-select__node--leaf > .aui-tree-select__caret {
+    visibility: hidden;
+    pointer-events: none;
+}
+
+/* selectable-field: a group without children has nothing to do on a click */
+.aui-tree-select__node--group.aui-tree-select__node--leaf {
+    cursor: default;
+}
+
+/* Children loading: after 120 ms (quick loads never show it) the caret crossfades into a spinner */
+.aui-tree-select__node--loading > .aui-tree-select__caret {
+    cursor: progress;
+}
+
+.aui-tree-select__node--loading > .aui-tree-select__caret::before {
+    opacity: 0;
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.15s ease 0.12s;
+}
+
+.aui-tree-select__node--loading > .aui-tree-select__caret::after {
+    opacity: 1;
+    transition: opacity 0.15s ease 0.12s;
+    animation: aui-tree-select-spin 0.7s linear infinite;
+}
+
+/* Children failed to load: the caret becomes a retry button */
+.aui-tree-select__node--error > .aui-tree-select__caret {
+    color: var(--aui-control-invalid-color);
+}
+
+.aui-tree-select__node--error > .aui-tree-select__caret::before {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 8a5 5 0 1 1-1.46-3.54'/%3E%3Cpath d='M13 2.5v3h-3'/%3E%3C/svg%3E") center / 12px 12px no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13 8a5 5 0 1 1-1.46-3.54'/%3E%3Cpath d='M13 2.5v3h-3'/%3E%3C/svg%3E") center / 12px 12px no-repeat;
+    transform: none;
+}
+
+/* Checkbox (multiple): same look as the aui-select multiple checkbox, plus the partly-checked state */
+.aui-tree-select__checkbox {
+    position: relative;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+    width: 17px;
+    height: 17px;
+    margin-right: 8px;
+    border: 1px solid #8792a2;   /* aui-checkbox's unchecked border: 3:1 against white */
+    border-radius: 4px;
+    background-color: var(--aui-control-background-color);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    /* it never moves (as aui-checkbox); hovered, its border takes the accent at once */
+}
+
+/* The checked (or partly checked) face: the box in that look, laid over it and faded in and out by its opacity, as
+   aui-select's (a fade of the box's own colours repainted the page on every frame of each check). */
+.aui-tree-select__checkbox::after {
+    content: '';
+    position: absolute;
+    top: -1.5px;
+    right: -1.5px;
+    bottom: -1.5px;
+    left: -1.5px;
+    box-sizing: border-box;
+    border: 1.5px solid var(--aui-control-accent-color);
+    border-radius: 4px;
+    background-color: var(--aui-control-accent-color);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 13px 13px;
+    box-shadow: 0 2px 4px -1px var(--aui-control-accent-a32),
+                inset 0 1px 0 rgba(255, 255, 255, 0.32);
+    opacity: 0;
+    pointer-events: none;
+    /* a compositor layer of its own for good, as aui-select's face (a layer for each fade repainted the page at its end) */
+    will-change: opacity;
+    transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aui-tree-select__node:hover > .aui-tree-select__checkbox {
+    border-color: var(--aui-control-accent-color);
+}
+
+.aui-tree-select__node--checked > .aui-tree-select__checkbox::after,
+.aui-tree-select__node--half > .aui-tree-select__checkbox::after {
+    opacity: 1;
+}
+
+.aui-tree-select__node--checked > .aui-tree-select__checkbox::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.5 3.5L13 5'/%3E%3C/svg%3E");
+}
+
+.aui-tree-select__node--half > .aui-tree-select__checkbox::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M4 8h8'/%3E%3C/svg%3E");
+}
+
+.aui-select__option--disabled > .aui-tree-select__checkbox,
+.aui-select__option--disabled:hover > .aui-tree-select__checkbox {
+    background-color: #f5f7fa;
+    border-color: #e5e7eb;
+    box-shadow: none;
+    transform: none;
+}
+
+.aui-select__option--disabled > .aui-tree-select__checkbox::after {
+    background-color: #f5f7fa;
+    border-color: #e5e7eb;
+    box-shadow: none;
+}
+
+.aui-select__option--disabled.aui-tree-select__node--checked > .aui-tree-select__checkbox::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23b4bac4' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.5 3.5L13 5'/%3E%3C/svg%3E");
+}
+
+.aui-select__option--disabled.aui-tree-select__node--half > .aui-tree-select__checkbox::after {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23b4bac4' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M4 8h8'/%3E%3C/svg%3E");
+}
+
+/* Disabled rows can still be opened */
+.aui-select__option--disabled > .aui-tree-select__caret {
+    cursor: pointer;
+}
+
+.aui-tree-select__label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* show-line: guide lines through the caret centres of the ancestor levels (6px row padding + half a caret) */
+.aui-tree-select--lines .aui-select__option.aui-tree-select__node::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    bottom: -1px;
+    left: 15px;
+    width: calc(var(--aui-tree-depth, 0) * var(--aui-tree-select-indent, 18px));
+    background-image: repeating-linear-gradient(to right,
+        #e3e8ef 0, #e3e8ef 1px,
+        transparent 1px, transparent var(--aui-tree-select-indent, 18px));
+    pointer-events: none;
+}
+
+/* Rows revealed by opening a branch or by data arriving slide in once, one after another (capped stagger) */
+.aui-tree-select__node--enter {
+    animation: aui-tree-select-node-enter 0.2s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(min(var(--aui-tree-enter-index, 0), 10) * 18ms);
+}
+
+/* Whole-panel loading: fades in after 80 ms (fast loads never flash it); when data arrives it leaves the layout
+   at once and fades out over the incoming rows (crossfade; the fade-out is run from script, from its current
+   opacity). */
+.aui-tree-select__body {
+    position: relative;
+}
+
+/* An animation (not a transition) for the fade-in: it also runs when the panel itself is just being displayed. */
+.aui-select__loading.aui-tree-select__loading {
+    animation: aui-tree-select-loading-in 0.15s ease 0.08s both;
+}
+
+.aui-select__loading.aui-tree-select__loading--hidden .aui-select__spinner {
+    animation: none;   /* hidden: nothing to turn (it kept the renderer busy while the panel was open) */
+}
+
+.aui-select__loading.aui-tree-select__loading--hidden {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    animation: none;
+}
+
+@keyframes aui-tree-select-loading-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Tags that cannot be removed (disabled nodes) have no remove button. Without it, the aui-select text cap
+   (max-width: 92% of the tag's own width) would cut even short names, so the text may use the whole tag instead
+   and still ends in an ellipsis when the tag reaches its own max-width. */
+.aui-select__tag.aui-select__tag--locked {
+    padding: 2px 10px;
+    color: var(--aui-control-muted-color);
+}
+
+.aui-select__tag.aui-select__tag--locked .aui-select__tag-text {
+    max-width: none;
+    min-width: 0;
+}
+
+/* Server-side search: spinner in place of the search icon, "Searching..." row, note when the server found more */
+.aui-select__search-spinner {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    width: 14px;
+    height: 14px;
+    margin-top: -7px;
+    box-sizing: border-box;
+    pointer-events: none;
+    animation: spin 0.7s linear infinite, aui-tree-select-loading-in 0.15s ease both;
+}
+
+.aui-select__search--busy .aui-select__search-icon {
+    opacity: 0;
+}
+
+/* "Searching...": a server search with nothing to show yet (both components) */
+.aui-select__searching,
+.aui-tree-select__searching {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.aui-tree-select__more {
+    margin: 4px 4px 0;
+    padding: 8px 12px 6px;
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
+    color: var(--aui-control-muted-color);
+    font-size: calc(var(--aui-font-12) * 1px);
+    line-height: 1.4;
+    text-align: center;
+    list-style: none;
+}
+
+.aui-tree-select__retry {
+    cursor: pointer;
+}
+
+.aui-tree-select__retry-link {
+    color: var(--aui-control-accent-color);
+    text-decoration: underline;
+}
+
+/* Children that come in pages: a "Load more" row after the last loaded child */
+.aui-select__option.aui-tree-select__more-row {
+    color: var(--aui-control-accent-color);
+    font-size: calc(var(--aui-font-13) * 1px);
+}
+
+.aui-select__option.aui-tree-select__more-row--loading {
+    color: var(--aui-control-muted-color);
+    cursor: default;
+}
+
+.aui-select__option.aui-tree-select__more-row--error {
+    color: var(--aui-control-invalid-color);
+}
+
+@keyframes aui-tree-select-node-enter {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes aui-tree-select-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aui-tree-select__node--enter {
+        animation: none;
+    }
+
+    .aui-select__loading.aui-tree-select__loading {
+        animation: none;
+    }
+
+    .aui-tree-select__caret::after,
+    .aui-tree-select__node--loading > .aui-tree-select__caret::before,
+    .aui-tree-select__node--loading > .aui-tree-select__caret::after {
+        transition: none;
+    }
+
+    .aui-select__panel.aui-tree-select__panel {
+        transition: opacity var(--aui-motion-duration) var(--aui-motion-ease),
+                    transform var(--aui-motion-duration-shape) var(--aui-motion-ease);
+    }
+
+    .aui-tree-select__caret::before {
+        transition: none;
+    }
+}
+
+.aui-select__panel.aui-select__panel--open {
+    transition-timing-function: var(--aui-motion-ease-color), var(--aui-motion-ease), var(--aui-motion-ease);
+}

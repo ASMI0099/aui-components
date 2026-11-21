@@ -1,0 +1,147 @@
+/*
+ * The clear button of the fields.
+ */
+
+/* ==================== Unified aui-control-clear Component ==================== */
+/* Self-contained clear button component for form controls (aui-select, aui-input, etc.) */
+.aui-control-clear {
+    position: absolute !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    right: var(--aui-clear-offset, 8px) !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    width: 24px !important;
+    height: 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50% !important;
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+    z-index: 2 !important;
+    /* a layer of its own only while pressed (it shrinks): still, it is drawn on the field's whole pixels */
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.aui-control-clear:focus-visible {
+    outline: 2px solid var(--aui-control-accent-color) !important;
+    outline-offset: 1px !important;
+}
+
+.aui-control-clear:focus:not(:focus-visible) {
+    outline: none !important;
+}
+
+.aui-control-clear-svg {
+    width: 18px !important;
+    height: 18px !important;
+    display: block !important;
+    pointer-events: none !important;
+    border-radius: 50% !important;
+}
+
+/* the colours of the clear button change at once (its press still moves it, on the compositor): a colour fade
+   repainted the page on every frame */
+.aui-control-clear-bg {
+    fill: #EDF1F5;
+}
+
+.aui-control-clear-cross {
+    stroke: #505A69;
+    stroke-width: 1.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* Hover state: modern dark slate circle with crisp white cross */
+.aui-control-clear:hover .aui-control-clear-bg {
+    fill: #596273;
+}
+
+.aui-control-clear:hover .aui-control-clear-cross {
+    stroke: #FFFFFF;
+}
+
+/* Active click state: tactile press feedback */
+.aui-control-clear:active {
+    transform: translateY(-50%) scale(0.92) !important;
+}
+
+.aui-control-clear:active .aui-control-clear-bg {
+    fill: #434955;
+}
+
+/* Fallback for clear elements without inline SVG */
+.aui-control-clear:not(:has(svg)) {
+    background-color: transparent !important;
+    color: #505A69 !important;
+}
+
+.aui-control-clear:not(:has(svg))::before {
+    content: "" !important;
+    display: block !important;
+    width: 18px !important;
+    height: 18px !important;
+    border-radius: 50% !important;
+    flex-shrink: 0 !important;
+    background-color: #EDF1F5 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23505A69' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 4.5l7 7M11.5 4.5l-7 7'/%3E%3C/svg%3E") !important;
+    background-position: center !important;
+    background-size: 8px 8px !important;
+    background-repeat: no-repeat !important;
+    pointer-events: none !important;
+}
+
+.aui-control-clear:not(:has(svg)):hover::before {
+    background-color: #596273 !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23FFFFFF' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 4.5l7 7M11.5 4.5l-7 7'/%3E%3C/svg%3E") !important;
+}
+
+.aui-control-clear--hidden {
+    display: none !important;
+}
+
+/* The clear button fades in when it comes (the first character typed, a value set, the pointer over a select): its
+   circle grows in from 0.85 on the fields' colour curve. On the circle, not the button: the button's own transform
+   (its centring) is !important, which an animation cannot change. Shown again after display: none, it runs again. */
+.aui-control-clear:not(.aui-control-clear--hidden) .aui-control-clear-svg {
+    animation: aui-clear-in 0.15s var(--aui-motion-ease-color);
+}
+
+@keyframes aui-clear-in {
+    from {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Control-level offsets and trigger padding */
+.aui-select {
+    --aui-clear-offset: 24px;
+}
+
+.aui-input {
+    --aui-clear-offset: 8px;
+}
+
+.aui-input--clearable-active input.aui-input__form-field,
+.aui-input:has(.aui-control-clear:not(.aui-control-clear--hidden)) input.aui-input__form-field,
+.aui-input--clearable-active input.aui-input-field,
+.aui-input:has(.aui-control-clear:not(.aui-control-clear--hidden)) input.aui-input-field {
+    padding-right: 28px !important;
+}
+
+.aui-input--disabled .aui-control-clear,
+.aui-input--readonly .aui-control-clear,
+.aui-select--disabled .aui-control-clear {
+    display: none !important;
+}

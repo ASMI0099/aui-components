@@ -1,0 +1,113 @@
+/* Suite pages: fixtures above, the report on top once the run has finished. */
+.aui-test-page {
+    margin: 16px;
+    background: #f6f7f9;
+    color: #1f2937;
+    font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.aui-test-page .host {
+    width: 320px;
+    margin: 8px 0;
+}
+
+.aui-test-report {
+    margin: 0 0 16px;
+    padding: 10px 12px;
+    border-left: 4px solid #9ca3af;
+    background: #fff;
+    font: 12px/1.5 Consolas, "Cascadia Mono", monospace;
+}
+
+.aui-test-report--pass {
+    border-left-color: #16a34a;
+}
+
+.aui-test-report--fail {
+    border-left-color: #dc2626;
+}
+
+.aui-test-report__head {
+    font-weight: 600;
+}
+
+.aui-test-report__errors {
+    color: #b91c1c;
+    white-space: pre-wrap;
+}
+
+.aui-test-report__list {
+    margin: 8px 0 0;
+    padding-left: 22px;
+}
+
+.aui-test-report__list .is-pass {
+    color: #15803d;
+}
+
+.aui-test-report__list .is-fail {
+    color: #b91c1c;
+}
+
+.aui-test-report__list pre {
+    margin: 2px 0 6px;
+    color: #374151;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.aui-test-report__again {
+    margin-left: 12px;
+    padding: 1px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    background: #f8fafc;
+    color: #1f2937;
+    font: inherit;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.aui-test-report__list .is-shaky {
+    color: #b45309;
+}
+
+/* Run conditions: the start / pause notice (clickable) and the badge while the checks run */
+.aui-test-banner {
+    position: fixed;
+    z-index: 2147483647;
+    box-sizing: border-box;
+    font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    box-shadow: 0 6px 24px rgba(15, 23, 42, 0.18);
+}
+
+.aui-test-banner--start,
+.aui-test-banner--paused {
+    top: 24px;
+    left: 50%;
+    width: min(560px, calc(100vw - 32px));
+    transform: translateX(-50%);
+    padding: 14px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.aui-test-banner--start {
+    background: #1d4ed8;
+    color: #fff;
+}
+
+.aui-test-banner--paused {
+    background: #b45309;
+    color: #fff;
+}
+
+.aui-test-banner--running {
+    right: 16px;
+    bottom: 16px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.82);
+    color: #fff;
+    pointer-events: none;
+}

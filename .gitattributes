@@ -1,0 +1,12 @@
+# every text file is stored with LF line endings
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+
+# built files: shown as generated in diffs and kept out of the language statistics
+dist/** linguist-generated=true

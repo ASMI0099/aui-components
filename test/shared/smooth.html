@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: smooth opening and closing</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 480px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="smooth.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="smooth.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="SmoothCtrl">
+<h1>Opening and closing without waiting for the page; the page told once, in order</h1>
+<form name="f" novalidate>
+    <div class="grid">
+        <div class="cell" id="s"><label>aui-select, static, on-close, on-change</label>
+            <aui-select name="s" ng-model="m.s" options="options" on-close="onClose('s')" on-change="onChange" placeholder="Single"></aui-select>
+        </div>
+        <div class="cell" id="t"><label>aui-tree-select, static, on-close</label>
+            <aui-tree-select name="t" ng-model="m.t" options="nodes" on-close="onClose('t')" placeholder="Tree"></aui-tree-select>
+        </div>
+        <div class="cell" id="r"><label>aui-select, load-options</label>
+            <aui-select name="r" ng-model="m.r" load-options="load($request)" placeholder="Loaded"></aui-select>
+        </div>
+        <div class="cell" id="rt"><label>aui-tree-select, load-options</label>
+            <aui-tree-select name="rt" ng-model="m.rt" load-options="loadTree($request)" placeholder="Loaded tree"></aui-tree-select>
+        </div>
+        <div class="cell" id="ub"><label>aui-input, ng-model-options updateOn blur</label>
+            <aui-input name="ub" ng-model="m.ub" input-style-type="form" ng-model-options="{updateOn: 'blur'}"></aui-input>
+        </div>
+        <div class="cell" id="db"><label>aui-input, ng-model-options debounce 150</label>
+            <aui-input name="db" ng-model="m.db" input-style-type="form" ng-model-options="{debounce: 150}"></aui-input>
+        </div>
+        <div class="cell" id="rms"><label>aui-select, removed by the page's own click (Cancel)</label>
+            <div ng-if="show.rm"><aui-select name="rms" ng-model="m.rms" options="options" on-close="onClose('rm s')" placeholder="Removable"></aui-select></div>
+        </div>
+        <div class="cell" id="rmt"><label>aui-tree-select, removed by the page's own click (Cancel)</label>
+            <div ng-if="show.rm"><aui-tree-select name="rmt" ng-model="m.rmt" options="nodes" on-close="onClose('rm t')" placeholder="Removable tree"></aui-tree-select></div>
+        </div>
+        <div class="cell" ng-keydown="onKey($event)"><label>a page key handler around two fields</label>
+            <div id="ks"><aui-select name="ks" ng-model="m.ks" options="options" placeholder="Enter"></aui-select></div>
+            <div id="kt"><aui-tree-select name="kt" ng-model="m.kt" options="flat" placeholder="Enter tree"></aui-tree-select></div>
+        </div>
+        <div class="cell" id="ps"><label>aui-select, paged, searched on the server</label>
+            <aui-select name="ps" ng-model="m.ps" load-options="loadPaged($request)" page-size="20" placeholder="Paged"></aui-select>
+        </div>
+        <div class="cell" id="lz"><label>aui-tree-select, load-children</label>
+            <aui-tree-select name="lz" ng-model="m.lz" load-children="loadKids($node)" placeholder="Lazy"></aui-tree-select>
+        </div>
+        <div class="cell" id="r2"><label>aui-select, load-options answering after 150 ms</label>
+            <aui-select name="r2" ng-model="m.r2" load-options="loadSlow()" selected-items="m.r2Items" placeholder="Slow"></aui-select>
+        </div>
+        <div class="cell" id="rt2"><label>aui-tree-select, load-options answering after 150 ms</label>
+            <aui-tree-select name="rt2" ng-model="m.rt2" load-options="loadSlowTree()" selected-items="m.rt2Items" placeholder="Slow tree"></aui-tree-select>
+        </div>
+        <div class="cell" id="ex"><label>aui-tree-select, static, on-expand, on-open, on-close</label>
+            <div ng-if="show.ex"><aui-tree-select name="ex" ng-model="m.ex" options="nodes" on-expand="log.push('expand ' + $expanded)"
+                on-open="log.push('open ex')" on-close="onClose('ex')" placeholder="Expand"></aui-tree-select></div>
+        </div>
+        <div class="cell" id="bt"><label>aui-tree-select, 2,130 nodes</label>
+            <aui-tree-select name="bt" ng-model="m.bt" options="bigTree" placeholder="Big tree"></aui-tree-select>
+        </div>
+        <div class="cell" id="ms"><label>aui-select, several values, ng-change, a page binding (<span id="ms-count">{{ m.ms.length }}</span>)</label>
+            <aui-select name="ms" ng-model="m.ms" options="options" multiple ng-change="log.push('change ms')" placeholder="Several"></aui-select>
+        </div>
+        <div class="cell" id="mt"><label>aui-tree-select, several values, ng-change, a page binding (<span id="mt-count">{{ m.mt.length }}</span>)</label>
+            <aui-tree-select name="mt" ng-model="m.mt" options="flat" multiple ng-change="log.push('change mt')" placeholder="Several tree"></aui-tree-select>
+        </div>
+    </div>
+    <button type="button" id="next" ng-click="next()">next</button>
+    <button type="button" id="save" ng-click="save()">Save</button>
+    <button type="button" id="cancel" ng-click="cancel()">Cancel</button>
+</form>
+<div class="bottom-spacer"></div>
+</body>
+</html>

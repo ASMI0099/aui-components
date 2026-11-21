@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Perf: the cost of opening a small field on a heavy page</title>
+    <!--
+        A page shaped like a real list page: a filter form with small fields (under 100 items) at the top, a big table
+        with many AngularJS bindings below. scripts/perf.js open clicks a field with real input and measures what
+        the opening costs: full-page digests, long tasks, style and layout work, and whether the open animation is
+        actually drawn (the panel's opacity sampled on every frame).
+
+        ?rows=600          rows of the table (each about 12 bindings, some through a filter or a function)
+        ?field=select | multi | tree
+        ?opts=50           options / nodes of the field
+    -->
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 13px; margin: 0; background: #f3f4f6; color: #222; }
+        .form { display: grid; grid-template-columns: repeat(4, 260px); gap: 12px; padding: 14px; background: #fff;
+                border-bottom: 1px solid #ddd; }
+        .scroller { height: calc(100vh - 90px); overflow: auto; padding: 0 14px; }
+        table { border-collapse: collapse; width: 100%; background: #fff; }
+        td, th { border: 1px solid #e5e7eb; padding: 4px 6px; text-align: left; }
+        tr.odd { background: #fafafa; }
+        .tag { display: inline-block; padding: 0 6px; border-radius: 8px; background: #e0e7ff; }
+    </style>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="open-cost.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="PageCtrl as vm">
+<form class="form" name="filterForm" novalidate>
+    <div id="field" ng-switch="vm.field">
+        <aui-select ng-switch-when="select" ng-model="vm.form.single" options="vm.options" label-field="label" value-field="id"
+                    placeholder="Pick one"></aui-select>
+        <aui-select ng-switch-when="multi" ng-model="vm.form.many" options="vm.options" label-field="label" value-field="id"
+                    multiple="true" placeholder="Pick some"></aui-select>
+        <aui-tree-select ng-switch-when="tree" ng-model="vm.form.node" options="vm.nodes" label-field="label" value-field="id"
+                         placeholder="Pick a node"></aui-tree-select>
+    </div>
+    <div><input class="form-control" ng-model="vm.form.keyword" placeholder="Keyword"></div>
+    <div><input class="form-control" ng-model="vm.form.code" placeholder="Code"></div>
+    <div><button type="button" ng-click="vm.search()">Search ({{ vm.rows.length }} rows)</button></div>
+</form>
+<div class="scroller">
+    <table>
+        <thead><tr><th>#</th><th>Code</th><th>Name</th><th>Status</th><th>Hall</th><th>Price</th><th>Created</th><th>Tags</th><th></th></tr></thead>
+        <tbody>
+        <tr ng-repeat="row in vm.rows track by row.id" ng-class="{odd: $odd, picked: row.id === vm.form.single}">
+            <td>{{ $index + 1 }}</td>
+            <td>{{ row.code }}</td>
+            <td title="{{ row.name }}">{{ row.name | uppercase }}</td>
+            <td><span ng-if="row.active" class="tag">on sale</span><span ng-if="!row.active">off</span></td>
+            <td>{{ vm.hallName(row.hall) }}</td>
+            <td>{{ row.price | number: 2 }}</td>
+            <td>{{ row.created | date: 'yyyy-MM-dd' }}</td>
+            <td><span class="tag" ng-repeat="tag in row.tags track by $index">{{ tag }}</span></td>
+            <td><a href="" ng-click="vm.edit(row)" ng-show="row.active">edit</a></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

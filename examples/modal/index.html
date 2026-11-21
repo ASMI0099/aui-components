@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" href="data:,"/>
+    <title>aui-modal and messages: aui-components examples</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../assets/examples.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../assets/examples.js"></script>
+    <script src="modal.js"></script>
+</head>
+<body class="ex" ng-app="auiExamples" ng-controller="ModalExampleCtrl as vm">
+<ex-page heading="aui-modal and messages"
+         lead="Dialogs written in a template (aui-modal) or opened from code (AuiModal), alert and confirm boxes (AuiMessageBox), and notices that go away by themselves (AuiMessage).">
+
+    <section class="ex-example" id="ex-template">
+        <h2>A dialog in the template</h2>
+        <p class="ex-example__text"><code>is-open</code> opens it; Confirm calls <code>on-confirm</code>, whose promise
+            keeps the dialog open with the button's loading state until the save is done. A save that fails keeps the
+            dialog open with what was typed. Escape, the Close button and a click on <code>aui-modal-close</code> close it.</p>
+        <div class="ex-controls">
+            <aui-button ng-click="vm.edit()">Edit the item</aui-button>
+            <label><input type="checkbox" ng-model="vm.failNext"/> the next save fails</label>
+        </div>
+        <pre class="ex-out">item: {{ vm.item | json }}</pre>
+
+        <aui-modal is-open="vm.editing" size="small" show-confirm-button="true" confirm-text="Save"
+                   confirm-loading-text="Saving..." on-confirm="vm.save()" initial-focus="aui-input input">
+            <header><h2 class="ex-dialog-title">Edit the item</h2></header>
+            <content>
+                <form name="vm.editForm" class="ex-dialog-form" novalidate>
+                    <aui-input name="name" ng-model="vm.draft.name" input-style-type="form" show-label label-text="Name"
+                               required show-errors value-max-length="40" show-count></aui-input>
+                    <aui-select name="status" ng-model="vm.draft.status" options="vm.statuses" label-field="name" value-field="id"
+                                show-label label-text="Status"></aui-select>
+                    <aui-date-picker name="due" ng-model="vm.draft.due" show-label label-text="Due date"></aui-date-picker>
+                </form>
+            </content>
+        </aui-modal>
+    </section>
+
+    <section class="ex-example" id="ex-code">
+        <h2>Dialogs from code</h2>
+        <p class="ex-example__text"><code>AuiModal.open()</code> returns a promise that resolves with how the dialog was
+            closed. <code>AuiMessageBox.confirm()</code> resolves with true or false; dialogs opened while one is shown
+            wait their turn.</p>
+        <div class="ex-controls">
+            <aui-button variant="outline" ng-click="vm.openFromCode()">AuiModal.open</aui-button>
+            <aui-button variant="outline" intent="danger" ng-click="vm.confirmDelete()">Delete (confirm)</aui-button>
+            <aui-button variant="outline" intent="neutral" ng-click="vm.alert()">Alert</aui-button>
+            <aui-button variant="outline" intent="neutral" ng-click="vm.queue()">Three in a row</aui-button>
+        </div>
+        <pre class="ex-out">{{ vm.results.join('\n') || 'No dialog closed yet.' }}</pre>
+    </section>
+
+    <section class="ex-example" id="ex-messages">
+        <h2>Notices</h2>
+        <p class="ex-example__text">A notice goes away by itself (the countdown pauses while the pointer is on it); a
+            loading notice stays until it is updated. Notices stay above open dialogs.</p>
+        <div class="ex-controls">
+            <aui-button variant="soft" intent="success" ng-click="vm.notify('success')">Success</aui-button>
+            <aui-button variant="soft" ng-click="vm.notify('info')">Info</aui-button>
+            <aui-button variant="soft" intent="warning" ng-click="vm.notify('warning')">Warning</aui-button>
+            <aui-button variant="soft" intent="danger" ng-click="vm.notify('error')">Error</aui-button>
+            <aui-button variant="outline" intent="neutral" ng-click="vm.upload()">Loading, then done</aui-button>
+            <aui-button variant="ghost" intent="neutral" ng-click="vm.clearAll()">Clear all</aui-button>
+        </div>
+    </section>
+</ex-page>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: aui-popover</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .spot { position: fixed; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="popover.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="popover.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="PopCtrl">
+<h1>aui-popover: opening, closing, place, keyboard, the page's is-open and api</h1>
+
+<!-- a row that counts the clicks that reach it, as a table row that opens on a click -->
+<div id="row" ng-click="rowClicks = rowClicks + 1" style="display: flex; gap: 48px; align-items: center; padding: 8px; width: 900px;">
+    <aui-popover id="p-default" on-open="opening('default')" on-close="note('close default')" on-confirm="confirming('default')">
+        <popover-title><span>Edit the price</span></popover-title>
+        <popover-content>
+            <div style="padding: 10px 20px;"><input id="default-box" type="text" style="width: 200px;"></div>
+        </popover-content>
+    </aui-popover>
+
+    <aui-popover id="p-custom" show-title="false" on-close="note('close custom')">
+        <popover-trigger><span id="custom-trigger" style="padding: 4px;">Selected</span></popover-trigger>
+        <popover-title><span>Never shown</span></popover-title>
+        <popover-content>
+            <div style="padding: 5px; width: 220px;"><button id="custom-inner" type="button">Inner</button> <input id="custom-box" type="text" style="width: 120px;"></div>
+        </popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+
+    <aui-popover id="p-keep" close-on-click-outside="false" on-close="note('close keep')">
+        <popover-trigger>
+            <label id="keep-label" style="display: flex; margin: 0; padding: 0 8px;"><input id="keep-box" readonly placeholder="Pick" style="width: 90px;"></label>
+        </popover-trigger>
+        <popover-content><div style="padding: 10px;">Kept until it is closed</div></popover-content>
+    </aui-popover>
+
+    <aui-popover id="p-bound" is-open="open.bound" api="api.bound" on-open="opening('bound')" on-close="note('close bound')">
+        <popover-trigger><button id="bound-trigger" type="button">Bound</button></popover-trigger>
+        <popover-content><div style="padding: 10px;">is-open: <b id="bound-in-card">{{ open.bound }}</b></div></popover-content>
+    </aui-popover>
+
+    <aui-popover id="p-select">
+        <popover-trigger><span style="padding: 4px;">With a select</span></popover-trigger>
+        <popover-content>
+            <div style="padding: 10px; width: 240px;">
+                <aui-select id="in-select" ng-model="f.pick" options="options" label-field="name" value-field="id"></aui-select>
+            </div>
+        </popover-content>
+    </aui-popover>
+</div>
+<!-- the new options: a save that waits (its own words), no focus and no Enter, disabled -->
+<div style="display: flex; gap: 48px; align-items: center; padding: 8px;">
+    <aui-popover id="p-save" api="api.save" on-confirm="saving()" on-close="note('close save')" confirm-text="Save" cancel-text="Back">
+        <popover-trigger><span style="padding: 4px;">Save</span></popover-trigger>
+        <popover-title>Save it</popover-title>
+        <popover-content><div style="padding: 10px;"><input id="save-box" type="text"> <textarea id="save-area" rows="2"></textarea> <input id="save-find" type="search"></div></popover-content>
+    </aui-popover>
+    <aui-popover id="p-quiet" auto-focus="false" confirm-on-enter="false" on-confirm="confirming('quiet')" on-close="note('close quiet')">
+        <popover-trigger><span style="padding: 4px;">Quiet</span></popover-trigger>
+        <popover-content><div style="padding: 10px;"><input id="quiet-box" type="text"></div></popover-content>
+    </aui-popover>
+    <aui-popover id="p-off" disabled="flags.off" api="api.off">
+        <popover-content><div style="padding: 10px;">Off</div></popover-content>
+    </aui-popover>
+</div>
+<!-- the popover's own trigger: every icon (and one not known), a text, a text alone, a delete confirmation, hover -->
+<div id="icons" style="display: flex; gap: 24px; align-items: center; padding: 8px;">
+    <aui-popover ng-repeat="name in icons" data-icon="{{ name }}" trigger-icon="{{ name }}">
+        <popover-content><div style="padding: 10px;">{{ name }}</div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+    <aui-popover id="p-text" trigger-text="{{ trig.text }}" show-trigger-text="trig.show" trigger-icon-position="{{ trig.pos }}"
+                 trigger-tone="{{ trig.tone }}">
+        <popover-content><div style="padding: 10px;">With a text</div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+    <aui-popover id="p-none" trigger-icon="none" trigger-text="Only text">
+        <popover-content><div style="padding: 10px;">A text alone</div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+    <aui-popover id="p-danger" trigger-icon="delete" trigger-text="Delete" trigger-tone="danger" confirm-intent="danger">
+        <popover-title>Delete this row?</popover-title>
+        <popover-content><div style="padding: 4px 16px;">It cannot be undone.</div></popover-content>
+    </aui-popover>
+    <aui-popover id="p-hover" trigger-icon="info" trigger-on="hover" on-close="note('close hover')">
+        <popover-content><div style="padding: 10px;"><input id="hover-box" type="text"></div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+</div>
+<!-- title-text and show-title; the cases of the analysis: a page form around it, an is-open the page computes, a box of
+     the page's own as the trigger, a long note, a text cut off by a narrow cell, an api given later -->
+<form id="page-form" ng-submit="note('page form submitted')" style="display: flex; gap: 32px; align-items: center; padding: 8px;">
+    <aui-popover id="p-titled" title-text="Stock of {{ trig.text }}" show-title="trig.showTitle">
+        <popover-title>The slot wins</popover-title>
+        <popover-content><div style="padding: 10px;">Titled</div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+    <aui-popover id="p-texttitle" title-text="Stock of {{ trig.text }}" show-title="trig.showTitle">
+        <popover-content><div style="padding: 10px;">A title from title-text</div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+    <aui-popover id="p-inform" on-confirm="confirming('inform')">
+        <popover-content><div style="padding: 10px;"><input id="inform-box" type="text"></div></popover-content>
+    </aui-popover>
+    <aui-popover id="p-inform-off" confirm-on-enter="false" on-confirm="confirming('inform-off')">
+        <popover-content><div style="padding: 10px;"><input id="inform-off-box" type="text"></div></popover-content>
+    </aui-popover>
+    <button id="page-submit" type="submit">Page submit</button>
+</form>
+<div style="display: flex; gap: 32px; align-items: center; padding: 8px;">
+    <aui-popover id="p-computed" is-open="computed.id === 1" on-close="note('close computed')">
+        <popover-content><div style="padding: 10px;">Open while the page's id is 1</div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+    <aui-popover id="p-editable">
+        <popover-trigger><input id="editable-box" type="text" placeholder="Type here"></popover-trigger>
+        <popover-content><div style="padding: 10px;">A box of the page's own as the trigger</div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+    <aui-popover id="p-note" trigger-icon="info">
+        <popover-content><div id="note-text" style="padding: 12px 16px;">{{ longNote }}</div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+    <div style="width: 90px;">
+        <aui-popover id="p-narrow" trigger-text="A trigger text far longer than its cell">
+            <popover-content><div style="padding: 10px;">Narrow</div></popover-content>
+            <popover-footer></popover-footer>
+        </aui-popover>
+    </div>
+    <aui-popover id="p-layout" title-text="Layout" content-padding="{{ layout.padding }}" width="{{ layout.width }}">
+        <popover-content><div id="lay-a" style="height: 20px;">A</div><div id="lay-b" style="height: 20px;">B</div></popover-content>
+    </aui-popover>
+    <aui-popover id="p-late" api="late.api">
+        <popover-content><div style="padding: 10px;">Its api given later</div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+</div>
+<p>is-open of the bound one, as the page has it: <span id="bound-value">{{ open.bound }}</span></p>
+
+<!-- open from the start (is-open true when the page loads) -->
+<div class="spot" style="left: 1000px; top: 60px;">
+    <aui-popover id="p-start" is-open="open.start">
+        <popover-trigger><span style="padding: 4px;">From the start</span></popover-trigger>
+        <popover-content><div id="start-body" style="padding: 10px;">Open when the page loads</div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+</div>
+
+<!-- places: no room below; no room to the right; centred; too tall; to the right of its trigger -->
+<div class="spot" style="left: 300px; bottom: 16px;">
+    <aui-popover id="p-low">
+        <popover-content><div style="width: 200px; height: 150px;">No room below</div></popover-content>
+    </aui-popover>
+</div>
+<div class="spot" style="right: 4px; top: 200px;">
+    <aui-popover id="p-edge">
+        <popover-content><div style="width: 300px; height: 60px;">No room to the right</div></popover-content>
+    </aui-popover>
+</div>
+<div class="spot" style="left: 620px; top: 420px;">
+    <aui-popover id="p-center" placement="bottom-center">
+        <popover-trigger><span style="display: inline-block; width: 60px;">Centre</span></popover-trigger>
+        <popover-content><div style="width: 240px; height: 40px;">Centred under its trigger</div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+</div>
+<div class="spot" style="left: 40px; top: 420px;">
+    <aui-popover id="p-tall">
+        <popover-content><div style="width: 200px; height: 3000px;">Taller than the screen</div></popover-content>
+    </aui-popover>
+</div>
+<!-- in a box that scrolls (a dialog's body), the window with room below it -->
+<div class="spot" style="left: 1000px; top: 150px;">
+    <div id="area-box" style="width: 220px; height: 240px; overflow: auto; border: 1px solid #ccc;">
+        <div style="height: 260px;"></div>
+        <aui-popover id="p-area">
+            <popover-content><div style="width: 160px; height: 60px;">In a box that scrolls</div></popover-content>
+            <popover-footer></popover-footer>
+        </aui-popover>
+        <div style="height: 260px;"></div>
+    </div>
+</div>
+<div class="spot" style="left: 760px; top: 600px;">
+    <aui-popover id="p-right" placement="right-start">
+        <popover-content><div style="width: 180px; height: 60px;">To the right</div></popover-content>
+        <popover-footer></popover-footer>
+    </aui-popover>
+</div>
+
+<!-- one that the page takes away while it is open -->
+<div class="spot" style="left: 1000px; top: 420px;" ng-if="show.gone">
+    <aui-popover id="p-gone" on-close="note('close gone')">
+        <popover-content><div style="padding: 10px;">Taken away while open</div></popover-content>
+    </aui-popover>
+</div>
+
+<!-- ten more, closed: what a click elsewhere on the page costs -->
+<div id="many" class="spot" style="left: 40px; top: 760px; display: flex; gap: 20px;">
+    <aui-popover ng-repeat="n in many" on-close="note('close many')">
+        <popover-content><div style="padding: 10px;">Row {{ n }}</div></popover-content>
+    </aui-popover>
+</div>
+
+<aui-modal id="m-host" is-open="modal.open" size="small" close-on-esc="true">
+    <content>
+        <div style="padding: 20px;">
+            <aui-popover id="p-in-modal">
+                <popover-content><div style="padding: 10px;">In a dialog</div></popover-content>
+            </aui-popover>
+        </div>
+    </content>
+</aui-modal>
+</body>
+</html>

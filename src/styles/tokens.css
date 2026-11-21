@@ -1,0 +1,303 @@
+/*
+ * The design tokens: colours, sizes, motion and the text scale of every component.
+ */
+
+/* ============================= aui-components ============================= */
+/* Shared AngularJS aui-* component styles. Keep control tokens and component CSS here. */
+
+:root {
+    --aui-motion-duration: 0.2s;          /* colour, ring, opacity */
+    --aui-motion-duration-shape: 0.22s;   /* scale, corners, height */
+    --aui-motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --aui-motion-ease-color: cubic-bezier(0, 0, 0.58, 1);
+    --aui-control-height: 34px;
+    --aui-control-inner-height: 24px;
+
+    --aui-control-radius-default: 3px;
+    --aui-control-radius: var(--aui-control-radius-default);
+    --aui-control-shadow-hover: 0 1px 2px rgba(15, 23, 42, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    --aui-control-label-size: calc(var(--aui-font-label-13) * 1px);
+    --aui-control-value-size: calc(var(--aui-font-14) * 1px);
+    --aui-field-item-min-width: 264px;
+}
+
+/* ===== The colours of the fields (aui-input, aui-select, aui-tree-select, their lists): tokens =====
+   A page sets any of them on :root (every field), on a container (a form's fields) or on one field
+   (style="--aui-control-value-color: #000"); the values below are the defaults. Each is registered as a colour: a value
+   that is not one (a typo) gives the default, never an unreadable field.
+   - value-color: the value, in the field, typed in, in the rows of its list and its search box (near-black, 15.8:1)
+   - label-color: the label in the box and above it (4.8:1)
+   - placeholder-color: the placeholders of the field and of its search box
+   - muted-color: the second texts: the count, a readonly value, the list's empty, loading and status texts, the
+     password eye (the label's colour: one colour for the second texts, 4.8:1 for small text)
+   - disabled-color: the text of a disabled field and of a disabled option
+   - accent-color: the focus and open look (the border and the 2px ring), the open chevron, the picked option (its text
+     the accent 20% darker, 5.8:1), the highlighted and picked rows' tints, the checkboxes, spinners and links of the list
+   - border-color, border-hover-color: the field's border, under the pointer
+   - invalid-color: the invalid field (its border, halo, ring), a count over its limit, the error text
+   - background-color, readonly-background-color: the field (and its list); readonly and disabled */
+@property --aui-control-value-color { syntax: '<color>'; inherits: true; initial-value: #1f2328; }
+@property --aui-control-label-color { syntax: '<color>'; inherits: true; initial-value: #64748b; }
+@property --aui-control-placeholder-color { syntax: '<color>'; inherits: true; initial-value: #9aa8b8; }
+@property --aui-control-muted-color { syntax: '<color>'; inherits: true; initial-value: #64748b; }
+@property --aui-control-disabled-color { syntax: '<color>'; inherits: true; initial-value: #a8abb2; }
+@property --aui-control-accent-color { syntax: '<color>'; inherits: true; initial-value: #0d6efd; }
+@property --aui-control-border-color { syntax: '<color>'; inherits: true; initial-value: #d6dce5; }
+@property --aui-control-border-hover-color { syntax: '<color>'; inherits: true; initial-value: #b8c1cf; }
+@property --aui-control-invalid-color { syntax: '<color>'; inherits: true; initial-value: #dc3545; }
+@property --aui-control-background-color { syntax: '<color>'; inherits: true; initial-value: #ffffff; }
+@property --aui-control-readonly-background-color { syntax: '<color>'; inherits: true; initial-value: #f8fafc; }
+
+/* The same defaults as plain values, for a browser without @property (Firefox before 128, Safari before 16.4): there a
+   token is only what a rule gives it, and a field would lose its colours (its border and label in the text colour, no
+   focus blue, no error red). :where() keeps them below anything a page sets (on :root, a container, a field); where
+   @property is there they change nothing. */
+:where(:root) {
+    --aui-control-value-color: #1f2328;
+    --aui-control-label-color: #64748b;
+    --aui-control-placeholder-color: #9aa8b8;
+    --aui-control-muted-color: #64748b;
+    --aui-control-disabled-color: #a8abb2;
+    --aui-control-accent-color: #0d6efd;
+    --aui-control-border-color: #d6dce5;
+    --aui-control-border-hover-color: #b8c1cf;
+    --aui-control-invalid-color: #dc3545;
+    --aui-control-background-color: #ffffff;
+    --aui-control-readonly-background-color: #f8fafc;
+}
+
+/* The shades the fields draw from the accent and the invalid colour (not to be set by a page: they follow those two).
+   Taken again on every field and button (a field, a button or a container may have its own accent). A browser without
+   color-mix() (before Chrome / Edge 111) draws the default shades, as before the tokens. */
+:root,
+.aui-input,
+.aui-select,
+.aui-button {
+    --aui-control-shadow-focus: 0 1px 2px rgba(15, 23, 42, 0), inset 0 0 0 1px var(--aui-control-accent-color);
+    --aui-control-accent-hover: #0b5ed7;
+    --aui-control-accent-text: #0a58ca;
+    --aui-control-accent-strong: #07377f;
+    --aui-control-accent-soft: #86b7fe;
+    --aui-control-accent-a05: rgba(13, 110, 253, 0.05);
+    --aui-control-accent-a06: rgba(13, 110, 253, 0.06);
+    --aui-control-accent-a08: rgba(13, 110, 253, 0.08);
+    --aui-control-accent-a12: rgba(13, 110, 253, 0.12);
+    --aui-control-accent-a15: rgba(13, 110, 253, 0.15);
+    --aui-control-accent-a16: rgba(13, 110, 253, 0.16);
+    --aui-control-accent-a24: rgba(13, 110, 253, 0.24);
+    --aui-control-accent-a32: rgba(13, 110, 253, 0.32);
+    --aui-control-accent-a45: rgba(13, 110, 253, 0.45);
+    --aui-control-invalid-strong: #c82333;
+    --aui-control-invalid-a048: rgba(220, 53, 69, 0.048);
+    --aui-control-invalid-a091: rgba(220, 53, 69, 0.091);
+    --aui-control-invalid-a12: rgba(220, 53, 69, 0.12);
+    --aui-control-invalid-a16: rgba(220, 53, 69, 0.16);
+    --aui-control-invalid-a20: rgba(220, 53, 69, 0.2);
+}
+
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+    :root,
+    .aui-input,
+    .aui-select,
+    .aui-button {
+        --aui-control-accent-hover: color-mix(in srgb, var(--aui-control-accent-color), #000 15%);
+        --aui-control-accent-text: color-mix(in srgb, var(--aui-control-accent-color), #000 20%);
+        --aui-control-accent-strong: color-mix(in srgb, var(--aui-control-accent-color), #000 50%);
+        --aui-control-accent-soft: color-mix(in srgb, var(--aui-control-accent-color), #fff 50%);
+        --aui-control-accent-a05: color-mix(in srgb, var(--aui-control-accent-color) 5%, transparent);
+        --aui-control-accent-a06: color-mix(in srgb, var(--aui-control-accent-color) 6%, transparent);
+        --aui-control-accent-a08: color-mix(in srgb, var(--aui-control-accent-color) 8%, transparent);
+        --aui-control-accent-a12: color-mix(in srgb, var(--aui-control-accent-color) 12%, transparent);
+        --aui-control-accent-a15: color-mix(in srgb, var(--aui-control-accent-color) 15%, transparent);
+        --aui-control-accent-a16: color-mix(in srgb, var(--aui-control-accent-color) 16%, transparent);
+        --aui-control-accent-a24: color-mix(in srgb, var(--aui-control-accent-color) 24%, transparent);
+        --aui-control-accent-a32: color-mix(in srgb, var(--aui-control-accent-color) 32%, transparent);
+        --aui-control-accent-a45: color-mix(in srgb, var(--aui-control-accent-color) 45%, transparent);
+        --aui-control-invalid-strong: color-mix(in srgb, var(--aui-control-invalid-color), #000 9%);
+        --aui-control-invalid-a048: color-mix(in srgb, var(--aui-control-invalid-color) 4.8%, transparent);
+        --aui-control-invalid-a091: color-mix(in srgb, var(--aui-control-invalid-color) 9.1%, transparent);
+        --aui-control-invalid-a12: color-mix(in srgb, var(--aui-control-invalid-color) 12%, transparent);
+        --aui-control-invalid-a16: color-mix(in srgb, var(--aui-control-invalid-color) 16%, transparent);
+        --aui-control-invalid-a20: color-mix(in srgb, var(--aui-control-invalid-color) 20%, transparent);
+    }
+}
+
+/* One factor for every text size of the aui components: --aui-font-scale, set on :root (the whole page). 1 (the
+   default): the sizes as designed; 0.93: 14px text becomes 13px, 13px 12px, 12px 11px. Each size is its design size
+   times the factor, rounded to a whole pixel (a size between two pixels draws unevenly), the registered integers
+   below. The factor counts between 0.85 and 1.25 (the boxes keep their heights, so their text has to fit), and a
+   value that is not a number counts as 1. The sizes of their own that a page gives a field (--aui-control-value-size,
+   --aui-control-option-size, ...) still win.
+   The labels of the fields (in the box and above it) follow --aui-label-font-scale when a page sets it, else
+   --aui-font-scale: a page that makes its text smaller can keep its labels readable (--aui-font-scale: 0.9;
+   --aui-label-font-scale: 1). Their sizes the same way: whole pixels, a factor between 0.85 and 1.25; a label factor
+   that is not a number gives the labels their design sizes. */
+@property --aui-font-scale {
+    syntax: '<number>';
+    inherits: true;
+    initial-value: 1;
+}
+
+@property --aui-font-label-12 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 12;
+}
+
+@property --aui-font-label-13 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 13;
+}
+
+@property --aui-font-label-14 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 14;
+}
+
+@property --aui-font-11 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 11;
+}
+
+@property --aui-font-12 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 12;
+}
+
+@property --aui-font-13 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 13;
+}
+
+@property --aui-font-14 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 14;
+}
+
+@property --aui-font-15 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 15;
+}
+
+@property --aui-font-16 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 16;
+}
+
+@property --aui-font-18 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 18;
+}
+
+@property --aui-font-22 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 22;
+}
+
+@property --aui-font-24 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 24;
+}
+
+@property --aui-font-26 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 26;
+}
+
+@property --aui-font-30 {
+    syntax: '<integer>';
+    inherits: true;
+    initial-value: 30;
+}
+
+:root {
+    /* (--aui-font-scale, 1): a browser without @property (Firefox before 128, Safari before 16.4) has no factor unless
+       the page sets one on :root; the design sizes then */
+    --aui-font-11: calc(11 * clamp(0.85, var(--aui-font-scale, 1), 1.25));
+    --aui-font-12: calc(12 * clamp(0.85, var(--aui-font-scale, 1), 1.25));
+    --aui-font-13: calc(13 * clamp(0.85, var(--aui-font-scale, 1), 1.25));
+    --aui-font-14: calc(14 * clamp(0.85, var(--aui-font-scale, 1), 1.25));
+    --aui-font-15: calc(15 * clamp(0.85, var(--aui-font-scale, 1), 1.25));
+    --aui-font-16: calc(16 * clamp(0.85, var(--aui-font-scale, 1), 1.25));
+    --aui-font-18: calc(18 * clamp(0.85, var(--aui-font-scale, 1), 1.25));
+    --aui-font-22: calc(22 * clamp(0.85, var(--aui-font-scale, 1), 1.25));
+    --aui-font-24: calc(24 * clamp(0.85, var(--aui-font-scale, 1), 1.25));
+    --aui-font-26: calc(26 * clamp(0.85, var(--aui-font-scale, 1), 1.25));
+    --aui-font-30: calc(30 * clamp(0.85, var(--aui-font-scale, 1), 1.25));
+    /* the labels' factor: --aui-font-scale's unless a page sets its own (on :root, after this rule) */
+    --aui-label-font-scale: var(--aui-font-scale, 1);
+    --aui-font-label-12: calc(12 * clamp(0.85, var(--aui-label-font-scale), 1.25));
+    --aui-font-label-13: calc(13 * clamp(0.85, var(--aui-label-font-scale), 1.25));
+    --aui-font-label-14: calc(14 * clamp(0.85, var(--aui-label-font-scale), 1.25));
+}
+
+
+@property --aui-control-label-max-width {
+    syntax: '<percentage>';
+    inherits: true;
+    initial-value: 50%;
+}
+
+
+.aui-input,
+.aui-select {
+    letter-spacing: normal;
+    word-spacing: normal;
+    text-transform: none;
+    text-indent: 0;
+    text-shadow: none;
+    font-style: normal;
+}
+
+.aui-input :where(div, span, label),
+.aui-select :where(div, span, label, ul, li) {
+    float: none;
+    margin: 0;
+    padding: 0;
+    border: 0 none;
+    background-color: transparent;
+    background-image: none;
+    box-shadow: none;
+    color: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    font-style: inherit;
+    line-height: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    text-indent: inherit;
+    vertical-align: baseline;
+    transition: none;
+}
+
+.aui-input :where(div),
+.aui-select :where(div, ul) {
+    display: block;
+}
+
+.aui-input :where(span, label),
+.aui-select :where(span, label) {
+    display: inline;
+    width: auto;
+    height: auto;
+}
+
+.aui-select :where(li) {
+    display: list-item;
+    list-style: inherit;
+    width: auto;
+    height: auto;
+    text-align: inherit;
+}

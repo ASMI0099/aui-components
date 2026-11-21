@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: aui-button</title>
+    <style>
+        body { font-family: "Courier New", monospace; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        h1 { font-size: 18px; margin: 0 0 12px; font-family: system-ui, sans-serif; }
+        .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+        table { border-collapse: collapse; background: #fff; }
+        td { padding: 8px; border: 1px solid #e2e8f0; }
+        /* a page's general span rules (padding, size, weight, colour) */
+        .hostile span { padding: 0 10px; font-size: 20px; font-weight: 700; color: red; line-height: 30px; }
+        .accent-green { --aui-control-accent-color: #198754; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="button.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="button.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="ButtonCtrl">
+<h1>aui-button: states, clicks, loading, icons, the page's rules</h1>
+
+<form name="f" ng-submit="note('submitted')">
+    <div class="row">
+        <aui-button id="b-plain" ng-click="note('plain')">Save</aui-button>
+        <aui-button id="b-submit" type="submit" loading="state.submitting">Submit</aui-button>
+        <aui-button id="b-ngdis" ng-disabled="state.off" ng-click="note('ngdis')">ng-disabled</aui-button>
+        <aui-button id="b-bare" disabled ng-click="note('bare')">Bare disabled</aui-button>
+        <aui-button id="b-dis" disabled="state.off" title="Nothing to export yet" ng-click="note('dis')">Export</aui-button>
+        <aui-button id="b-load" loading="state.loading" ng-click="note('load')">Load</aui-button>
+        <aui-button id="b-load-icon" icon="refresh" loading="state.loading">Refresh</aui-button>
+        <aui-button id="b-wait" on-click="save($event)" ng-click="note('wait-ng')">Wait</aui-button>
+    </div>
+    <div class="row">
+        <aui-button id="b-lt" loading="state.lt" loading-text="Saving...">Save</aui-button>
+        <aui-button id="b-lt-long" loading="state.lt" loading-text="Saving the record, please wait">OK</aui-button>
+        <aui-button id="b-lt-icon" icon="refresh" icon-position="right" loading="state.lt" loading-text="Refreshing...">Refresh</aui-button>
+        <aui-button id="b-lt-only" icon="refresh" loading="state.lt" loading-text="Refreshing..."></aui-button>
+        <aui-button id="b-lt-wait" on-click="save($event)" loading-text="Saving...">Save</aui-button>
+    </div>
+    <div class="row">
+        <aui-button id="b-x" variant="ghost" intent="neutral" size="sm" expanded="rows.a" controls="variants-a"></aui-button>
+        <aui-button id="b-x-load" variant="ghost" intent="neutral" size="sm" expanded="rows.b" on-click="loadVariants($expanded)"></aui-button>
+        <aui-button id="b-x-text" variant="ghost" expanded="rows.c">variants (3)</aui-button>
+        <aui-button id="b-x-ro" variant="ghost" expanded="rows.c && rows.a" on-click="note('ro ' + $expanded)"></aui-button>
+        <div id="variants-a" ng-if="rows.a">variant list</div>
+    </div>
+    <div class="row">
+        <aui-button id="b-l-chevron" variant="link" expanded="looks.chevron">Chevron</aui-button>
+        <aui-button id="b-l-more" variant="link" expanded="looks.more" expand-icon="show-more">Show more</aui-button>
+        <aui-button id="b-l-caret" variant="link" expanded="looks.caret" expand-icon="caret">Caret</aui-button>
+        <aui-button id="b-l-plus" variant="link" expanded="looks.plus" expand-icon="plus">Plus</aui-button>
+        <aui-button id="b-l-odd" variant="link" expanded="looks.odd" expand-icon="nonsense">Unknown look</aui-button>
+        <aui-button id="b-l-double" variant="link" expanded="looks.double" expand-icon="show-more-double">Show all</aui-button>
+        <aui-button id="b-elev" variant="elevated">Elevated</aui-button>
+    </div>
+    <div class="row" id="copies">
+        <aui-button id="b-copy" icon="copy" variant="ghost" intent="neutral" copy-text="{{ copyValue }}" done-duration="600"
+                    on-copy="copied($success, $text)"></aui-button>
+        <aui-button id="b-copy-text" icon="copy" variant="outline" copy-text="ABC-123" done-duration="600">Copy</aui-button>
+        <aui-button id="b-copy-plain" variant="outline" copy-text="plain" done-duration="600">Copy</aui-button>
+        <aui-button id="b-copy-solid" icon="copy" copy-text="solid" done-duration="600">Copy</aui-button>
+        <aui-button id="b-copy-quiet" icon="copy" variant="ghost" copy-text="quiet" copy-feedback="none"
+                    on-copy="copied($success, $text)"></aui-button>
+        <aui-button id="b-done" icon="upload" on-click="save($event)" done-text="Saved" done-duration="600">Save</aui-button>
+    </div>
+</form>
+
+<table>
+    <tr id="row" ng-click="note('row')">
+        <td><span>Row</span></td>
+        <td><aui-button id="b-row" disabled="true" variant="outline">Delete</aui-button>
+            <aui-button id="b-row-busy" loading="true" variant="outline">Busy</aui-button></td>
+    </tr>
+</table>
+
+<div class="row">
+    <span id="before-gap">x</span><aui-button id="b-margin" style="margin-left: 40px" class="page-class">Gap</aui-button>
+    <aui-button id="b-icon" icon="add">
+    </aui-button>
+    <aui-button id="b-icon-named" icon="delete" aria-label="Delete the row"></aui-button>
+    <aui-button id="b-fa" icon="fa fa-plus" icon-position="right">Add</aui-button>
+    <aui-button id="b-label" aria-label="Close the dialog" title="Close">X</aui-button>
+</div>
+
+<div class="row hostile" id="hostile">
+    <aui-button id="b-hostile">Save</aui-button>
+    <aui-button id="b-hostile-own"><span class="badge-of-page">3</span> items</aui-button>
+</div>
+<div class="row" id="clean">
+    <aui-button id="b-clean">Save</aui-button>
+</div>
+
+<div class="row">
+    <aui-button id="b-brand">Brand</aui-button>
+    <aui-button id="b-soft" variant="soft">Soft</aui-button>
+    <aui-button id="b-danger" intent="danger">Danger</aui-button>
+    <span class="accent-green"><aui-button id="b-green">Green accent</aui-button></span>
+</div>
+
+<div style="width: 300px">
+    <aui-button id="b-block" block="true">Block</aui-button>
+</div>
+<div style="width: 90px">
+    <aui-button id="b-narrow" block="true">A label far longer than its place</aui-button>
+</div>
+
+<div id="many" style="display: none"><aui-button ng-repeat="b in many track by $index" variant="outline" size="sm">B</aui-button></div>
+</body>
+</html>

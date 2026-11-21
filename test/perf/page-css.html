@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Page CSS check: the components in their states</title>
+    <!-- A gallery for tools that compare the components' drawing on a clean page and under a page's own stylesheets
+         (inserted around the aui-components.css link, in the page's order). Every field has data-probe. -->
+    <style>
+        /* the spinners still: a spinning box measures by its angle at that moment */
+        [data-probe] .aui-button__spinner { animation: none; }
+        /* a page's base text (body: 12px, line-height 1.4): a component takes the page's font
+           family by design, so the clean page has it too and only what a page's rules break shows */
+        body { margin: 0; font-family: "Microsoft YaHei", sans-serif; font-size: 12px; line-height: 1.4; color: #393939; }
+        .gallery { display: grid; grid-template-columns: repeat(3, 300px); gap: 18px 24px; padding: 16px; }
+        .gallery > div { min-height: 40px; }
+        .open-area { display: grid; grid-template-columns: repeat(2, 320px); gap: 24px; padding: 16px 16px 420px; }
+    </style>
+    <link id="aui-css" rel="stylesheet" href="../../dist/aui-components.css"/>
+    <script>
+        // ?rules=hostile: a page's hostile general rules after aui-components.css (test/shared/css-guard)
+        if (/[?&]rules=hostile\b/.test(location.search)) document.write('<link rel="stylesheet" href="page-rules.hostile.css"/>');
+    </script>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script>
+        window.__ngErrors = [];
+        angular.module('auiTest', ['aui']).config(['$provide', function ($provide) {
+            $provide.decorator('$exceptionHandler', ['$delegate', function ($delegate) {
+                return function (exception, cause) {
+                    window.__ngErrors.push(String(exception && exception.message || exception));
+                    $delegate(exception, cause);
+                };
+            }]);
+        }]).controller('CssCtrl', ['$scope', function ($scope) {
+            const names = ['Riverside Plaza', 'Harbor Hall', 'Central Station', 'Lakeside Center', 'Hilltop Outlet', 'Northgate', 'Sunset Square'];
+            $scope.options = names.map(function (label, i) { return {id: i + 1, label: label}; });
+            $scope.nodes = [
+                {id: 'a', label: 'Electronics', children: [{id: 'a1', label: 'Phones'}, {id: 'a2', label: 'Laptops'}, {id: 'a3', label: 'Cameras'}]},
+                {id: 'b', label: 'Books', children: [{id: 'b1', label: 'Novels'}, {id: 'b2', label: 'Comics'}]},
+                {id: 'c', label: 'Garden'}
+            ];
+            $scope.m = {in2: 'Sneaker', in3: 'Running shoes', in5: 'Read only', in6: 'secret', in7: 12.5, in8: 'Phone', in9: 'abc',
+                cell: 'Cell value', ta: 'One line\nTwo lines', s1: 2, s2: null, s3: [1, 3, 5], s4: 4, s5: 1, s6: null, s7: 3, t1: 'a2', t2: ['a1', 'b2'],
+                o1: 2, o2: ['a1', 'a3'], d1: '2026-11-12', d2: ['2026-11-03', '2026-11-20'], d3: null, d4: null, d5: '2026-11-12',
+                ds: '2026-11-10 09:00:00', de: '2026-11-20 18:00:00', cb1: true, cb2: false, cbg: ['b']};
+            $scope.cbOptions = [{label: 'Read', value: 'a'}, {label: 'Write', value: 'b'}, {label: 'Audit', value: 'c'}];
+            $scope.apiS = {};
+            $scope.apiT = {};
+            $scope.apiD = {};
+            $scope.apiP = {};
+        }]);
+    </script>
+    <script src="../../dist/aui-components.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="CssCtrl">
+<form name="f" novalidate>
+    <div class="gallery">
+        <div><aui-input data-probe="input basic" ng-model="m.in1" placeholder="Basic field"></aui-input></div>
+        <div><aui-input data-probe="input basic value clear" ng-model="m.in2" placeholder="Basic" clearable></aui-input></div>
+        <div><aui-input data-probe="input form label count clear" ng-model="m.in3" input-style-type="form" show-label label-text="Product"
+                        value-max-length="20" show-count clearable></aui-input></div>
+        <div><aui-input data-probe="input form invalid" name="req" ng-model="m.in4" input-style-type="form" show-label label-text="Required" required show-errors></aui-input></div>
+        <div><aui-input data-probe="input form readonly" ng-model="m.in5" input-style-type="form" show-label label-text="Readonly" readonly></aui-input></div>
+        <div><aui-input data-probe="input password eye" ng-model="m.in6" input-type="password" input-style-type="form" show-label label-text="Password" show-password></aui-input></div>
+        <div><aui-input data-probe="input number suffix" ng-model="m.in7" input-type="number" input-style-type="form" show-label label-text="Weight" suffix-text="kg" precision="2"></aui-input></div>
+        <div><aui-input data-probe="input search" ng-model="m.in8" input-style-type="form" search clearable placeholder="Search"></aui-input></div>
+        <div><aui-input data-probe="input top hint" ng-model="m.in9" input-style-type="form" show-label label-text="Name" label-position="top" hint-text="As on the card"></aui-input></div>
+        <div><aui-input data-probe="input small" ng-model="m.in2" input-style-type="form" show-label label-text="Small" size="small" clearable></aui-input></div>
+        <div><aui-input data-probe="input large" ng-model="m.in2" input-style-type="form" show-label label-text="Large" size="large"></aui-input></div>
+        <div><aui-input data-probe="input disabled" ng-model="m.in2" input-style-type="form" show-label label-text="Disabled" disabled></aui-input></div>
+        <div><table><tr><td><aui-input data-probe="input cell" ng-model="m.cell" input-style-type="cell"></aui-input></td></tr></table></div>
+        <div><aui-textarea data-probe="textarea" ng-model="m.ta" show-label label-text="Note" show-count value-max-length="200" auto-height clearable></aui-textarea></div>
+        <div><aui-select data-probe="select value clear" ng-model="m.s1" options="options" show-label label-text="Hall" clearable></aui-select></div>
+        <div><aui-select data-probe="select placeholder" ng-model="m.s2" options="options" show-label label-text="Hall" placeholder="Pick a hall"></aui-select></div>
+        <div><aui-select data-probe="select multiple tags" ng-model="m.s3" options="options" multiple show-label label-text="Halls" clearable></aui-select></div>
+        <div><aui-select data-probe="select disabled" ng-model="m.s4" options="options" show-label label-text="Hall" disabled></aui-select></div>
+        <div><aui-select data-probe="select readonly" ng-model="m.s5" options="options" show-label label-text="Hall" readonly></aui-select></div>
+        <div><aui-select data-probe="select invalid" name="sreq" ng-model="m.s6" options="options" show-label label-text="Hall" required show-errors></aui-select></div>
+        <div><aui-select data-probe="select top small" ng-model="m.s7" options="options" show-label label-text="Hall" label-position="top" size="small"></aui-select></div>
+        <div><aui-tree-select data-probe="tree single" ng-model="m.t1" options="nodes" show-label label-text="Category" clearable></aui-tree-select></div>
+        <div><aui-tree-select data-probe="tree multiple tags" ng-model="m.t2" options="nodes" multiple show-label label-text="Categories"></aui-tree-select></div>
+        <div><aui-date-picker data-probe="date value clear" ng-model="m.d1" show-label label-text="Day" clearable></aui-date-picker></div>
+        <div><aui-date-picker data-probe="date range" type="daterange" ng-model="m.d2" show-label label-text="Period" clearable></aui-date-picker></div>
+        <div><aui-date-picker data-probe="date placeholder" ng-model="m.d3" show-label label-text="Day"></aui-date-picker></div>
+        <div><aui-date-picker data-probe="date invalid" name="dreq" ng-model="m.d4" show-label label-text="Day" required show-errors></aui-date-picker></div>
+        <div><aui-popover data-probe="popover icon"><popover-content><p style="margin: 0;">Closed</p></popover-content></aui-popover></div>
+        <div><aui-popover data-probe="popover text" trigger-text="Change the price"><popover-content><p style="margin: 0;">Closed</p></popover-content></aui-popover></div>
+        <div style="display: flex;"><aui-checkbox data-probe="checkbox checked" ng-model="m.cb1" label="Agree to the terms"></aui-checkbox></div>
+        <div style="display: flex;"><aui-checkbox data-probe="checkbox mixed" ng-model="m.cb2" indeterminate="true" label="Select all"></aui-checkbox></div>
+        <div style="display: flex;"><aui-checkbox data-probe="checkbox bare sm" ng-model="m.cb1" size="sm" aria-label="Row"></aui-checkbox></div>
+        <div style="display: flex;"><aui-checkbox data-probe="checkbox box" ng-model="m.cb1" container-border="true" label="In a field box"></aui-checkbox></div>
+        <div style="display: flex;"><aui-checkbox-group data-probe="checkbox group" ng-model="m.cbg" options="cbOptions" show-select-all="true"></aui-checkbox-group></div>
+        <div style="display: flex;"><aui-button data-probe="button">Save</aui-button></div>
+        <div style="display: flex;"><aui-button data-probe="button icon" icon="add" variant="outline">Add a row</aui-button></div>
+        <div style="display: flex;"><aui-button data-probe="button loading" loading="true" variant="soft" intent="danger">Deleting</aui-button></div>
+        <div><aui-date-picker data-probe="date small" ng-model="m.d5" show-label label-text="Small" size="small"></aui-date-picker></div>
+    </div>
+    <div class="open-area">
+        <div><aui-select data-probe="select open" ng-model="m.o1" options="options" show-label label-text="Open" api="apiS"></aui-select></div>
+        <div><aui-tree-select data-probe="tree open" ng-model="m.o2" options="nodes" multiple show-label label-text="Open tree" default-expand-level="all" api="apiT"></aui-tree-select></div>
+    </div>
+    <div class="open-area">
+        <div><aui-date-picker data-probe="date open" type="datetimerange" start-model="m.ds" end-model="m.de" show-label label-text="Open dates"
+                              clearable shortcuts="true" api="apiD"></aui-date-picker></div>
+        <div><aui-popover data-probe="popover open" api="apiP"><popover-title>Edit the price</popover-title>
+            <popover-content><p style="margin: 0; padding: 10px 16px; width: 200px; line-height: 20px;">Content</p></popover-content></aui-popover></div>
+    </div>
+</form>
+</body>
+</html>

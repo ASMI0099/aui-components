@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>aui-select: bench</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <style>
+        body { font: 14px/1.4 Arial, sans-serif; margin: 24px; background: #f6f7f9; }
+        .host { width: 420px; margin-bottom: 16px; }
+        #results { font: 12px/1.5 Consolas, monospace; white-space: pre-wrap; background: #fff; padding: 10px; }
+    </style>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="perf.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="select-bench.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="BenchCtrl">
+<div class="host" ng-repeat="h in hosts track by h">
+    <aui-select ng-if="cfg.multiple" ng-model="m['v' + h]" options="data" value-field="id" label-field="name"
+                multiple clearable></aui-select>
+    <aui-select ng-if="!cfg.multiple" ng-model="m['v' + h]" options="data" value-field="id" label-field="name"
+                clearable></aui-select>
+</div>
+<pre id="results">running...</pre>
+</body>
+</html>

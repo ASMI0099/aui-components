@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: busy fields and page functions</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 420px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="busy.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="busy.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="BusyCtrl">
+<h1>Busy fields (loading) and page functions written without their call</h1>
+<div class="grid">
+    <div class="cell" id="s-busy"><label>aui-select, loading</label>
+        <aui-select ng-model="m.sel" options="options" loading="state.loading" disabled="state.disabled" placeholder="Busy"></aui-select>
+    </div>
+    <div class="cell" id="t-busy"><label>aui-tree-select, loading</label>
+        <aui-tree-select ng-model="m.tree" options="nodes" loading="state.loading" placeholder="Busy tree"></aui-tree-select>
+    </div>
+    <div class="cell" id="s-ref"><label>aui-select, load-options="loadList" (no call)</label>
+        <aui-select ng-model="m.ref" load-options="loadList" placeholder="Function reference"></aui-select>
+    </div>
+    <div class="cell" id="s-look"><label>aui-select, lookup-options="lookupList" (no call)</label>
+        <aui-select ng-model="m.look" options="options" lookup-options="lookupList" placeholder="Lookup reference"></aui-select>
+    </div>
+    <div class="cell" id="t-ref"><label>aui-tree-select, load-options="loadList" (no call)</label>
+        <aui-tree-select ng-model="m.tref" load-options="loadList" placeholder="Tree function reference"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-kids"><label>aui-tree-select, load-children="loadKids" (no call)</label>
+        <aui-tree-select ng-model="m.kids" load-children="loadKids" placeholder="Children reference"></aui-tree-select>
+    </div>
+</div>
+<div class="bottom-spacer"></div>
+</body>
+</html>

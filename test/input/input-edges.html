@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-input: names, rule changes, leaving the field, search, sizes</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 420px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="input-edges.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="input-edges.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="EdgesCtrl">
+<h1>aui-input: names, rule changes, leaving the field, search, sizes</h1>
+<button type="button" id="outside">Outside</button>
+<span id="ext-name">Delivery note</span> <span id="ext-help">Up to 20 letters</span>
+<form name="f" novalidate>
+    <div class="grid">
+        <div class="cell" id="n-any"><label>number, no precision</label>
+            <aui-input name="nany" ng-model="m.nany" input-type="number" input-style-type="form"></aui-input></div>
+        <div class="cell" id="n-prec-min"><label>number, precision 2, min 0.005</label>
+            <aui-input ng-model="m.npm" input-type="number" precision="2" min="0.005" input-style-type="form"></aui-input></div>
+        <div class="cell" id="n-strict"><label>number -50..100, enforce-limits, a page value of 12345</label>
+            <aui-input ng-model="m.ns" input-type="number" min="-50" max="100" enforce-limits input-style-type="form"></aui-input></div>
+        <div class="cell" id="n-prec-page"><label>number, precision 2, a page value with 4 decimals</label>
+            <aui-input ng-model="m.npp" input-type="number" precision="2" input-style-type="form"></aui-input></div>
+        <div class="cell" id="p-dyn"><label>number, precision from an expression, show-errors</label>
+            <aui-input name="pdyn" ng-model="m.pdyn" input-type="number" precision="{{ state.places }}" show-errors input-style-type="form"></aui-input></div>
+        <div class="cell" id="r-dyn"><label>number, max from an expression, on-change</label>
+            <aui-input name="rdyn" ng-model="m.rdyn" input-type="number" max="{{ state.max }}" input-style-type="form"
+                       on-change="changed($value, $oldValue, $triggerSource, $byUser)"></aui-input></div>
+        <div class="cell" id="blur-deb"><label>updateOn blur, blur debounce 200</label>
+            <aui-input ng-model="m.bd" ng-model-options="{updateOn: 'blur', debounce: {blur: 200}}" input-style-type="form"></aui-input></div>
+        <div class="cell" id="fin-clear"><label>clearable, on-finish</label>
+            <aui-input name="fc" ng-model="m.fc" clearable input-style-type="form" on-finish="finishes.push($event.type)"></aui-input></div>
+        <div class="cell" id="af-show"><label>autofocus, under ng-show (hidden at first)</label>
+            <div ng-show="state.afShown"><aui-input ng-model="m.af" autofocus input-style-type="form"></aui-input></div></div>
+        <div class="cell" id="zero-len"><label>value-max-length 0, show-count, enforce-limits</label>
+            <aui-input name="zl" ng-model="m.zl" value-max-length="0" show-count enforce-limits input-style-type="form"></aui-input></div>
+        <div class="cell" id="w-dyn"><label>width from an expression</label>
+            <aui-input ng-model="m.w" width="{{ state.w }}" input-style-type="form"></aui-input></div>
+        <div class="cell" id="name-label"><label>label-text, no show-label</label>
+            <aui-input ng-model="m.n1" input-style-type="form" label-text="Account number"></aui-input></div>
+        <div class="cell" id="name-host"><label>aria-label on the field</label>
+            <aui-input ng-model="m.n2" input-style-type="cell" aria-label="Order code"></aui-input></div>
+        <div class="cell" id="name-ref"><label>aria-labelledby, aria-describedby on the field, hint</label>
+            <aui-input ng-model="m.n3" input-style-type="form" aria-labelledby="ext-name" aria-describedby="ext-help" hint-text="A hint"></aui-input></div>
+        <div class="cell" id="name-basic"><label>basic style, placeholder only</label>
+            <aui-input ng-model="m.n4" placeholder="Search text"></aui-input></div>
+        <div class="cell" id="pw-eye"><label>password, show-password</label>
+            <aui-input ng-model="m.pw" input-type="password" show-password input-style-type="form"></aui-input></div>
+        <div class="cell" id="req-pat"><label>required, pattern [A-Z]+</label>
+            <aui-input name="rp" ng-model="m.rp" required pattern="[A-Z]+" input-style-type="form"></aui-input></div>
+        <div class="cell" id="ta-flex" style="grid-column: 1 / -1"><label>aui-textarea, auto-height from an expression</label>
+            <div id="ta-room" style="width: 540px; max-width: 100%"><aui-textarea ng-model="m.long" rows="2" max-rows="10" auto-height="state.auto"></aui-textarea></div></div>
+        <div class="cell" id="ta-affix"><label>aui-textarea, prefix and suffix texts, hint</label>
+            <aui-textarea ng-model="m.ta" prefix-text="$" suffix-text="units" hint-text="An amount"></aui-textarea></div>
+        <div class="cell" id="s-pat"><label>search, pattern [a-z]+</label>
+            <aui-input ng-model="m.sp" search pattern="[a-z]+" on-search="searched('pat', $value)" input-style-type="form"></aui-input></div>
+        <div class="cell" id="s-plain"><label>search, no debounce</label>
+            <aui-input ng-model="m.spl" search on-search="searched('plain', $value)" input-style-type="form"></aui-input></div>
+        <div class="cell" id="s-deb"><label>search, search-debounce 80</label>
+            <aui-input ng-model="m.sd" search search-debounce="80" on-search="searched('deb', $value)" input-style-type="form"></aui-input></div>
+    </div>
+</form>
+<div class="bottom-spacer"></div>
+</body>
+</html>

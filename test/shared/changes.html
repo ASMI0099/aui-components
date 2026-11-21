@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: on-change, what made a change</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 480px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="changes.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="changes.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="ChangesCtrl">
+<h1>on-change: what changed the value, and who (both forms of on-change, the native change event)</h1>
+<form name="f" novalidate>
+    <div class="grid">
+        <div class="cell" id="s"><label>aui-select, on-change as a reference, api</label>
+            <aui-select name="s" ng-model="m.s" options="options" clearable api="api.s" on-change="refs.s" placeholder="Single"></aui-select>
+        </div>
+        <div class="cell" id="sc"><label>aui-select, on-change as a call</label>
+            <aui-select name="sc" ng-model="m.sc" options="options"
+                        on-change="onCall('sc', {value: $value, oldValue: $oldValue, items: $items, option: $option, triggerSource: $triggerSource, byUser: $byUser})"
+                        placeholder="Call"></aui-select>
+        </div>
+        <div class="cell" id="sm"><label>aui-select, multiple, clearable, api</label>
+            <aui-select name="sm" ng-model="m.sm" options="options" multiple clearable api="api.sm" on-change="refs.sm" placeholder="Several"></aui-select>
+        </div>
+        <div class="cell" id="sa"><label>aui-select, auto-select-on-single-required</label>
+            <aui-select name="sa" ng-model="m.sa" options="one" ng-required="true" auto-select-on-single-required on-change="refs.sa" placeholder="Auto"></aui-select>
+        </div>
+        <div class="cell" id="sp"><label>aui-select, reset-on-params="clear"</label>
+            <aui-select name="sp" ng-model="m.sp" load-options="load($request)" load-params="params" reset-on-params="clear" on-change="refs.sp" placeholder="Params"></aui-select>
+        </div>
+        <div class="cell" id="t"><label>aui-tree-select, on-change as a reference</label>
+            <aui-tree-select name="t" ng-model="m.t" options="flat" on-change="refs.t" placeholder="Tree"></aui-tree-select>
+        </div>
+        <div class="cell" id="tc"><label>aui-tree-select, on-change as a call</label>
+            <aui-tree-select name="tc" ng-model="m.tc" options="flat"
+                             on-change="onCall('tc', {value: $value, oldValue: $oldValue, nodes: $nodes, node: $node, triggerSource: $triggerSource, byUser: $byUser})"
+                             placeholder="Tree call"></aui-tree-select>
+        </div>
+        <div class="cell" id="tm"><label>aui-tree-select, multiple, clearable, api</label>
+            <aui-tree-select name="tm" ng-model="m.tm" options="flat" multiple clearable api="api.tm" on-change="refs.tm" placeholder="Several tree"></aui-tree-select>
+        </div>
+        <div class="cell" id="te"><label>aui-tree-select, on-expand (a branch opened by page code inside a digest)</label>
+            <aui-tree-select name="te" ng-model="m.te" options="nested" on-expand="expanded($node, $expanded)" placeholder="Branches"></aui-tree-select>
+        </div>
+        <div class="cell" id="i"><label>aui-input, on-change as a call, api</label>
+            <aui-input name="i" ng-model="m.i" input-style-type="form" clearable api="api.i"
+                       on-change="onCall('i', {value: $value, oldValue: $oldValue, triggerSource: $triggerSource, byUser: $byUser})"></aui-input>
+        </div>
+        <div class="cell" id="ir"><label>aui-input, on-change as a reference</label>
+            <aui-input name="ir" ng-model="m.ir" input-style-type="form" on-change="refs.ir"></aui-input>
+        </div>
+    </div>
+</form>
+<div class="bottom-spacer"></div>
+</body>
+</html>

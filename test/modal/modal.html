@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: aui-modal</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="modal.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="modal.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="ModalCtrl">
+<h1>aui-modal: opening, closing, defer-render, on-rendered, Escape, actions</h1>
+
+<aui-modal id="m-plain" is-open="open.plain" size="small" close-on-esc="true" on-close="note('closed plain')">
+    <header><span>Plain</span></header>
+    <content><div id="plain-body" style="padding: 8px;">A plain body</div></content>
+</aui-modal>
+
+<aui-modal id="m-deferred" is-open="open.deferred" width="60" height="60" defer-render="true" close-on-esc="true"
+           on-rendered="rendered('deferred')" on-close="note('closed deferred')">
+    <header><span>Deferred</span></header>
+    <content><div id="deferred-body" style="padding: 8px;">A deferred body</div></content>
+</aui-modal>
+
+<aui-modal id="m-rendered" is-open="open.rendered" size="small" close-on-esc="true" on-rendered="rendered('rendered')"
+           on-close="note('closed rendered')">
+    <header><span>Not deferred, on-rendered</span></header>
+    <content><div id="rendered-body" style="padding: 8px;">A body</div></content>
+</aui-modal>
+
+<aui-modal id="m-actions" is-open="open.actions" size="small" close-on-esc="true" on-close="note('closed actions')">
+    <header><span>Actions</span></header>
+    <content><div style="padding: 8px;">A body</div></content>
+    <footer><aui-button id="cancel-action" variant="outline" intent="neutral" aui-modal-close="cancelAction()">Cancel</aui-button></footer>
+</aui-modal>
+
+<aui-modal id="m-glass" is-open="open.glass" size="small" background-opacity="OPAQUE_LIKE">
+    <content><div style="padding: 8px;">Glass</div></content>
+</aui-modal>
+
+<aui-modal id="m-search" is-open="open.search" width="60" height="60" defer-render="true" on-rendered="searchRendered()">
+    <content><div id="search-body" search-listener style="padding: 8px;">A deferred body that searches when told</div></content>
+</aui-modal>
+
+<aui-modal id="m-noesc" is-open="open.noesc" size="small" close-on-esc="false" on-close="note('closed noesc')">
+    <content><div id="noesc-body" style="padding: 8px;">Escape does not close this one</div></content>
+</aui-modal>
+
+<aui-modal id="m-confirm" is-open="open.confirm" size="small" show-confirm-button="true" on-confirm="saveSlow()"
+           on-close="note('closed confirm')">
+    <content><div style="padding: 8px;">A form whose save takes a while</div></content>
+</aui-modal>
+<!-- the page scrolls (it has a scrollbar), as most pages do -->
+<div id="tall-page" style="height: 2400px;"></div>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-date-picker: time types</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <style>
+        .dp-test { display: grid; grid-template-columns: repeat(3, 340px); gap: 12px 16px; padding: 12px; }
+        .dp-test .dp-wide { grid-column: span 2; }
+    </style>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="time.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="time.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="TimeCtrl">
+<h1>aui-date-picker: time types</h1>
+<form name="pageForm" novalidate class="dp-test">
+    <aui-date-picker id="p-dt" type="datetime" ng-model="f.dt" clearable
+                     on-change="log('dt', $value, $text, $timestamp, $triggerSource, $byUser)"></aui-date-picker>
+    <aui-date-picker id="p-dtr" class="dp-wide" type="datetimerange" name="dtr" ng-model="f.dtr"
+                     on-change="log('dtr', $value, $timestamps, $duration, $triggerSource, $byUser)"></aui-date-picker>
+    <aui-date-picker id="p-promo" class="dp-wide" type="datetimerange" name="promo" start-model="f.ps" end-model="f.pe"
+                     format="YYYY-MM-DD HH:mm" required shortcuts="true"></aui-date-picker>
+    <aui-time-picker id="p-time" ng-model="f.t" format="HH:mm" value-format="HH:mm" minute-step="15"
+                     on-change="log('t', $value, $text, $timestamp, $triggerSource, $byUser)"></aui-time-picker>
+    <aui-date-picker id="p-tr" type="timerange" name="tr" ng-model="f.tr"></aui-date-picker>
+    <aui-date-picker id="p-12" type="datetime" ng-model="f.d12" format="YYYY-MM-DD hh:mm A"></aui-date-picker>
+    <aui-time-picker id="p-slots" ng-model="f.slot" format="HH:mm" value-format="HH:mm" time-slots="09:00-12:00/30m"></aui-time-picker>
+    <aui-date-picker id="p-lim" type="datetime" name="lim" ng-model="f.lim" min="2026-11-10 09:30:00" max="2026-11-20 17:00:00"
+                     disabled-time="lunch($hour)"></aui-date-picker>
+    <aui-date-picker id="p-nc" type="datetime" ng-model="f.nc" commit-on-close="false"></aui-date-picker>
+    <aui-date-picker id="p-stamp" type="datetime" ng-model="f.stamp" value-type="timestamp"></aui-date-picker>
+    <aui-date-picker id="p-hm" class="dp-wide" type="datetimerange" ng-model="f.hm" format="YYYY-MM-DD HH:mm"></aui-date-picker>
+    <aui-date-picker id="p-dmax" class="dp-wide" type="datetimerange" ng-model="f.dmax" format="YYYY-MM-DD HH:mm" max-range="7d"></aui-date-picker>
+    <!-- a form whose server sends seconds and takes text back: past days not for new picks, a saved past start kept -->
+    <aui-date-picker id="p-plat" class="dp-wide" type="datetimerange" name="plat" start-model="f.ps2" end-model="f.pe2" required
+                     read-seconds limits-new-only min="today" on-change="log('plat', $value)"></aui-date-picker>
+    <aui-date-picker id="p-sec" type="datetime" ng-model="f.sec" read-seconds></aui-date-picker>
+    <aui-date-picker id="p-dend" type="datetime" ng-model="f.dend" format="YYYY-MM-DD HH:mm" boundary="end"></aui-date-picker>
+    <aui-date-picker id="p-deft" type="datetime" ng-model="f.deft" default-time="'09:15:00'"></aui-date-picker>
+    <aui-date-picker id="p-defr" class="dp-wide" type="datetimerange" ng-model="f.defr" default-time="['08:00:00', '20:00:00']"></aui-date-picker>
+</form>
+<p id="page-value">{{ f.dt }}</p>
+</body>
+</html>

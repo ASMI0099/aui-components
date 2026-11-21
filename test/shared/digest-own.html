@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>aui-* family: a component's own digest and the page's</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="digest-own.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="digest-own.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="DigestOwnCtrl">
+<h1>A component's own digest never takes the digest the page waits for</h1>
+<p>The page's note: <span id="page-note">{{ page.note }}</span></p>
+<div style="width: 320px; display: grid; gap: 12px;">
+    <aui-input id="f-input" ng-model="f.text" input-style-type="form" show-label label-text="Counted" show-count="true"
+               value-max-length="20"></aui-input>
+    <aui-select id="f-select" ng-model="f.pick" options="options" label-field="name" value-field="id" show-label
+                label-text="Select"></aui-select>
+    <aui-tree-select id="f-tree" ng-model="f.node" options="tree" label-field="name" value-field="id" show-label
+                     label-text="Tree"></aui-tree-select>
+</div>
+</body>
+</html>

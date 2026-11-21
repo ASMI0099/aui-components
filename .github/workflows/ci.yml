@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: dist/ matches the sources
+        run: node scripts/build.js --check
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Browser tests (from the sources)
+        run: npm run test:browser
+
+      - name: Browser tests (minified dist/)
+        run: npm run test:dist

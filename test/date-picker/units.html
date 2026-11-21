@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-date-picker: months, quarters, years, weeks, dates</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <style>
+        .dp-test { display: grid; grid-template-columns: repeat(3, 320px); gap: 12px 16px; padding: 12px; }
+        .dp-test .dp-wide { grid-column: span 2; }
+    </style>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="units.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="units.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="UnitsCtrl">
+<h1>aui-date-picker: months, quarters, years, weeks, dates</h1>
+<form name="pageForm" novalidate class="dp-test">
+    <aui-date-picker id="p-month" type="month" ng-model="f.month" clearable
+                     on-change="log('month', $value, $text, $timestamp, $triggerSource, $byUser, $start, $end, $timestamps)"></aui-date-picker>
+    <aui-date-picker id="p-mr" class="dp-wide" type="monthrange" name="mr" ng-model="f.mr" max-range="12M"
+                     on-change="log('mr', $value, $timestamps, $triggerSource, $byUser)"></aui-date-picker>
+    <aui-date-picker id="p-mrd" class="dp-wide" type="monthrange" start-model="f.ms" end-model="f.me"
+                     value-format="YYYY-MM-DD HH:mm:ss" format="YYYY-MM"></aui-date-picker>
+    <aui-date-picker id="p-q" type="quarter" ng-model="f.q"
+                     on-change="log('q', $value, $text, $triggerSource, $start, $end)"></aui-date-picker>
+    <aui-date-picker id="p-qr" class="dp-wide" type="quarterrange" ng-model="f.qr" shortcuts="true"></aui-date-picker>
+    <aui-date-picker id="p-y" type="year" ng-model="f.y" shortcuts="true"></aui-date-picker>
+    <aui-date-picker id="p-yr" class="dp-wide" type="yearrange" name="yr" ng-model="f.yr"></aui-date-picker>
+    <aui-date-picker id="p-wk" type="week" ng-model="f.wk"
+                     on-change="log('wk', $value, $text, $start, $end, $timestamps)"></aui-date-picker>
+    <aui-date-picker id="p-wk0" type="week" week-start="0" ng-model="f.wk0"></aui-date-picker>
+    <aui-date-picker id="p-dates" type="dates" name="dates" ng-model="f.dates" max-count="3" clearable
+                     on-change="log('dates', $value, $text, $timestamps, $triggerSource, $byUser)"></aui-date-picker>
+    <aui-date-picker id="p-mlim" type="month" name="mlim" ng-model="f.mlim" min="2026-03" max="2026-10"
+                     disabled-date="noAugust($unit, $parts)"></aui-date-picker>
+    <aui-date-picker id="p-mstamp" type="month" ng-model="f.mstamp" value-type="timestamp"></aui-date-picker>
+    <aui-date-picker id="p-mend" type="month" ng-model="f.mend" value-format="YYYY-MM-DD HH:mm:ss" format="YYYY-MM" boundary="end"></aui-date-picker>
+</form>
+<p id="page-value">{{ f.month }}</p>
+</body>
+</html>

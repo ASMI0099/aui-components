@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-tree-select: core</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        .cell .out { margin-top: 6px; font: 11px Consolas, monospace; color: #666; word-break: break-all; }
+        #results { font: 12px/1.5 Consolas, monospace; white-space: pre-wrap; margin-top: 18px; background: #fff; padding: 10px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 40px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="core.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="core.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="TreeCtrl">
+<h1>aui-tree-select</h1>
+<form name="treeForm" id="treeForm" novalidate>
+<div class="grid">
+    <div class="cell" id="t-single"><label>Single, searchable, clearable, label</label>
+        <aui-tree-select ng-model="m.single" name="single" options="cats" label-field="name" value-field="id"
+                         searchable="true" clearable show-label="true" label-text="Category" placeholder="Pick a category"
+                         on-change="onChangeRef" on-open="counts.open = counts.open + 1"
+                         on-close="counts.close = counts.close + 1" on-expand="counts.expand = counts.expand + 1"
+                         api="api"></aui-tree-select>
+        <div class="out">model: {{ m.single | json }}</div>
+    </div>
+    <div class="cell" id="t-multi"><label>Multiple, linked, value-strategy all, max-tag-count 2</label>
+        <aui-tree-select ng-model="m.multi" name="multi" options="cats2" label-field="name" value-field="id"
+                         multiple clearable max-tag-count="2" placeholder="Pick categories"
+                         on-change="onChangeExpr($value, $nodes, $node)"></aui-tree-select>
+        <div class="out">model: {{ m.multi | json }}</div>
+    </div>
+    <div class="cell" id="t-strict"><label>Multiple, check-strictly</label>
+        <aui-tree-select ng-model="m.strict" name="strict" options="cats3" label-field="name" value-field="id"
+                         multiple check-strictly clearable placeholder="Independent checks"></aui-tree-select>
+        <div class="out">model: {{ m.strict | json }}</div>
+    </div>
+    <div class="cell" id="t-leaf"><label>Single, leaf-only, show-path</label>
+        <aui-tree-select ng-model="m.leaf" name="leaf" options="cats4" label-field="name" value-field="id"
+                         leaf-only show-path clearable placeholder="Leaves only"></aui-tree-select>
+        <div class="out">model: {{ m.leaf | json }}</div>
+    </div>
+    <div class="cell" id="t-flat"><label>Flat data (parent-field="pid"), default-expand-level 1</label>
+        <aui-tree-select ng-model="m.flat" name="flat" options="flat" label-field="name" value-field="id"
+                         parent-field="pid" default-expand-level="1" placeholder="Flat list"></aui-tree-select>
+        <div class="out">model: {{ m.flat | json }}</div>
+    </div>
+    <div class="cell" id="t-lazy"><label>Lazy (load-children), multiple, value-strategy parent</label>
+        <aui-tree-select ng-model="m.lazy" name="lazy" label-field="name" value-field="id" multiple
+                         value-strategy="parent" load-children="loadChildren($node, $level)" api="lazyApi"
+                         placeholder="Loads on demand"></aui-tree-select>
+        <div class="out">model: {{ m.lazy | json }}</div>
+    </div>
+    <div class="cell" id="t-req"><label>Required (red only after touch)</label>
+        <aui-tree-select ng-model="m.req" name="reqField" options="catsReq" label-field="name" value-field="id"
+                         required placeholder="Required"></aui-tree-select>
+        <div class="out">valid: {{ treeForm.reqField.$valid }} touched: {{ treeForm.reqField.$touched }}</div>
+    </div>
+    <div class="cell" id="t-dis"><label>Multiple, disabled node (Cookware) + disabled-values [3]</label>
+        <aui-tree-select ng-model="m.dis" name="dis" options="catsDis" label-field="name" value-field="id"
+                         multiple clearable disabled-values="disabledValues" placeholder="Disabled nodes"></aui-tree-select>
+        <div class="out">model: {{ m.dis | json }}</div>
+    </div>
+    <div class="cell" id="t-off"><label>Disabled component</label>
+        <aui-tree-select ng-model="m.single" name="off" options="cats" label-field="name" value-field="id"
+                         disabled="true"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-parent"><label>value-strategy parent</label>
+        <aui-tree-select ng-model="m.parent" name="parent" options="cats" label-field="name" value-field="id"
+                         multiple value-strategy="parent" placeholder="Strategy parent"></aui-tree-select>
+        <div class="out">model: {{ m.parent | json }}</div>
+    </div>
+    <div class="cell" id="t-child"><label>value-strategy child</label>
+        <aui-tree-select ng-model="m.child" name="child" options="cats" label-field="name" value-field="id"
+                         multiple value-strategy="child" placeholder="Strategy child"></aui-tree-select>
+        <div class="out">model: {{ m.child | json }}</div>
+    </div>
+    <div class="cell" id="t-unknown"><label>Unknown value (999) and selected-labels (7777)</label>
+        <aui-tree-select ng-model="m.unknown" name="unknown" options="cats" label-field="name" value-field="id"></aui-tree-select>
+        <aui-tree-select ng-model="m.labels" name="labels" options="cats" label-field="name" value-field="id"
+                         multiple selected-labels="labelsMap"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-destroy"><label>Destroyable (ng-if)</label>
+        <aui-tree-select ng-if="show.destroyable" ng-model="m.single" name="destroyable" options="cats"
+                         label-field="name" value-field="id" on-close="counts.close = counts.close + 1"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-big"><label>20,020 nodes, multiple (virtual scrolling), panel-min-width 360</label>
+        <aui-tree-select ng-model="m.big" name="big" options="big" label-field="name" value-field="id"
+                         multiple clearable max-tag-count="3" panel-min-width="360" api="bigApi"
+                         placeholder="Big tree"></aui-tree-select>
+        <div class="out">model size: {{ m.big.length }}</div>
+    </div>
+    <div class="cell" id="t-modal-cell"><label>Inside aui-modal (native dialog)</label>
+        <button type="button" id="openModal" ng-click="modal.open = true">Open modal</button>
+    </div>
+    <div class="cell"><label>Inside a scrolling box (panel hides while the field is scrolled out)</label>
+        <div id="t-scroll" style="height: 120px; overflow: auto; border: 1px dashed #ccd; padding: 8px;">
+            <aui-tree-select ng-model="m.scroll" name="scroll" options="cats" label-field="name" value-field="id"
+                             placeholder="Scroll the box while open"></aui-tree-select>
+            <div style="height: 400px;"></div>
+        </div>
+    </div>
+    <div class="cell" id="t-lines"><label>show-line, default-expand-level all</label>
+        <aui-tree-select ng-model="m.lines" name="lines" options="cats" label-field="name" value-field="id"
+                         show-line default-expand-level="all" placeholder="Guide lines"></aui-tree-select>
+    </div>
+    <div class="cell"><label>An iframe (clicking into it closes an open dropdown)</label>
+        <iframe id="t-iframe" style="width: 100%; height: 40px; border: 1px solid #ddd;"
+                srcdoc="<input placeholder='inside the iframe'>"></iframe>
+    </div>
+</div>
+</form>
+<aui-modal is-open="modal.open" size="small" close-on-esc="true" show-footer="false">
+    <content>
+        <div style="padding: 16px;" id="t-modal">
+            <aui-tree-select ng-model="m.modal" name="modal" options="catsModal" label-field="name" value-field="id"
+                             searchable="true" placeholder="In a modal"></aui-tree-select>
+        </div>
+    </content>
+</aui-modal>
+<div class="bottom-spacer"></div>
+</body>
+</html>

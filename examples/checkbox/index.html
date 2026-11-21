@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" href="data:,"/>
+    <title>aui-checkbox</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../assets/examples.css"/>
+    <style>
+        .cb-row { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: center; }
+        .cb-table { border-collapse: collapse; width: 100%; max-width: 560px; font-size: 13px; }
+        .cb-table th, .cb-table td { border-bottom: 1px solid #e5e7eb; padding: 8px 10px; text-align: left; }
+        .cb-tables { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
+        .cb-pick { cursor: pointer; }
+        .cb-pick.is-picked td { background-color: var(--aui-control-accent-a05); }
+        .cb-table .cb-select { width: 64px; padding-left: 14px; text-align: left; vertical-align: middle; }
+        .cb-form { display: grid; grid-template-columns: repeat(2, minmax(0, 260px)); gap: 12px 16px; }
+        .cb-value { margin: 8px 0 0; font: 12px/1.5 ui-monospace, Consolas, monospace; color: #475569; }
+        .cb-log { max-height: 160px; overflow: auto; font: 12px/1.6 ui-monospace, Consolas, monospace; color: #334155;
+                  background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; }
+    </style>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="../assets/examples.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="checkbox.js"></script>
+</head>
+<body class="ex" ng-app="auiExamples" ng-controller="CheckboxCtrl as vm">
+<ex-page heading="aui-checkbox"
+         lead="One box on ng-model (true-value / false-value), or aui-checkbox-group on one array. A native checkbox underneath: Space, the label's click and screen readers are the browser's own. In a page form it is the form's field itself (required, touched, the message line).">
+
+    <section class="ex-example" id="ex-states">
+        <h2>States and sizes</h2>
+        <div class="cb-row">
+            <aui-checkbox ng-model="vm.f.a" label="Unchecked"></aui-checkbox>
+            <aui-checkbox ng-model="vm.f.b" label="Checked"></aui-checkbox>
+            <aui-checkbox ng-model="vm.f.c" indeterminate="true" label="Mixed"></aui-checkbox>
+            <aui-checkbox ng-model="vm.f.a" disabled="true" label="Disabled"></aui-checkbox>
+            <aui-checkbox ng-model="vm.f.b" disabled="true" label="Disabled checked"></aui-checkbox>
+            <aui-checkbox ng-model="vm.f.a" label-position="left" label="Label left"></aui-checkbox>
+        </div>
+        <div class="cb-row" style="margin-top: 14px;">
+            <aui-checkbox ng-model="vm.f.b" size="compact" label="compact 12"></aui-checkbox>
+            <aui-checkbox ng-model="vm.f.b" size="sm" label="sm 14"></aui-checkbox>
+            <aui-checkbox ng-model="vm.f.b" label="normal 16"></aui-checkbox>
+            <aui-checkbox ng-model="vm.f.b" size="lg" label="lg 22"></aui-checkbox>
+            <span style="font-size: 18px;"><aui-checkbox ng-model="vm.f.b" size="inherit" label="inherit (the text around)"></aui-checkbox></span>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-form">
+        <h2>In a page form</h2>
+        <p class="ex-example__text">name and ng-required: the form holds the field itself; its message line once it has been left
+            (show-errors). true-value / false-value write strings. container-border: in a field's box, blue while checked.</p>
+        <form name="vm.form" novalidate class="cb-form">
+            <aui-checkbox name="agree" ng-model="vm.f.agree" ng-required="true" show-errors="true" label="I agree to the terms"
+                          on-change="vm.log('agree', $value, $oldValue, $triggerSource)"></aui-checkbox>
+            <aui-checkbox name="perm" ng-model="vm.f.perm" true-value="'edit'" false-value="'no'" container-border="true" label="Edit permission"
+                          on-change="vm.log('perm', $value, $oldValue, $triggerSource)"></aui-checkbox>
+        </form>
+        <p class="cb-value">form.agree.$error.required: {{ vm.form.agree.$error.required || false }} · agree: {{ vm.f.agree | json }} · perm: {{ vm.f.perm | json }}</p>
+    </section>
+
+    <section class="ex-example" id="ex-table">
+        <h2>A table with a select-all</h2>
+        <p class="ex-example__text">The row's number as the label, aria-label "Select row N" for screen readers; a click anywhere
+            on the row checks it too (the page skips clicks from inside aui-checkbox), the checked row tinted; the header box
+            mixed while some rows are checked. Left: the box and its number centred together in the cell (from 10 on the box
+            moves left). Right: the cell aligned to the start, the boxes in one column.</p>
+        <div class="cb-tables">
+            <table class="cb-table">
+                <tr>
+                    <th style="text-align: center; min-width: 60px;"><aui-checkbox ng-model="vm.allRows" indeterminate="vm.someRows()" size="sm"
+                                      aria-label="Select all rows" on-change="vm.setAll($checked)"></aui-checkbox></th>
+                    <th>Product</th><th>Stock</th>
+                </tr>
+                <tr ng-repeat="row in vm.rows" ng-click="vm.toggleRow(row, $event)" class="cb-pick"
+                    ng-style="{'background-color': row.picked ? 'rgba(15, 227, 245, 0.1)' : 'unset'}">
+                    <td style="text-align: center; min-width: 60px; vertical-align: middle;">
+                        <aui-checkbox ng-model="row.picked" on-change="vm.syncAll()" size="sm" label="{{ $index + 1 }}"
+                                      style="display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;"
+                                      aria-label="Select row {{ $index + 1 }}"></aui-checkbox>
+                    </td>
+                    <td>{{ row.name }}</td><td>{{ row.stock }}</td>
+                </tr>
+            </table>
+            <table class="cb-table">
+                <tr>
+                    <th class="cb-select"><aui-checkbox ng-model="vm.allRows" indeterminate="vm.someRows()" size="sm"
+                                      aria-label="Select all rows" on-change="vm.setAll($checked)"></aui-checkbox></th>
+                    <th>Product</th><th>Stock</th>
+                </tr>
+                <tr ng-repeat="row in vm.rows" ng-click="vm.toggleRow(row, $event)" class="cb-pick" ng-class="{'is-picked': row.picked}">
+                    <td class="cb-select"><aui-checkbox ng-model="row.picked" on-change="vm.syncAll()" size="sm" label="{{ $index + 1 }}"
+                                      aria-label="Select row {{ $index + 1 }}"></aui-checkbox></td>
+                    <td>{{ row.name }}</td><td>{{ row.stock }}</td>
+                </tr>
+            </table>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-group">
+        <h2>aui-checkbox-group</h2>
+        <p class="ex-example__text">One array model, in the options' order. Select-all (mixed while some), a disabled option, max 3
+            (the others disabled once reached), min 1 with its message, layouts.</p>
+        <aui-checkbox-group name="perms" ng-model="vm.perms" options="vm.permOptions" label-field="name" value-field="id"
+                            disabled-field="locked" show-select-all="true" min="1" max="3" show-errors="true" layout="{{ vm.layout }}"
+                            columns="3" on-change="vm.log('perms', $value, $oldValue, $triggerSource)"></aui-checkbox-group>
+        <div class="cb-row" style="margin-top: 12px;">
+            <label><input type="radio" ng-model="vm.layout" value="row"> row</label>
+            <label><input type="radio" ng-model="vm.layout" value="column"> column</label>
+            <label><input type="radio" ng-model="vm.layout" value="grid"> grid</label>
+        </div>
+        <p class="cb-value">value: {{ vm.perms | json }}</p>
+        <div style="margin-top: 16px;">
+            <aui-checkbox-group ng-model="vm.pages" options="vm.pageOptions" layout="grid" columns="3" container-border="true"></aui-checkbox-group>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-log">
+        <h2>on-change</h2>
+        <div class="cb-log"><div ng-repeat="line in vm.lines track by $index">{{ line }}</div><div ng-if="!vm.lines.length">Nothing yet</div></div>
+    </section>
+</ex-page>
+</body>
+</html>

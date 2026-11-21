@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" href="data:,"/>
+    <title>aui-date-picker</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../assets/examples.css"/>
+    <style>
+        .dp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px 18px; align-items: start; }
+        .dp-wide { grid-column: span 2; }
+        @media (max-width: 640px) { .dp-wide { grid-column: auto; } }
+        .dp-value { margin: 6px 0 0; font: 12px/1.5 ui-monospace, Consolas, monospace; color: #475569; word-break: break-all; }
+        .dp-log { max-height: 220px; overflow: auto; font: 12px/1.6 ui-monospace, Consolas, monospace; color: #334155;
+                  background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; }
+        .dp-buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    </style>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="../assets/examples.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="date-picker.js"></script>
+</head>
+<body class="ex" ng-app="auiExamples" ng-controller="DatePickerCtrl as vm">
+<ex-page heading="aui-date-picker"
+         lead="Days and ranges (date, daterange), dates with times (datetime, datetimerange), times (time, timerange, aui-time-picker), months, quarters and years (and their ranges), weeks and several dates. Type a value (2026-11-6, 2026/11/06 9:30) or pick it; ArrowDown moves into the panel. A time is set in a draft and taken with OK (or as the panel closes); Escape drops it. Values are texts by default, never read as UTC.">
+
+    <section class="ex-example" id="ex-day">
+        <h2>One day</h2>
+        <div class="dp-grid">
+            <div>
+                <aui-date-picker ng-model="vm.f.day" show-label label-text="Delivery date" clearable
+                                 on-change="vm.log('day', $value, $text, $timestamp, $triggerSource, $byUser)"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.day | json }}</p>
+            </div>
+            <div>
+                <aui-date-picker ng-model="vm.f.limited" show-label label-text="Within 60 days, weekdays" clearable
+                                 min="today" max="today+60d" disabled-date="vm.weekend($parts)"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.limited | json }} (min today, max today+60d, weekends disabled)</p>
+            </div>
+            <div>
+                <aui-date-picker ng-model="vm.f.shortcuts" show-label label-text="With shortcuts" shortcuts="true" clearable></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.shortcuts | json }}</p>
+            </div>
+            <div>
+                <aui-date-picker ng-model="vm.f.stamp" value-type="timestamp" show-label label-text="As a timestamp" clearable
+                                 on-change="vm.log('stamp', $value, $text, $timestamp, $triggerSource, $byUser)"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.stamp | json }}</p>
+            </div>
+            <div>
+                <aui-date-picker ng-model="vm.f.week0" week-start="0" format="DD/MM/YYYY" show-label label-text="Sunday first, DD/MM/YYYY"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.week0 | json }} (value-format stays YYYY-MM-DD)</p>
+            </div>
+            <div>
+                <aui-date-picker ng-model="vm.f.server" show-label label-text="From the server (ISO with Z)"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.server | json }} (shown in local time, not rewritten)</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-range">
+        <h2>Ranges</h2>
+        <div class="dp-grid">
+            <div class="dp-wide">
+                <aui-date-picker type="daterange" ng-model="vm.f.range" show-label label-text="Report period" clearable
+                                 shortcuts="true" max-range="31d"
+                                 on-change="vm.log('range', $value, $text, $timestamps, $triggerSource, $byUser, $duration)"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.range | json }} (at most 31 days)</p>
+            </div>
+            <div class="dp-wide">
+                <aui-date-picker type="daterange" start-model="vm.f.promotionStartTime" end-model="vm.f.promotionEndTime"
+                                 value-format="YYYY-MM-DD HH:mm:ss" format="YYYY-MM-DD" show-label label-text="Promotion"
+                                 clearable shortcuts="['today', 'next7Days', 'next30Days', 'untilEndOfMonth']" min="today"
+                                 durations="['7d', '14d', '1M']"
+                                 on-change="vm.log('promotion', $value, $text, $timestamps, $triggerSource, $byUser, $duration)"></aui-date-picker>
+                <p class="dp-value">promotionStartTime: {{ vm.f.promotionStartTime | json }}, promotionEndTime: {{ vm.f.promotionEndTime | json }}
+                    (durations: once the start is picked, +7 days, +14 days, +1 month set the end)</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-datetime">
+        <h2>Dates with times</h2>
+        <div class="dp-grid">
+            <div>
+                <aui-date-picker type="datetime" ng-model="vm.f.dt" show-label label-text="Meeting" clearable
+                                 on-change="vm.log('datetime', $value, $text, $timestamp, $triggerSource, $byUser)"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.dt | json }}</p>
+            </div>
+            <div>
+                <aui-date-picker type="datetime" ng-model="vm.f.dtLimited" show-label label-text="Pickup (from now, 09:00-18:00)" clearable
+                                 format="YYYY-MM-DD HH:mm" minute-step="15" min="now" max="today+14d"
+                                 disabled-time="vm.outsideHours($hour)" shortcuts="true"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.dtLimited | json }} (minute-step 15, hours outside 09-17 disabled)</p>
+            </div>
+            <div>
+                <aui-date-picker type="datetime" ng-model="vm.f.dt12" show-label label-text="12 hours" clearable
+                                 format="YYYY-MM-DD hh:mm A"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.dt12 | json }} (shown hh:mm A, kept in 24 hours)</p>
+            </div>
+            <div>
+                <aui-date-picker type="datetime" ng-model="vm.f.endsAt" show-label label-text="Ends at" clearable
+                                 format="YYYY-MM-DD HH:mm" boundary="end"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.endsAt | json }} (boundary="end": a day picked is 23:59:59, its hidden seconds 59)</p>
+            </div>
+            <div class="dp-wide">
+                <aui-date-picker type="datetimerange" start-model="vm.f.promotionStart" end-model="vm.f.promotionEnd"
+                                 format="YYYY-MM-DD HH:mm" show-label label-text="Promotion start / end" clearable required
+                                 shortcuts="['today', 'next7Days', 'next30Days', 'untilEndOfMonth']" min="today"
+                                 on-change="vm.log('promotion', $value, $timestamps, $duration, $triggerSource, $byUser)"></aui-date-picker>
+                <p class="dp-value">promotionStartTime: {{ vm.f.promotionStart | json }}, promotionEndTime: {{ vm.f.promotionEnd | json }}
+                    (HH:mm shown: the start's seconds 00, the end's 59)</p>
+            </div>
+            <div class="dp-wide">
+                <aui-date-picker type="datetimerange" ng-model="vm.f.orders" show-label label-text="Orders between" clearable
+                                 shortcuts="true" max-range="31d"
+                                 on-change="vm.log('orders', $value, $timestamps, $duration, $triggerSource, $byUser)"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.orders | json }} (at most 31 days)</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-time">
+        <h2>Times</h2>
+        <div class="dp-grid">
+            <div>
+                <aui-time-picker ng-model="vm.f.t" show-label label-text="Reminder" clearable
+                                 on-change="vm.log('time', $value, $text, $triggerSource, $byUser)"></aui-time-picker>
+                <p class="dp-value">value: {{ vm.f.t | json }} (aui-time-picker)</p>
+            </div>
+            <div>
+                <aui-time-picker ng-model="vm.f.tStep" format="HH:mm" value-format="HH:mm" minute-step="5" show-label
+                                 label-text="HH:mm, every 5 minutes" clearable></aui-time-picker>
+                <p class="dp-value">value: {{ vm.f.tStep | json }}</p>
+            </div>
+            <div>
+                <aui-time-picker ng-model="vm.f.slot" format="HH:mm" value-format="HH:mm" time-slots="08:00-20:00/30m"
+                                 show-label label-text="Delivery slot" clearable></aui-time-picker>
+                <p class="dp-value">value: {{ vm.f.slot | json }} (time-slots 08:00-20:00/30m)</p>
+            </div>
+            <div class="dp-wide">
+                <aui-date-picker type="timerange" ng-model="vm.f.hours" format="HH:mm" value-format="HH:mm" minute-step="30"
+                                 show-label label-text="Opening hours" clearable></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.hours | json }}</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-units">
+        <h2>Months, quarters, years, weeks, dates</h2>
+        <div class="dp-grid">
+            <div>
+                <aui-date-picker type="month" ng-model="vm.f.month" show-label label-text="Billing month" clearable shortcuts="true"
+                                 on-change="vm.log('month', $value, $start, $end, $timestamps, $triggerSource)"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.month | json }}</p>
+            </div>
+            <div class="dp-wide">
+                <aui-date-picker type="monthrange" start-model="vm.f.reportFrom" end-model="vm.f.reportTo" show-label label-text="Report months"
+                                 value-format="YYYY-MM-DD HH:mm:ss" format="YYYY-MM" clearable shortcuts="true" max-range="12M"
+                                 on-change="vm.log('months', $value, $timestamps, $triggerSource)"></aui-date-picker>
+                <p class="dp-value">reportFrom: {{ vm.f.reportFrom | json }}, reportTo: {{ vm.f.reportTo | json }} (kept as days, at most 12 months)</p>
+            </div>
+            <div>
+                <aui-date-picker type="quarter" ng-model="vm.f.quarter" show-label label-text="Quarter" clearable shortcuts="true"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.quarter | json }}</p>
+            </div>
+            <div class="dp-wide">
+                <aui-date-picker type="quarterrange" ng-model="vm.f.quarters" show-label label-text="Quarters" clearable shortcuts="true"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.quarters | json }}</p>
+            </div>
+            <div>
+                <aui-date-picker type="year" ng-model="vm.f.year" show-label label-text="Fiscal year" clearable shortcuts="true"
+                                 min="2000" max="today+5y"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.year | json }} (2000 to five years from now)</p>
+            </div>
+            <div class="dp-wide">
+                <aui-date-picker type="yearrange" ng-model="vm.f.years" show-label label-text="Years" clearable shortcuts="true"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.years | json }}</p>
+            </div>
+            <div>
+                <aui-date-picker type="week" ng-model="vm.f.week" show-label label-text="Week" clearable shortcuts="true"
+                                 on-change="vm.log('week', $value, $start, $end, $timestamps)"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.week | json }} (ISO week)</p>
+            </div>
+            <div>
+                <aui-date-picker type="dates" ng-model="vm.f.dates" show-label label-text="Delivery days (up to 5)" clearable
+                                 max-count="5" min="today" disabled-date="vm.weekend($parts)"
+                                 on-change="vm.log('dates', $value, $triggerSource)"></aui-date-picker>
+                <p class="dp-value">value: {{ vm.f.dates | json }}</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-form">
+        <h2>In a form</h2>
+        <form name="vm.form" novalidate class="dp-grid">
+            <div>
+                <aui-date-picker name="birthday" ng-model="vm.f.required" required show-label label-text="Required"
+                                 label-position="top" show-errors max="today"></aui-date-picker>
+            </div>
+            <div>
+                <aui-date-picker type="daterange" name="stay" ng-model="vm.f.stay" required show-label label-text="Stay (2 to 14 nights)"
+                                 label-position="top" show-errors min-range="2d" max-range="14d"></aui-date-picker>
+            </div>
+            <div>
+                <aui-date-picker ng-model="vm.f.small" size="small" show-label label-text="Small" clearable></aui-date-picker>
+            </div>
+            <div>
+                <aui-date-picker ng-model="vm.f.large" size="large" show-label label-text="Large" clearable></aui-date-picker>
+            </div>
+            <div>
+                <aui-date-picker ng-model="vm.f.ro" readonly show-label label-text="Read-only"></aui-date-picker>
+            </div>
+            <div>
+                <aui-date-picker ng-model="vm.f.off" disabled="true" show-label label-text="Disabled"></aui-date-picker>
+            </div>
+            <div>
+                <aui-date-picker type="datetimerange" name="campaign" ng-model="vm.f.campaign" required show-label
+                                 label-text="Campaign (date-time range, no length limit)" label-position="top" show-errors clearable></aui-date-picker>
+            </div>
+        </form>
+        <p class="dp-value">form valid: {{ vm.form.$valid }}, birthday errors: {{ vm.form.birthday.$error | json }},
+            stay errors: {{ vm.form.stay.$error | json }}, campaign: {{ vm.f.campaign | json }}, campaign errors: {{ vm.form.campaign.$error | json }}</p>
+    </section>
+
+    <section class="ex-example" id="ex-api">
+        <h2>api and events</h2>
+        <aui-date-picker ng-model="vm.f.api" api="vm.api" show-label label-text="Driven by api" clearable
+                         on-view-change="vm.log('view', $year, $month)"></aui-date-picker>
+        <div class="dp-buttons">
+            <aui-button size="sm" variant="outline" ng-click="vm.api.open()">open()</aui-button>
+            <aui-button size="sm" variant="outline" ng-click="vm.api.setValue('2027-02-14')">setValue('2027-02-14')</aui-button>
+            <aui-button size="sm" variant="outline" ng-click="vm.api.clear()">clear()</aui-button>
+            <aui-button size="sm" variant="outline" ng-click="vm.log('api', vm.api.getText(), vm.api.getTimestamp())">getText() / getTimestamp()</aui-button>
+        </div>
+        <h3>Log</h3>
+        <div class="dp-log"><div ng-repeat="line in vm.lines track by $index">{{ line }}</div></div>
+    </section>
+</ex-page>
+</body>
+</html>

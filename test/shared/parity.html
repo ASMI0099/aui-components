@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>aui-* family: parity</title>
+    <style>
+        body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #f6f7f9; }
+        .host { width: 320px; margin: 8px 0; }
+        #results { font: 12px/1.5 Consolas, monospace; white-space: pre-wrap; background: #fff; padding: 10px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="family.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="parity.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="UnifyCtrl"
+      ng-init="m.r1 = null; m.r2 = [2, 3]; m.r3 = null; m.r4 = ['r0-0-0', 'r0-0-1']; m.r5 = [99, 3]; m.r6 = null; five = fruits.slice(0, 5); flags = {r1: false, r3: false}; show.modal = false;
+               long = [{id: 1, label: 'A very long option label that certainly does not fit into the width of the select field'}].concat(many.slice(1, 100))">
+<form name="f" novalidate>
+    <div class="host" id="h-r1"><aui-select name="r1" ng-model="m.r1" options="long" required disabled="flags.r1"></aui-select></div>
+    <div class="host" id="h-r2"><aui-select name="r2" ng-model="m.r2" options="many" multiple clearable disabled-values="[2]"></aui-select></div>
+    <div class="host" id="h-r3"><aui-tree-select name="r3" ng-model="m.r3" options="tree" label-field="name" required disabled="flags.r3" default-expand-level="all"></aui-tree-select></div>
+    <div class="host" id="h-r4"><aui-tree-select name="r4" ng-model="m.r4" options="tree" label-field="name" multiple clearable check-strictly disabled-values="['r0-0-0']"></aui-tree-select></div>
+    <div class="host" id="h-r5"><aui-select ng-model="m.r5" options="fruits" multiple searchable="true" disabled-values="[3]"
+                                            search-placeholder="Find a fruit" empty-text="Nothing here" panel-min-width="420"
+                                            selected-labels="{99: 'Archived fruit'}"></aui-select></div>
+    <div class="host" id="h-r6"><aui-select ng-model="m.r6" options="five"></aui-select></div>
+    <input id="after" placeholder="next field">
+</form>
+<div class="host" ng-repeat="i in [1,2,3,4,5,6,7,8,9,10]"><aui-select ng-model="m['x' + i]" options="fruits"></aui-select></div>
+<aui-modal is-open="show.modal" close-on-esc="true">
+    <content>
+        <div class="host" id="h-m1"><aui-select ng-model="m.m1" options="fruits"></aui-select></div>
+        <div class="host" id="h-m2"><aui-tree-select ng-model="m.m2" options="tree" label-field="name"></aui-tree-select></div>
+    </content>
+</aui-modal>
+</body>
+</html>

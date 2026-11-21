@@ -1,0 +1,414 @@
+/*
+ * The field box shared by aui-input, aui-select, aui-tree-select and aui-date-picker; aui-input's own look.
+ */
+
+/* the fields' icons drawn in SVG take their colour from their own rules, not from a page's rules for paths or circles */
+.aui-input :where(svg) :where(path, circle),
+.aui-select :where(svg) :where(path, circle) {
+    fill: inherit;
+    stroke: inherit;
+}
+
+/* ------------- aui-input ------------------- */
+aui-input,
+aui-textarea {
+    display: block;
+}
+
+.aui-input {
+    --aui-control-radius: var(--aui-input-border-radius, var(--aui-control-radius-default));
+    position: relative;
+    min-width: 0;
+}
+
+.aui-input--form {
+    display: block;
+}
+
+
+.aui-control-label {
+    position: relative;
+    float: none !important;
+    display: block;
+    flex-shrink: 0;
+    width: auto !important;
+    max-width: clamp(20%, var(--aui-control-label-max-width, 50%), calc(100% - 96px));
+    height: var(--aui-control-inner-height, 24px);
+    /* 8px from the label to the divider (its 1px is the padding's last) and 8px from it to the value: the value starts
+       as far from the divider as it does from the box's edge without a label (the box's 8px padding) */
+    margin: 0 8px 0 0;
+    padding-right: 9px;
+    overflow: hidden;
+    color: var(--aui-control-label-color);
+    font-size: var(--aui-control-label-size, 13px);
+    font-weight: 400;
+    line-height: var(--aui-control-inner-height, 24px);
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.aui-control-label::after {
+    content: "";
+    position: absolute;
+    /* 2/3 of the line's height, centred by its insets: placed by layout on whole pixels (a translate of half its
+       height put its ends on half pixels, drawn soft) */
+    top: calc(var(--aui-control-inner-height, 24px) * 0.17);
+    right: 0;
+    bottom: calc(var(--aui-control-inner-height, 24px) * 0.17);
+    width: 1px;
+    background: var(--aui-control-border-color);
+}
+
+.aui-field-item {
+    padding: 4px;
+    display: flex;
+    flex: 0 0 auto;
+    min-width: var(--aui-field-item-min-width, 264px);
+}
+
+.aui-field-item > * {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.aui-field-item--auto {
+    min-width: 0;
+}
+
+.aui-input__form-trigger,
+.aui-select__trigger,
+.aui-checkbox--container-border {
+    width: 100%;
+    min-height: var(--aui-control-height);
+    border: 1px solid var(--aui-control-border-color);
+    border-radius: var(--aui-control-radius);
+    background-color: #ffffff;
+    box-sizing: border-box;
+}
+
+.aui-checkbox--container-border {
+    transition: border-color var(--aui-motion-duration) var(--aui-motion-ease-color),
+                box-shadow var(--aui-motion-duration) var(--aui-motion-ease-color),
+                background-color var(--aui-motion-duration) var(--aui-motion-ease-color),
+                border-radius var(--aui-motion-duration-shape) var(--aui-motion-ease);
+}
+
+/* The field box itself changes at once (its background, its corners): its hover and focus looks are drawn on two skins
+   over it that fade by their opacity only (below). A fade of the box's own border colour, ring or corners is drawn by
+   the page's main thread, and every frame of it repaints the whole page (about 2 ms on a light page, 30-100 ms on a
+   large one): the motion stalled and a press waited behind it. Opacity runs on the compositor: no frame repaints. */
+.aui-input__form-trigger,
+.aui-select__trigger {
+    transition: none;
+}
+
+.aui-input__form-trigger {
+    position: relative;
+    padding: 4px 8px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.aui-input.aui-input--form .aui-input__form-trigger > input.aui-input__form-field,
+.aui-input.aui-input--form input.aui-input__form-field {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    flex: 1 1 0% !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: var(--aui-control-inner-height) !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    box-sizing: border-box !important;
+    color: var(--aui-control-value-color);
+    font-family: inherit !important;
+    font-size: var(--aui-control-value-size) !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+    line-height: var(--aui-control-inner-height) !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+    text-indent: 0 !important;
+}
+
+.aui-input.aui-input--form input.aui-input__form-field:focus,
+.aui-input.aui-input--form input.aui-input__form-field:active {
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+.aui-input.aui-input--form input.aui-input__form-field::placeholder {
+    color: var(--aui-control-placeholder-color);
+    font-size: var(--aui-control-value-size);
+    font-weight: 400;
+    font-style: normal;
+    opacity: 1;
+}
+
+.aui-input__form-trigger:hover,
+.aui-select__trigger:hover,
+.aui-checkbox--container-border:hover:not(.aui-checkbox--disabled) {
+    border-color: var(--aui-control-border-hover-color);
+    box-shadow: var(--aui-control-shadow-hover);
+}
+
+.aui-input__form-trigger:focus-within,
+.aui-select__trigger:focus-within {
+    outline: none;
+}
+
+/* The focused look of the field box (and a select's open look) is a skin over the box: its border and 2px ring in that
+   state, laid over the box's own border, that fades in and out by its opacity alone, in the panel's own duration and
+   curve: the field and its panel move as one. Hidden, it is not drawn at all (visibility); shown, it has a compositor
+   layer of its own (will-change), so no other content is drawn into one with it (text in such a shared layer loses its
+   sharpest anti-aliasing). The hovered look changes at once, on the box itself. */
+.aui-input__form-trigger::after,
+.aui-select__trigger::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    bottom: -1px;
+    left: -1px;
+    display: block;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    border: 1px solid var(--aui-control-accent-color);
+    border-radius: inherit;
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--aui-control-accent-color);
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: none;
+    transition: opacity var(--aui-motion-duration) var(--aui-motion-ease-color),
+                visibility 0s linear var(--aui-motion-duration);
+}
+
+.aui-input__form-trigger:focus-within::after,
+.aui-select__trigger:focus-within::after,
+.aui-select--open .aui-select__trigger::after {
+    opacity: 1;
+    visibility: visible;
+    will-change: opacity;
+    transition: opacity var(--aui-motion-duration) var(--aui-motion-ease-color),
+                visibility 0s;
+}
+
+/* Under the skin the box keeps no shadow of its own (focused while hovered: the hover shadow), but an invalid box's red
+   halo, which the skin adds to (below) */
+.aui-input__form-trigger:focus-within:not(.aui-input__form-trigger--invalid),
+.aui-select__trigger:focus-within:not(.aui-select__trigger--invalid):not(.aui-select__trigger--pointer-focus),
+.aui-select--open .aui-select__trigger:not(.aui-select__trigger--invalid) {
+    box-shadow: none;
+}
+
+/* High contrast (forced colours): no skin; the focus shows as the outline of its own rules there */
+@media (forced-colors: active) {
+    .aui-input__form-trigger::after,
+    .aui-select__trigger::after {
+        display: none;
+    }
+}
+
+/* a rule of its own: a browser without :has() drops the whole rule it is in */
+.aui-checkbox--container-border:has(.aui-checkbox__native:focus-visible) {
+    outline: none;
+    border-color: var(--aui-control-accent-color);
+    box-shadow: var(--aui-control-shadow-focus);
+}
+
+.aui-input--readonly .aui-input__form-trigger {
+    background-color: var(--aui-control-readonly-background-color);
+}
+
+.aui-input--readonly input.aui-input__form-field,
+.aui-input input.aui-input__form-field[readonly] {
+    color: var(--aui-control-muted-color) !important;
+    cursor: default;
+}
+
+.aui-input--disabled .aui-input__form-trigger {
+    cursor: not-allowed;
+    background: var(--aui-control-readonly-background-color);
+    border-color: #dbe3ec;
+    box-shadow: none;
+}
+
+/* disabled: no focus look (no skin) */
+.aui-input--disabled .aui-input__form-trigger::after {
+    display: none;
+}
+
+.aui-input--disabled input.aui-input__form-field,
+.aui-input input.aui-input__form-field:disabled {
+    cursor: not-allowed;
+    color: var(--aui-control-disabled-color) !important;
+}
+
+/* A disabled box shows no caret (every style, the textarea too). A press on its text puts the caret at that character
+   while a focusable container around it (a dialog, tabindex="-1") takes the focus, and it blinks there although
+   nothing can be typed. (cursor sets the pointer only; the caret is caret-color's.) */
+.aui-input input:disabled,
+.aui-input textarea:disabled {
+    caret-color: transparent !important;
+}
+
+/* aui-input number boxes, both styles: a typed number field, without the browser's spin buttons (an unstyled 15 x 9px
+   widget, shown on hover, that stepped past value-max-length, and stood between the text and the clear button). The
+   box stays a number box: number value, min/max/step checks, ArrowUp/ArrowDown, the number keyboard of a phone. */
+.aui-input input[type="number"]::-webkit-inner-spin-button,
+.aui-input input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.aui-input input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+/* Input container */
+.aui-input-container {
+    position: relative;
+    margin: 16px 20px 1px 20px;
+}
+
+/* aui-input field */
+.aui-input-field {
+    display: block!important;
+    width: 100%!important;
+    padding: 0!important;
+}
+
+.aui-input .aui-input-container > input.aui-input-field {
+    box-sizing: border-box !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    outline: 0 !important;
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    color: var(--aui-control-value-color) !important;
+    font-family: inherit !important;
+    font-size: calc(var(--aui-font-14) * 1px) !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
+    line-height: 1.2 !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+    text-indent: 0 !important;
+    text-shadow: none !important;
+    float: none !important;
+    transition: none !important;
+}
+
+.aui-input .aui-input-container > input.aui-input-field::placeholder {
+    color: var(--aui-control-placeholder-color) !important;
+    font-style: normal !important;
+    opacity: 1 !important;
+}
+
+/* readonly and disabled as in the form style */
+.aui-input .aui-input-container > input.aui-input-field[readonly] {
+    color: var(--aui-control-muted-color) !important;
+}
+
+.aui-input .aui-input-container > input.aui-input-field:disabled {
+    color: var(--aui-control-disabled-color) !important;
+    cursor: not-allowed;
+}
+
+/* aui-input basic style: its label is a caption above the line while the box has the focus (at rest the box shows
+   the placeholder). It is always above the line, never over the text: it fades in there and out. Hidden, nothing of
+   a page's label rules shows it (their colour once lay as dark text over the placeholder); it is a <label>, so the
+   page's general label rules are kept off (such a rule could make it 100px wide in 30px lines). */
+.aui-input .aui-input-label {
+    position: absolute !important;
+    top: -20px;
+    left: 0;
+    display: block !important;
+    float: none !important;
+    width: auto !important;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    font-size: calc(var(--aui-font-12) * 1px);
+    font-weight: 400;
+    line-height: normal;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--aui-control-accent-color) !important;
+    pointer-events: none;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    transform: translateY(4px);
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s linear 0.15s;
+}
+
+/* aui-input highlight */
+.aui-input-highlight {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    width: 0;
+    background-color: var(--aui-control-accent-color);
+    transition: all 0.3s ease;
+}
+
+/* aui-input field:focus styles */
+.aui-input .aui-input-field:focus + .aui-input-label {
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none;
+    transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aui-input .aui-input-label {
+        transition: none;
+    }
+}
+
+.aui-input-field:focus + .aui-input-label + .aui-input-highlight {
+    width: 100%;
+}
+
+/* High contrast (forced colours) paints backgrounds over with the system's: the underline, a background, keeps the
+   system highlight colour there, so the focus still shows (the basic style has no outline) */
+@media (forced-colors: active) {
+    .aui-input-highlight {
+        forced-color-adjust: none;
+        background-color: Highlight;
+    }
+}
+
+/* basic style, invalid (the value is invalid and the field has been left, as the form style's red border): the
+   underline shows in the invalid red, focused or not */
+.aui-input-container--invalid .aui-input-highlight,
+.aui-input-container--invalid .aui-input-field:focus + .aui-input-label + .aui-input-highlight {
+    width: 100%;
+    background-color: var(--aui-control-invalid-color);
+}

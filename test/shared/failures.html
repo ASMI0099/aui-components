@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: request failures</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 420px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="failures.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="failures.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="FailuresCtrl">
+<h1>Request failures: a failure never starts the next request by itself</h1>
+<div class="grid">
+    <div class="cell" id="s-sel"><label>aui-select, load all, saved value, server down</label>
+        <aui-select ng-model="m.sel" label-field="name" value-field="id" placeholder="Room"
+                    load-options="loadRooms($request, 'sel')"></aui-select>
+    </div>
+    <div class="cell" id="s-throw"><label>aui-select, the load function throws at once</label>
+        <aui-select ng-model="m.thrower" label-field="name" value-field="id" placeholder="Throws"
+                    load-options="throwing($request, 'throw')"></aui-select>
+    </div>
+    <div class="cell" id="s-refresh"><label>aui-select, cache-ttl 1500, saved value outside the list</label>
+        <aui-select ng-model="m.refresh" label-field="name" value-field="id" placeholder="Refresh"
+                    load-options="loadRooms($request, 'refresh')" cache-ttl="1500"></aui-select>
+    </div>
+    <div class="cell" id="s-look"><label>aui-select, paged, lookup-enabled, server down</label>
+        <aui-select ng-model="m.look" label-field="name" value-field="id" placeholder="Lookup"
+                    load-options="loadRooms($request, 'look')" page-size="10" lookup-enabled></aui-select>
+    </div>
+    <div class="cell" id="t-tree"><label>aui-tree-select, load-options, saved value, server down</label>
+        <aui-tree-select ng-model="m.tree" label-field="name" value-field="id" placeholder="Tree"
+                         load-options="loadTree($request, 'tree')"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-throw"><label>aui-tree-select, the load function throws at once</label>
+        <aui-tree-select ng-model="m.treeThrow" label-field="name" value-field="id" placeholder="Tree throws"
+                         load-options="throwing($request, 'treeThrow')"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-lazy"><label>aui-tree-select, lazy roots, server down</label>
+        <aui-tree-select ng-model="m.lazy" label-field="name" value-field="id" placeholder="Lazy"
+                         load-children="loadKids($request, 'lazy')"></aui-tree-select>
+    </div>
+</div>
+<div class="bottom-spacer"></div>
+</body>
+</html>

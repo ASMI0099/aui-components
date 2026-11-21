@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: flags written the HTML way</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 420px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="html-flags.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="html-flags.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="HtmlFlagsCtrl">
+<h1>disabled="disabled" and readonly="readonly": on, as in HTML</h1>
+<div class="grid">
+    <div class="cell" id="in-d"><label>aui-input disabled="disabled"</label>
+        <aui-input ng-model="m.text" disabled="disabled"></aui-input></div>
+    <div class="cell" id="in-r"><label>aui-input readonly="readonly"</label>
+        <aui-input ng-model="m.text" readonly="readonly"></aui-input></div>
+    <div class="cell" id="in-x"><label>aui-input disabled="vm.locked" (unset: off)</label>
+        <aui-input ng-model="m.text" disabled="vm.locked"></aui-input></div>
+    <div class="cell" id="in-f"><label>aui-input disabled="false"</label>
+        <aui-input ng-model="m.text" disabled="false"></aui-input></div>
+    <div class="cell" id="ta-d"><label>aui-textarea disabled="disabled"</label>
+        <aui-textarea ng-model="m.text" disabled="disabled"></aui-textarea></div>
+    <div class="cell" id="se-d"><label>aui-select disabled="disabled"</label>
+        <aui-select ng-model="m.pick" options="list" label-field="name" value-field="id" disabled="disabled"></aui-select></div>
+    <div class="cell" id="se-r"><label>aui-select readonly="readonly"</label>
+        <aui-select ng-model="m.pick" options="list" label-field="name" value-field="id" readonly="readonly"></aui-select></div>
+    <div class="cell" id="se-m"><label>aui-select multiple="multiple"</label>
+        <aui-select ng-model="m.many" options="list" label-field="name" value-field="id" multiple="multiple"></aui-select></div>
+    <div class="cell" id="se-x"><label>aui-select disabled="vm.locked" (unset: off)</label>
+        <aui-select ng-model="m.pick" options="list" label-field="name" value-field="id" disabled="vm.locked"></aui-select></div>
+    <div class="cell" id="se-n"><label>aui-select ng-disabled="vm.locked"</label>
+        <aui-select ng-model="m.pick" options="list" label-field="name" value-field="id" ng-disabled="vm.locked"></aui-select></div>
+    <div class="cell" id="tr-d"><label>aui-tree-select disabled="disabled"</label>
+        <aui-tree-select ng-model="m.node" options="tree" label-field="name" value-field="id" disabled="disabled"></aui-tree-select></div>
+    <div class="cell" id="tr-r"><label>aui-tree-select readonly="readonly"</label>
+        <aui-tree-select ng-model="m.node" options="tree" label-field="name" value-field="id" readonly="readonly"></aui-tree-select></div>
+    <div class="cell" id="dp-d"><label>aui-date-picker disabled="disabled"</label>
+        <aui-date-picker ng-model="m.day" disabled="disabled"></aui-date-picker></div>
+    <div class="cell" id="dp-r"><label>aui-date-picker readonly="readonly"</label>
+        <aui-date-picker ng-model="m.day" readonly="readonly"></aui-date-picker></div>
+    <div class="cell" id="bt-d"><label>aui-button disabled="disabled"</label>
+        <aui-button disabled="disabled" ng-click="pressed = pressed + 1">Save</aui-button></div>
+    <div class="cell" id="cb-d"><label>aui-checkbox disabled="disabled"</label>
+        <aui-checkbox ng-model="m.agree" disabled="disabled" label="Agree"></aui-checkbox></div>
+    <div class="cell" id="cg-d"><label>aui-checkbox-group disabled="disabled"</label>
+        <aui-checkbox-group ng-model="m.picks" options="list" label-field="name" value-field="id" disabled="disabled"></aui-checkbox-group></div>
+    <div class="cell" id="po-d"><label>aui-popover disabled="disabled"</label>
+        <aui-popover disabled="disabled"><popover-content><p>Note</p></popover-content></aui-popover></div>
+</div>
+<div class="bottom-spacer"></div>
+</body>
+</html>

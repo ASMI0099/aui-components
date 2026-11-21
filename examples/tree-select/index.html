@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" href="data:,"/>
+    <title>aui-tree-select: examples</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../assets/examples.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="../assets/examples.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="tree-select.js"></script>
+</head>
+<body class="ex" ng-app="auiExamples" ng-controller="TreeSelectExampleCtrl as vm">
+<ex-page heading="aui-tree-select" request-log="true"
+         lead="Categories from the mock catalog API: about 23,700 nodes, with a chain twelve levels deep and a node with 20,000 children. The request log at the bottom shows every call and how long it took.">
+
+    <section class="ex-example" id="ex-lazy-single">
+        <h2>Lazy loading with server-side search</h2>
+        <p class="ex-example__text">Roots and children load when a node opens (<code>load-children</code>, 200 per page).
+            Typing searches on the server (<code>remote-search</code>): the panel shows the matches with the branches leading
+            to them; a match can be opened further. A new keystroke cancels the request still running. Grouping nodes
+            (<code>selectable: false</code> from the API) open on a click but are never picked (<code>selectable-field</code>).</p>
+        <div class="ex-example__row">
+            <div>
+                <aui-tree-select ng-model="vm.single.value" selected-items="vm.single.items" selectable-field="selectable"
+                                 label-field="name" value-field="id" leaf-field="leaf" show-path clearable
+                                 load-children="vm.loadChildren($request)" lookup-options="vm.categoryPaths($request)"
+                                 remote-search="vm.remoteSearch($query, $cancel)" search-delay="{{ vm.searchDelay }}"
+                                 placeholder="Pick a category"></aui-tree-select>
+                <div class="ex-controls">
+                    <label>Matches per search
+                        <select ng-model="vm.searchLimit" ng-options="n for n in [20, 100, 500]"></select></label>
+                    <label>Search delay
+                        <select ng-model="vm.searchDelay" ng-options="(n + ' ms') for n in [0, 300, 800]"></select></label>
+                </div>
+            </div>
+            <pre class="ex-out">model: {{ vm.single.value | json }}
+selected-items: {{ vm.single.items | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-lazy-multiple">
+        <h2>Multiple, lazy loading, server-side search</h2>
+        <p class="ex-example__text">Checking a node checks its loaded descendants, in the tree and in search results alike.
+            <code>value-strategy</code> decides which checked nodes form the value: all of them, the topmost fully checked
+            ones, or only leaves. Values picked from search results keep their labels after the search is cleared.
+            Grouping nodes have no checkbox (<code>selectable-field</code>): checks pass through them, their own id is never
+            a value.</p>
+        <div class="ex-example__row">
+            <div>
+                <div ng-repeat="strategy in [vm.multi.strategy] track by strategy">
+                    <aui-tree-select ng-model="vm.multi.value" selected-items="vm.multi.items" multiple selectable-field="selectable"
+                                     max-tag-count="responsive" value-strategy="{{ strategy }}" clearable
+                                     label-field="name" value-field="id" leaf-field="leaf"
+                                     load-children="vm.loadChildren($request)" lookup-options="vm.categoryPaths($request)"
+                                     remote-search="vm.remoteSearch($query, $cancel)"
+                                     placeholder="Pick categories"></aui-tree-select>
+                </div>
+                <div class="ex-controls">
+                    <span>value-strategy</span>
+                    <label ng-repeat="s in vm.strategies">
+                        <input type="radio" name="strategy" ng-checked="vm.multi.strategy === s" ng-click="vm.setStrategy(s)"/>{{ s }}</label>
+                </div>
+            </div>
+            <pre class="ex-out">model ({{ vm.multi.value.length }}): {{ vm.multi.value | json }}
+labels: {{ vm.multi.items | limitTo: 20 | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-saved">
+        <h2>A saved value the tree has not loaded</h2>
+        <p class="ex-example__text">As in an edit form: the model holds only the id of "Nesting Level 12", twelve levels
+            down. <code>lookup-options</code> fetches its root-to-node chain (<code>/categories/paths</code>, one request for
+            all values), so the field shows the full path at once; <code>reveal-selected</code> opens the branches down to
+            it when the panel opens.</p>
+        <div class="ex-example__row">
+            <div>
+                <aui-tree-select ng-model="vm.saved.value"
+                                 label-field="name" value-field="id" leaf-field="leaf" show-path clearable reveal-selected
+                                 load-children="vm.loadChildren($request)" lookup-options="vm.categoryPaths($request)"
+                                 remote-search="vm.remoteSearch($query, $cancel)"
+                                 placeholder="Pick a category"></aui-tree-select>
+                <p class="ex-example__text" ng-if="vm.saved.state === 'loading'">Loading the record...</p>
+                <p class="ex-example__text" ng-if="vm.saved.state === 'error'">{{ vm.saved.error }}</p>
+            </div>
+            <pre class="ex-out">model: {{ vm.saved.value | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-dependent">
+        <h2>A tree that depends on another field</h2>
+        <p class="ex-example__text">The tree follows the top-level category picked above it:
+            <code>load-options</code> loads that subtree (3 levels; deeper ones load on demand) for
+            <code>load-params="{rootId: ...}"</code>, <code>reset-on-params="clear"</code> clears the choice when the top
+            level changes, and lookups of saved values go through the same function (<code>$request.values</code>).</p>
+        <div class="ex-example__row">
+            <div>
+                <aui-select ng-model="vm.dependent.root" label-field="name" value-field="id" clearable
+                            load-options="vm.loadRoots($request)" placeholder="Top-level category"></aui-select>
+                <div class="ex-gap"></div>
+                <aui-tree-select ng-model="vm.dependent.value" multiple max-tag-count="responsive" clearable
+                                 label-field="name" value-field="id" leaf-field="leaf"
+                                 load-options="vm.loadSubtree($request)" load-params="{rootId: vm.dependent.root}"
+                                 load-enabled="!!vm.dependent.root" load-disabled-text="Select a top-level category first"
+                                 lookup-enabled reset-on-params="clear"
+                                 load-children="vm.loadChildren($request)"
+                                 placeholder="{{ vm.dependent.root ? 'Pick categories' : 'Pick a top-level category first' }}"></aui-tree-select>
+            </div>
+            <pre class="ex-out">root: {{ vm.dependent.root | json }}
+model ({{ vm.dependent.value.length || 0 }}): {{ vm.dependent.value | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-whole">
+        <h2>The whole tree in one response, local search</h2>
+        <p class="ex-example__text">The data arrives at once (<code>/categories/tree</code>) and search runs in the
+            browser. With fewer levels, the deeper nodes still load on demand. The list renders only the rows in view,
+            so large trees stay responsive.</p>
+        <div class="ex-controls ex-controls--toolbar">
+            <label>Data <select ng-model="vm.whole.depth" ng-options="d.value as d.text for d in vm.depths"></select></label>
+            <button type="button" class="ex-link" ng-click="vm.loadWhole()">Load</button>
+            <span ng-if="vm.whole.state === 'loading'">Loading...</span>
+            <span ng-if="vm.whole.stats">{{ vm.whole.stats.nodes | number }} nodes: download {{ vm.whole.stats.downloadMs }} ms,
+                ready {{ vm.whole.stats.indexMs }} ms later</span>
+            <span ng-if="vm.whole.state === 'error'">{{ vm.whole.error }}</span>
+        </div>
+        <div class="ex-example__row">
+            <div>
+                <aui-tree-select ng-model="vm.whole.value" options="vm.whole.options" loading="vm.whole.state === 'loading'"
+                                 multiple max-tag-count="3" clearable
+                                 label-field="name" value-field="id" leaf-field="leaf"
+                                 load-children="vm.loadChildren($request)"
+                                 placeholder="{{ vm.whole.options ? 'Pick categories' : 'Load the data first' }}"></aui-tree-select>
+            </div>
+            <pre class="ex-out">model ({{ vm.whole.value.length }}): {{ vm.whole.value | limitTo: 50 | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-flat">
+        <h2>The whole tree by load-options, in one response (no paging)</h2>
+        <p class="ex-example__text">As a form whose categories come all at once: <code>load-options</code> answers every
+            node in one response, as a flat list (<code>/categories/flat</code>: part of the catalog, or a larger generated tree; each node has its <code>parentId</code>,
+            <code>parent-field</code> builds the tree), on the first open, then reused (<code>cache-ttl</code>). The panel
+            opens at once with its loading look; the rows follow the answer. Saved values are looked up through the same
+            function (<code>$request.values</code>), and an opening shows them: the branches down to them open. Search
+            runs in the browser. With fewer nodes, a saved value outside them still shows its path (the lookup).</p>
+        <div class="ex-controls ex-controls--toolbar">
+            <label>Data <select ng-model="vm.flat.size" ng-options="s.value as s.text for s in vm.flatSizes"></select></label>
+            <button type="button" class="ex-link" ng-click="vm.setFlatSaved()">Saved values</button>
+            <button type="button" class="ex-link" ng-click="vm.clearFlat()">Clear</button>
+            <span ng-if="vm.flat.error">{{ vm.flat.error }}</span>
+        </div>
+        <div class="ex-example__row">
+            <div>
+                <aui-tree-select ng-model="vm.flat.single" clearable leaf-only show-line lookup-enabled
+                                 label-field="name" value-field="id" parent-field="parentId"
+                                 load-options="vm.loadFlat($request)" load-params="{size: vm.flat.size}"
+                                 placeholder="Category"></aui-tree-select>
+                <div class="ex-gap"></div>
+                <aui-tree-select ng-model="vm.flat.multi" multiple max-tag-count="responsive" clearable show-line lookup-enabled
+                                 label-field="name" value-field="id" parent-field="parentId"
+                                 load-options="vm.loadFlat($request)" load-params="{size: vm.flat.size}"
+                                 placeholder="Categories"></aui-tree-select>
+            </div>
+            <pre class="ex-out">single: {{ vm.flat.single | json }}
+multiple ({{ vm.flat.multi.length || 0 }}): {{ vm.flat.multi | limitTo: 50 | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-edge">
+        <h2>Edge cases</h2>
+        <p class="ex-example__text">The "Edge Cases" branch, fully open: names of about 200 and 240 characters, markup and
+            quotes in names (shown as text), emoji, a right-to-left mark, duplicate names, a disabled branch, a group that
+            cannot be picked.</p>
+        <div class="ex-example__row">
+            <div>
+                <aui-tree-select ng-model="vm.edge.value" options="vm.edge.options" loading="!vm.edge.options && !vm.edge.error"
+                                 label-field="name" value-field="id" leaf-field="leaf" default-expand-level="all"
+                                 show-line show-path clearable placeholder="Edge case data"></aui-tree-select>
+                <p class="ex-example__text" ng-if="vm.edge.error">{{ vm.edge.error }}</p>
+            </div>
+            <pre class="ex-out">model: {{ vm.edge.value | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-wide">
+        <h2>One node with 20,000 children, in pages</h2>
+        <p class="ex-example__text">"Spare Parts" has 20,000 children. They come 200 per page: a "Load more" row follows the
+            loaded ones and loads the next page by itself as it scrolls into view.</p>
+        <div class="ex-example__row">
+            <div>
+                <aui-tree-select ng-model="vm.wide.value" multiple max-tag-count="responsive"
+                                 label-field="name" value-field="id" leaf-field="leaf"
+                                 load-children="vm.loadWide($request)" placeholder="Open Spare Parts"></aui-tree-select>
+            </div>
+            <pre class="ex-out">model ({{ vm.wide.value.length || 0 }}): {{ vm.wide.value | limitTo: 50 | json }}</pre>
+        </div>
+    </section>
+</ex-page>
+</body>
+</html>

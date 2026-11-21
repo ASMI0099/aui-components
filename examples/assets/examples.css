@@ -1,0 +1,321 @@
+/* Examples layout: top bar, side navigation, example cards. The components' own styles come from dist/aui-components.css. */
+:root {
+    --ex-bg: #f5f6f8;
+    --ex-card: #ffffff;
+    --ex-text: #1f2937;
+    --ex-muted: #6b7280;
+    --ex-line: #e5e7eb;
+    --ex-accent: #0b8fcf;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body.ex {
+    margin: 0;
+    background: var(--ex-bg);
+    color: var(--ex-text);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.ex-top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 52px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--ex-line);
+    background: var(--ex-card);
+}
+
+.ex-top__brand {
+    color: var(--ex-text);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.ex-top__spacer {
+    flex: 1;
+}
+
+.ex-shell {
+    display: flex;
+    align-items: flex-start;
+}
+
+/* The side navigation: the window's height under the top bar, its own scroll. Taller than the window, a sticky
+   navigation was held by the bottom of the page once scrolled down, and moved whenever the page grew or shrank (a value
+   shown under a field, a log line): a jump like a scroll. */
+.ex-nav {
+    position: sticky;
+    top: 52px;
+    flex: 0 0 200px;
+    height: calc(100vh - 52px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 16px 12px;
+    border-right: 1px solid var(--ex-line);
+    background: var(--ex-card);
+}
+
+.ex-nav__group {
+    margin: 12px 8px 6px;
+    color: var(--ex-muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.ex-nav a {
+    display: block;
+    padding: 6px 8px;
+    border-radius: 6px;
+    color: var(--ex-text);
+    text-decoration: none;
+}
+
+.ex-nav a:hover {
+    background: var(--ex-bg);
+}
+
+.ex-nav a.is-current {
+    background: rgba(11, 143, 207, 0.1);
+    color: var(--ex-accent);
+    font-weight: 600;
+}
+
+.ex-main {
+    flex: 1;
+    min-width: 0;
+    max-width: 1180px;
+    padding: 24px 28px 48px;
+}
+
+.ex-main h1 {
+    margin: 0 0 6px;
+    font-size: 22px;
+}
+
+.ex-lead {
+    margin: 0 0 20px;
+    color: var(--ex-muted);
+}
+
+.ex-example {
+    margin: 0 0 18px;
+    padding: 16px 18px;
+    border: 1px solid var(--ex-line);
+    border-radius: 10px;
+    background: var(--ex-card);
+}
+
+.ex-example h2 {
+    margin: 0 0 4px;
+    font-size: 16px;
+}
+
+.ex-example__text {
+    margin: 0 0 12px;
+    color: var(--ex-muted);
+}
+
+.ex-example__row {
+    display: grid;
+    grid-template-columns: minmax(280px, 380px) 1fr;
+    gap: 18px;
+    align-items: start;
+}
+
+.ex-out {
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #334155;
+    font: 12px/1.5 Consolas, "Cascadia Mono", monospace;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 180px;
+    overflow: auto;
+}
+
+.ex-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin: 10px 0 0;
+    color: var(--ex-muted);
+    font-size: 13px;
+}
+
+.ex-controls--toolbar {
+    margin: 0 0 12px;
+}
+
+.ex-gap {
+    height: 10px;
+}
+
+.ex-controls label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ex-link {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--ex-accent);
+    cursor: pointer;
+    font: inherit;
+}
+
+.ex-api {
+    font-size: 12px;
+}
+
+.ex-api--up::before,
+.ex-api--down::before,
+.ex-api--checking::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: #9ca3af;
+}
+
+.ex-api--up::before {
+    background: #16a34a;
+}
+
+.ex-api--down {
+    color: #b91c1c;
+}
+
+.ex-api--down::before {
+    background: #dc2626;
+}
+
+.ex-log {
+    margin-top: 18px;
+    padding: 12px 14px;
+    border: 1px solid var(--ex-line);
+    border-radius: 10px;
+    background: var(--ex-card);
+}
+
+.ex-log__head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.ex-log__table {
+    width: 100%;
+    border-collapse: collapse;
+    font: 12px/1.5 Consolas, "Cascadia Mono", monospace;
+}
+
+.ex-log__table th,
+.ex-log__table td {
+    padding: 3px 8px;
+    border-bottom: 1px solid var(--ex-line);
+    text-align: left;
+}
+
+.ex-log__table tr.is-error td {
+    color: #b91c1c;
+}
+
+.ex-log__path {
+    word-break: break-all;
+}
+
+.ex-log__empty {
+    margin: 0;
+    color: var(--ex-muted);
+}
+
+.ex-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+}
+
+.ex-card {
+    display: block;
+    padding: 14px 16px;
+    border: 1px solid var(--ex-line);
+    border-radius: 10px;
+    background: var(--ex-card);
+    color: inherit;
+    text-decoration: none;
+}
+
+.ex-card:hover {
+    border-color: var(--ex-accent);
+}
+
+.ex-card h3 {
+    margin: 0 0 4px;
+    font-size: 15px;
+}
+
+.ex-card p {
+    margin: 0;
+    color: var(--ex-muted);
+    font-size: 13px;
+}
+
+/* A search / filter form: the fields in a grid (as many columns as fit), the form's value below */
+.ex-form__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px 20px;
+    align-items: start;
+}
+
+.ex-form__field {
+    min-width: 0;
+}
+
+.ex-form__field > aui-select,
+.ex-form__field > aui-tree-select {
+    display: block;
+}
+
+.ex-form__value {
+    margin-top: 14px;
+}
+
+/* the dialog of the modal example: its title and its fields one below the other */
+.ex-dialog-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.ex-dialog-form {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+    align-content: start;
+}
+
+@media (max-width: 860px) {
+    .ex-nav {
+        display: none;
+    }
+
+    .ex-example__row {
+        grid-template-columns: 1fr;
+    }
+}

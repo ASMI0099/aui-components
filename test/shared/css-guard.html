@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: the fields against a page's general CSS rules</title>
+    <!-- Two frames of the gallery test/perf/page-css.html: as it is, and with a page's hostile general rules
+         (test/perf/page-rules.hostile.css) loaded after aui-components.css. The spec compares every part of every
+         field in the two; it makes both frames as tall as the gallery first (an open panel whose field lies below a
+         frame's bottom is hidden). -->
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .frames { display: flex; gap: 12px; }
+        .frames iframe { width: 1000px; height: 1200px; border: 1px solid #ccc; background: #fff; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+    </style>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="css-guard.spec.js"></script>
+</head>
+<body>
+<h1>The fields on a clean page and under a page's hostile general rules</h1>
+<div class="frames">
+    <iframe id="clean" src="../perf/page-css.html"></iframe>
+    <iframe id="hostile" src="../perf/page-css.html?rules=hostile"></iframe>
+</div>
+</body>
+</html>

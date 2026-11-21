@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-tree-select: remote data</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        .cell .out { margin-top: 6px; font: 11px Consolas, monospace; color: #666; word-break: break-all; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 420px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="remote-data.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="remote-data.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="TreeRemoteCtrl">
+<h1>aui-tree-select: data from a server</h1>
+<div class="grid">
+    <div class="cell" id="t-all"><label>load-options per room, lookup-enabled, show-path</label>
+        <aui-tree-select ng-model="m.all" selected-items="m.allItems" label-field="name" value-field="id" show-path
+                         load-options="loadTree($request, 'all')" load-params="{room: p.all}" load-enabled="p.allEnabled"
+                         lookup-enabled placeholder="Whole tree"></aui-tree-select>
+        <div class="out">model: {{ m.all | json }}</div>
+    </div>
+    <div class="cell" id="t-multi"><label>Multiple (linked), lookup-options with chains</label>
+        <aui-tree-select ng-model="m.multi" label-field="name" value-field="id" multiple
+                         load-children="loadKids($request, 'multi')" load-params="{room: 'A'}"
+                         lookup-options="lookupChains($request, 'multi')" placeholder="Multiple"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-vo"><label>value-options (no lookup)</label>
+        <aui-tree-select ng-model="m.vo" label-field="name" value-field="id"
+                         load-children="loadKids($request, 'vo')" load-params="{room: 'A'}"
+                         value-options="[{id: m.vo, name: 'From the record'}]" placeholder="Value options"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-lazy"><label>Lazy, load-params, remote-search with $params, paged children</label>
+        <aui-tree-select ng-model="m.lazy" label-field="name" value-field="id"
+                         load-children="loadKids($request, 'lazy')" load-params="{room: p.lazy}" load-timeout="500"
+                         remote-search="searchRoots($query, $params, $cancel, 'lazy', $signal)" search-delay="80" placeholder="Lazy"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-reveal"><label>reveal-selected (lazy, lookup-options)</label>
+        <aui-tree-select ng-model="m.reveal" label-field="name" value-field="id" reveal-selected show-path
+                         load-children="loadKids($request, 'reveal')" load-params="{room: 'A'}"
+                         lookup-options="lookupChains($request, 'reveal')" placeholder="Reveal"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-reset"><label>reset-on-params="clear"</label>
+        <aui-tree-select ng-model="m.reset" label-field="name" value-field="id" reset-on-params="clear"
+                         load-options="loadTree($request, 'reset')" load-params="{room: p.reset}" lookup-enabled placeholder="Reset"
+                         load-enabled="!!p.reset && !p.resetPaused"></aui-tree-select>
+        <div class="out">model: {{ m.reset | json }}</div>
+    </div>
+    <div class="cell" id="t-timeout"><label>load-timeout 300</label>
+        <aui-tree-select ng-model="m.timeout" label-field="name" value-field="id" load-timeout="300"
+                         load-options="loadTree($request, 'timeout')" load-params="{room: p.timeout}" placeholder="Timeout"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-roots"><label>Top level in pages (room R)</label>
+        <aui-tree-select ng-model="m.roots" label-field="name" value-field="id"
+                         load-children="loadKids($request, 'roots')" load-params="{room: 'R'}" placeholder="Paged roots"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-lazytimeout"><label>Lazy, load-timeout 300</label>
+        <aui-tree-select ng-model="m.lt" label-field="name" value-field="id" load-timeout="300"
+                         load-children="loadKids($request, 'lt')" load-params="{room: 'A'}" placeholder="Lazy timeout"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-group"><label>lookup-group across rows</label>
+        <div ng-repeat="row in treeRows track by row.id">
+            <aui-tree-select ng-model="row.value" label-field="name" value-field="id" show-path lookup-group="tg"
+                             load-children="loadKids($request, 'tg')" load-params="{room: 'A'}"
+                             lookup-options="lookupChains($request, 'tg')" placeholder="Row"></aui-tree-select>
+        </div>
+    </div>
+    <div class="cell" id="t-destroy"><label>Destroyed while loading (ng-if)</label>
+        <aui-tree-select ng-if="show.destroyable" ng-model="m.destroy" label-field="name" value-field="id"
+                         load-options="loadTree($request, 'destroy')" load-params="{room: p.destroy}" lookup-enabled placeholder="Destroyable"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-ch1"><label>The choice on opening: single, load-options, lookup-enabled</label>
+        <aui-tree-select ng-model="m.ch1" label-field="name" value-field="id" leaf-only
+                         load-options="loadTree($request, 'ch1')" load-params="{room: 'A'}" lookup-enabled placeholder="Choice"></aui-tree-select>
+    </div>
+    <div class="cell" id="t-ch2"><label>The choice on opening: multiple (linked), load-options</label>
+        <aui-tree-select ng-model="m.ch2" label-field="name" value-field="id" multiple
+                         load-options="loadTree($request, 'ch2')" load-params="{room: 'A'}" placeholder="Choices"></aui-tree-select>
+    </div>
+</div>
+<div class="bottom-spacer"></div>
+</body>
+</html>

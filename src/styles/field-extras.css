@@ -1,0 +1,147 @@
+/*
+ * The message line under a field, label-position="top" and the field sizes.
+ */
+
+/* ===== aui-input, aui-select, aui-tree-select: the message line, label-position="top", size (auiFieldExtras) ===== */
+
+/* The message line under a field: a hint (muted), or while the field shows invalid, why (the invalid red, 4.5:1 on
+   white). Its line is kept while the field has one, so that a message coming or going never moves the page. */
+.aui-field-message {
+    display: block;
+    min-height: 18px;
+    margin-top: 4px;
+    padding: 0 2px;
+    color: var(--aui-control-label-color);
+    font-size: calc(var(--aui-font-12) * 1px);
+    font-weight: 400;
+    line-height: 18px;
+    text-align: left;
+    /* a long word breaks; a table cell is not squeezed to one character by it ("anywhere" allowed that) */
+    overflow-wrap: break-word;
+    transition: color var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+.aui-field-message--error {
+    color: var(--aui-control-invalid-color);
+}
+
+/* The error text fades in when it comes (the hint it replaces goes at once), 2px down into its place */
+.aui-field-message__error {
+    display: inline-block;
+    max-width: 100%;
+    animation: aui-message-in var(--aui-motion-duration) var(--aui-motion-ease-color);
+}
+
+@keyframes aui-message-in {
+    from {
+        opacity: 0;
+        transform: translateY(-2px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* the basic style's box sits 20px in from its sides: the message line too */
+.aui-input--basic .aui-field-message {
+    margin-left: 20px;
+    margin-right: 20px;
+}
+
+
+.aui-input .aui-field-label,
+.aui-select .aui-field-label {
+    display: block !important;
+    float: none !important;
+    width: auto !important;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 4px;
+    padding: 0 2px;
+    color: var(--aui-control-label-color);
+    font-size: var(--aui-control-label-size);
+    font-weight: 500;
+    line-height: 18px;
+    text-align: left;
+    vertical-align: baseline;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.aui-select .aui-field-label {
+    cursor: default;
+}
+
+/* size: the field's own tokens (its box, the text in it, the label in it); unset, the 34px of :root */
+.aui-input--small,
+.aui-select--small {
+    --aui-control-height: 28px;
+    --aui-control-inner-height: 20px;
+    --aui-control-value-size: calc(var(--aui-font-13) * 1px);
+    --aui-control-label-size: calc(var(--aui-font-label-12) * 1px);
+}
+
+.aui-input--large,
+.aui-select--large {
+    --aui-control-height: 40px;
+    --aui-control-inner-height: 30px;
+    --aui-control-value-size: calc(var(--aui-font-15) * 1px);
+    --aui-control-label-size: calc(var(--aui-font-label-14) * 1px);
+}
+
+/* small: 3px above and below (28 = 1 + 3 + 20 + 3 + 1), and tags of the 20px line (an 18px text line in its 1px border) */
+.aui-input--small .aui-input__form-trigger,
+.aui-select--small .aui-select__trigger {
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+
+.aui-select--small .aui-select__tag {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+/* small aui-input: the buttons in the row (the clear button there, the password eye) fit its 20px line, a 16px circle
+   (24px buttons made the field 32px); over the text (no row) the clear button keeps its size, as it does not size the box */
+.aui-input--small.aui-input--row .aui-control-clear,
+.aui-input--small .aui-input__eye {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+.aui-input--small.aui-input--row .aui-control-clear-svg,
+.aui-input--small .aui-input__eye-svg {
+    width: 16px !important;
+    height: 16px !important;
+}
+
+/* basic style: the eye fits the text line, as its clear button does */
+.aui-input--basic .aui-input__eye {
+    position: relative;
+    top: -1px;
+    width: 16px;
+    height: 16px;
+}
+
+.aui-input--basic .aui-input__eye-svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* aui-input search: the search icon before the text (the prefix's place), or the selects' spinner while searching */
+.aui-input__search-icon {
+    display: block;
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+}
+
+.aui-input__affix .aui-input__search-spinner {
+    width: 14px;
+    height: 14px;
+}

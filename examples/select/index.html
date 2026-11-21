@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" href="data:,"/>
+    <title>aui-select: examples</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../assets/examples.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="../assets/examples.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="select.js"></script>
+</head>
+<body class="ex" ng-app="auiExamples" ng-controller="SelectExampleCtrl as vm">
+<ex-page heading="aui-select" request-log="true"
+         lead="Products from the mock catalog API: 60,000 of them. The request log at the bottom shows every call and how long it took.">
+
+    <section class="ex-example" id="ex-paged">
+        <h2>Page by page, with server search</h2>
+        <p class="ex-example__text"><code>load-options</code> with <code>page-size="30"</code>: the next page loads as the list
+            nears its end, the search goes to the server once typing pauses, and a new keystroke cancels the request
+            still running. Reopening within a minute shows the loaded pages at once.</p>
+        <div class="ex-example__row">
+            <div>
+                <aui-select ng-model="vm.paged.value" selected-items="vm.paged.items" label-field="name" value-field="id"
+                            load-options="vm.loadProducts($request)" load-params="{status: 1}" page-size="30"
+                            lookup-enabled clearable placeholder="Search the products on sale"></aui-select>
+            </div>
+            <pre class="ex-out">model: {{ vm.paged.value | json }}
+selected-items: {{ vm.paged.items | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-dependent">
+        <h2>A field that depends on another</h2>
+        <p class="ex-example__text">The products follow the brand: <code>load-params="{brand: ...}"</code> is compared by
+            value, <code>load-enabled</code> waits for a brand (<code>load-disabled-text</code> says so in the panel), and
+            <code>reset-on-params="clear"</code> clears the products when the brand changes. The brands themselves come
+            from <code>load-options</code> without a page size (everything at once, searched here).</p>
+        <div class="ex-example__row">
+            <div>
+                <aui-select ng-model="vm.dependent.brand" label-field="name" value-field="id" clearable
+                            load-options="vm.loadBrands($request)" placeholder="Brand"></aui-select>
+                <div class="ex-gap"></div>
+                <aui-select ng-model="vm.dependent.products" label-field="name" value-field="id" multiple
+                            max-tag-count="responsive" clearable disabled-field="disabled"
+                            load-options="vm.loadProducts($request)" load-params="{brand: vm.dependent.brand}"
+                            load-enabled="!!vm.dependent.brand" load-disabled-text="Select a brand first"
+                            page-size="30" lookup-enabled reset-on-params="clear"
+                            placeholder="{{ vm.dependent.brand ? 'Products of ' + vm.dependent.brand : 'Pick a brand first' }}"></aui-select>
+            </div>
+            <pre class="ex-out">brand: {{ vm.dependent.brand | json }}
+products ({{ vm.dependent.products.length || 0 }}): {{ vm.dependent.products | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-saved">
+        <h2>An edit form: values saved as ids</h2>
+        <p class="ex-example__text">The record holds the ids of the two newest products, far beyond the first page.
+            <code>lookup-options</code> asks the by-ids endpoint for their labels in one request; the field shows a
+            placeholder until they arrive. When the record already has the names, <code>value-options</code> needs no
+            request at all.</p>
+        <div class="ex-example__row">
+            <div>
+                <aui-select ng-model="vm.saved.value" label-field="name" value-field="id" multiple clearable
+                            load-options="vm.loadProducts($request)" load-params="{status: 1}" page-size="30"
+                            lookup-options="vm.productsByIds($request)" placeholder="Products"></aui-select>
+                <p class="ex-example__text" ng-if="vm.saved.state === 'loading'">Loading the record...</p>
+                <p class="ex-example__text" ng-if="vm.saved.state === 'error'">{{ vm.saved.error }}</p>
+            </div>
+            <pre class="ex-out">model: {{ vm.saved.value | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-disabled">
+        <h2>Disabled options</h2>
+        <p class="ex-example__text">Every status, page by page. <code>disabled-field="disabled"</code>: products that are
+            not on sale are listed but cannot be picked.</p>
+        <div class="ex-example__row">
+            <div>
+                <aui-select ng-model="vm.mixed.value" label-field="name" value-field="id" multiple max-tag-count="2"
+                            clearable disabled-field="disabled"
+                            load-options="vm.loadProducts($request)" page-size="30" placeholder="Pick products"></aui-select>
+            </div>
+            <pre class="ex-out">model ({{ vm.mixed.value.length || 0 }}): {{ vm.mixed.value | json }}</pre>
+        </div>
+    </section>
+
+    <section class="ex-example" id="ex-large">
+        <h2>Large static lists</h2>
+        <p class="ex-example__text">A plain <code>options</code> array: the panel renders only the rows in view, so even
+            20,000 options open at once.</p>
+        <div class="ex-controls ex-controls--toolbar">
+            <label>Options <select ng-model="vm.big.size" ng-options="(n | number) for n in vm.sizes"></select></label>
+            <button type="button" class="ex-link" ng-click="vm.loadBig()">Load</button>
+            <span ng-if="vm.big.state === 'loading'">Loading...</span>
+            <span ng-if="vm.big.stats">{{ vm.big.stats.count | number }} options: download {{ vm.big.stats.downloadMs }} ms,
+                ready {{ vm.big.stats.readyMs }} ms later</span>
+            <span ng-if="vm.big.openMs !== null">last open: {{ vm.big.openMs }} ms</span>
+            <span ng-if="vm.big.state === 'error'">{{ vm.big.error }}</span>
+        </div>
+        <div class="ex-example__row">
+            <div>
+                <aui-select ng-model="vm.big.value" options="vm.big.options" loading="vm.big.state === 'loading'"
+                            label-field="name" value-field="id" clearable on-open="vm.bigOpened()"
+                            placeholder="{{ vm.big.options ? 'Pick a product' : 'Load the data first' }}"></aui-select>
+            </div>
+            <pre class="ex-out">model: {{ vm.big.value | json }}</pre>
+        </div>
+    </section>
+</ex-page>
+</body>
+</html>

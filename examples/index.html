@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" href="data:,"/>
+    <title>aui-components: examples</title>
+    <link rel="stylesheet" href="../dist/aui-components.css"/>
+    <link rel="stylesheet" href="assets/examples.css"/>
+    <script src="../vendor/jquery.min.js"></script>
+    <script src="../vendor/angular.js"></script>
+    <script src="../vendor/floating-ui.core.min.js"></script>
+    <script src="../vendor/floating-ui.dom.min.js"></script>
+    <script src="../dist/aui-components.js"></script>
+    <script src="assets/examples.js"></script>
+</head>
+<body class="ex" ng-app="auiExamples">
+<ex-page heading="aui-components"
+         lead="Live examples of every component. The data comes from a mock catalog API built into the dev server: categories, products, stores and their departments, answered after a short delay so that loading states can be seen.">
+
+    <section class="ex-example">
+        <h2>Fields</h2>
+        <div class="ex-cards">
+            <a class="ex-card" href="select/">
+                <h3>aui-select</h3>
+                <p>Products from the server page by page with server search, a field that depends on another, saved values looked up by id, large static lists.</p>
+            </a>
+            <a class="ex-card" href="tree-select/">
+                <h3>aui-tree-select</h3>
+                <p>Categories loaded level by level, server search, a node with 2,000 children in pages, saved values revealed down their path, a whole tree of up to 100,000 nodes.</p>
+            </a>
+            <a class="ex-card" href="input/">
+                <h3>aui-input</h3>
+                <p>The form, basic and cell styles next to the selects: counts, numbers with limits, passwords, search fields, checks in a page form.</p>
+            </a>
+            <a class="ex-card" href="date-picker/">
+                <h3>aui-date-picker</h3>
+                <p>Days, date-times, times, months, quarters, years, weeks and several dates, single or as a range: typing, keyboard, limits, shortcuts, timestamps.</p>
+            </a>
+            <a class="ex-card" href="checkbox/">
+                <h3>aui-checkbox</h3>
+                <p>States and sizes, a page form, a table with select-all, aui-checkbox-group with select-all, min and max, layouts.</p>
+            </a>
+        </div>
+    </section>
+
+    <section class="ex-example">
+        <h2>Actions and overlays</h2>
+        <div class="ex-cards">
+            <a class="ex-card" href="button/">
+                <h3>aui-button</h3>
+                <p>Variants, intents, sizes and shapes, icons, a loading state that waits for a promise (no double submit), disabled with a tooltip.</p>
+            </a>
+            <a class="ex-card" href="popover/">
+                <h3>aui-popover</h3>
+                <p>A card next to its trigger: an edit icon in table rows, the page's own triggers, is-open and api, the placements, fields inside.</p>
+            </a>
+            <a class="ex-card" href="modal/">
+                <h3>aui-modal and messages</h3>
+                <p>Dialogs in a template and from code, confirmations that wait for a promise, notices that go away by themselves.</p>
+            </a>
+        </div>
+    </section>
+
+    <section class="ex-example">
+        <h2>Use cases</h2>
+        <div class="ex-cards">
+            <a class="ex-card" href="search-form/">
+                <h3>A search form</h3>
+                <p>Store, department, categories and products that depend on each other, with saved values and a static list of every product.</p>
+            </a>
+        </div>
+    </section>
+
+    <section class="ex-example">
+        <h2>Test suites</h2>
+        <p class="ex-example__text">Every browser suite is a page that runs its checks when opened and shows the report
+            at the bottom (keep the window in front while it runs). <code>npm test</code> runs all of them in a headless
+            browser.</p>
+        <div class="ex-cards">
+            <a class="ex-card" href="../test/select/core.html"><h3>select: core</h3><p>Selection, tags, keyboard, validation, the panel.</p></a>
+            <a class="ex-card" href="../test/select/remote.html"><h3>select: remote data</h3><p>Pages, server search, cancelled requests, failures, params, lookups, caching.</p></a>
+            <a class="ex-card" href="../test/tree-select/core.html"><h3>tree-select: core</h3><p>Selection, keyboard, lazy loading, search, a 20,000-node tree.</p></a>
+            <a class="ex-card" href="../test/tree-select/remote-data.html"><h3>tree-select: remote data</h3><p>load-options per params, lookups with paths, children in pages, reveal-selected.</p></a>
+            <a class="ex-card" href="../test/date-picker/core.html"><h3>date-picker: core</h3><p>Dates and ranges: typing, keyboard, limits, shortcuts, values.</p></a>
+            <a class="ex-card" href="../test/shared/css-guard.html"><h3>shared: page CSS</h3><p>Every part of every field against a hostile page stylesheet.</p></a>
+            <a class="ex-card" href="../test/shared/parity.html"><h3>shared: parity</h3><p>The same steps on aui-select and aui-tree-select give the same result.</p></a>
+            <a class="ex-card" href="../test/shared/keys.html"><h3>shared: keys</h3><p>The keyboard of every field.</p></a>
+        </div>
+    </section>
+</ex-page>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: aui-checkbox and aui-checkbox-group</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .row { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="checkbox.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="checkbox.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="CheckCtrl">
+<h1>aui-checkbox and aui-checkbox-group: the page's form, values, states, select-all, groups</h1>
+
+<form name="f" novalidate>
+    <div class="row">
+        <aui-checkbox id="c-req" name="agree" ng-model="m.agree" ng-required="true" show-errors="true" label="Agree to the terms"
+                      on-change="changed('agree', $value, $oldValue, $checked, $triggerSource, $byUser)" ng-change="ngChanged()"></aui-checkbox>
+        <aui-checkbox id="c-perm" name="perm" ng-model="m.perm" true-value="'edit'" false-value="'no'" label="Edit permission"
+                      on-change="changed('perm', $value, $oldValue, $checked, $triggerSource, $byUser)"></aui-checkbox>
+        <aui-checkbox id="c-plain" ng-model="m.plain" label="No name"></aui-checkbox>
+        <aui-checkbox id="c-ngdis" ng-model="m.plain" ng-disabled="m.off" label="ng-disabled"></aui-checkbox>
+        <aui-checkbox id="c-dis" ng-model="m.flag" disabled="true" label="disabled"></aui-checkbox>
+    </div>
+    <div class="row">
+        <aui-checkbox id="c-all" ng-model="m.all" indeterminate="m.part" label="Select all"></aui-checkbox>
+        <aui-checkbox id="c-row1" ng-model="m.row1" size="sm" aria-label="Row 1"></aui-checkbox>
+        <aui-checkbox id="c-row2" ng-model="m.row2" size="sm" aria-label="Row 2"></aui-checkbox>
+        <style>
+            .k4-hostile td span { position: relative; top: 3px; margin: 4px 2px; font-size: 18px; line-height: 2.2; display: inline-block; vertical-align: middle; padding: 2px; }
+            .k4-hostile td label { margin-bottom: 6px; display: inline-block; line-height: 2; font-size: 11px; }
+            .k4 td { padding: 6px 12px; font-size: 12px; }
+        </style>
+        <table class="k4"><tr><td><aui-checkbox id="c-k4-clean" ng-model="m.k4a" label="16" aria-label="Row 16"></aui-checkbox></td></tr></table>
+        <table class="k4 k4-hostile"><tr><td><aui-checkbox id="c-k4-hostile" ng-model="m.k4b" label="16" aria-label="Row 16"></aui-checkbox></td></tr></table>
+        <div style="font-family: 'Microsoft YaHei', sans-serif"><aui-checkbox id="c-k5-yahei" ng-model="m.k5a" label="6"></aui-checkbox></div>
+        <table id="k6" style="width: 260px; table-layout: auto; border-collapse: collapse; font-size: 13px">
+            <tr><td><aui-checkbox id="c-k6-10" ng-model="m.k6a" label="10" aria-label="Row 10"></aui-checkbox></td>
+                <td>A product name long enough to take every pixel the table has left for itself, and more besides</td></tr>
+            <tr><td><aui-checkbox id="c-k6-100" ng-model="m.k6b" label="100" aria-label="Row 100"></aui-checkbox></td>
+                <td>Another long product name that leaves the first column as little room as the table can give it</td></tr>
+        </table>
+        <div style="font-family: 'Segoe UI', sans-serif"><aui-checkbox id="c-k5-segoe" ng-model="m.k5b" label="6"></aui-checkbox></div>
+        <aui-checkbox id="c-left" ng-model="m.flag" label-position="left" label="Label left"></aui-checkbox>
+        <aui-checkbox id="c-boxed" ng-model="m.boxed" container-border="true" label="In a field's box"></aui-checkbox>
+    </div>
+    <div class="row">
+        <aui-checkbox id="s-compact" ng-model="m.sized" size="compact" label="Compact"></aui-checkbox>
+        <aui-checkbox id="s-sm" ng-model="m.sized" size="sm" label="Small"></aui-checkbox>
+        <aui-checkbox id="s-normal" ng-model="m.sized" label="Normal"></aui-checkbox>
+        <aui-checkbox id="s-md" ng-model="m.sized" size="md" label="md"></aui-checkbox>
+        <aui-checkbox id="s-lg" ng-model="m.sized" size="lg" label="Large"></aui-checkbox>
+    </div>
+
+    <aui-checkbox-group id="g-roles" name="roles" ng-model="g.roles" options="roles" label-field="name" value-field="id" disabled-field="locked"
+                        show-select-all="true" layout="{{ layout.name }}" columns="{{ layout.columns }}" disabled="flags.groupOff"
+                        on-change="changed('roles', $value, $oldValue, $checked, $triggerSource, $byUser); log[log.length - 1].option = $option"></aui-checkbox-group>
+    <aui-checkbox-group id="g-nums" ng-model="g.nums" options="nums" layout="column"></aui-checkbox-group>
+    <aui-checkbox-group id="g-limited" ng-model="g.limited" options="letters" min="2" max="3" show-select-all="true" show-errors="true"></aui-checkbox-group>
+    <aui-checkbox-group id="g-req" name="req" ng-model="g.req" options="letters" ng-required="true" show-errors="true"></aui-checkbox-group>
+    <aui-checkbox-group id="g-kept" ng-model="g.kept" options="letters"></aui-checkbox-group>
+</form>
+<p>agree: <span id="agree-value">{{ m.agree }}</span>; roles: <span id="roles-value">{{ g.roles.join(',') }}</span></p>
+</body>
+</html>

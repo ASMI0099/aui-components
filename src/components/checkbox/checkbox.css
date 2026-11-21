@@ -1,0 +1,354 @@
+/*
+ * aui-checkbox and aui-checkbox-group.
+ */
+
+/* aui-checkbox and aui-checkbox-group. A native checkbox (transparent, over the box: Space, the label's click and
+   assistive technology are the browser's own) and the box drawn under it: in the family's accent while checked or
+   mixed; a border that stands out from white (3:1) while not; red once a required one is left empty. Hover changes
+   the border, the keyboard's focus adds the ring. The check and the mixed bar fill the box (no centring by offsets: on
+   a fraction of a pixel, in a dialog or at 125%, they stay whole) and fade in (opacity); nothing moves or scales.
+   The label in the family's type: its first line beside the box, more lines under it; next to the page's text, on its
+   baseline (the box takes no part in it). A box without a label: in the middle of the line, a 24px target. The class
+   names are set by the components (no watchers): --compact, --sm, --normal, --lg, --inherit; --checked,
+   --indeterminate, --disabled, --invalid, --bare, --label-left, --container-border. */
+/* the element itself is the component's box: on the page's line (its baseline the label's), its parts laid out inside
+   it by flex, so no line height of the page moves them; a box without a label in the middle of the line. In a field's
+   box: a block, as wide as its place in a form, as wide as itself in a row of the page (a flex container) */
+aui-checkbox {
+    display: inline-flex;
+    max-width: 100%;
+    vertical-align: baseline;
+}
+
+aui-checkbox.aui-checkbox-host--bare {
+    vertical-align: middle;
+}
+
+aui-checkbox.aui-checkbox-host--block {
+    display: block;
+}
+
+aui-checkbox-group {
+    display: block;
+    max-width: 100%;
+}
+
+.aui-checkbox-field {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.aui-checkbox-host--block > .aui-checkbox-field {
+    align-items: stretch;
+}
+
+/* (its layout !important: it is a <label>, and a page's rule for labels in its cells, ".table td label", is stronger
+   than one class - a display, a margin or a font size from it took the box off its text) */
+.aui-checkbox {
+    --aui-checkbox-size: 16px;
+    --aui-checkbox-font: calc(var(--aui-font-14) * 1px);
+    --aui-checkbox-line: calc(var(--aui-font-14) * 1.43px);
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: baseline !important;
+    gap: 8px;
+    float: none !important;
+    width: auto;
+    max-width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box;
+    color: var(--aui-control-value-color);
+    font-size: var(--aui-checkbox-font) !important;
+    font-style: normal;
+    font-weight: inherit;
+    line-height: var(--aui-checkbox-line) !important;
+    letter-spacing: normal;
+    text-align: start;
+    text-transform: none;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.aui-checkbox--compact { --aui-checkbox-size: 12px; --aui-checkbox-line: calc(var(--aui-font-12) * 1.4px); gap: 6px; --aui-checkbox-font: calc(var(--aui-font-12) * 1px); }
+.aui-checkbox--sm { --aui-checkbox-size: 14px; --aui-checkbox-line: calc(var(--aui-font-13) * 1.4px); gap: 6px; --aui-checkbox-font: calc(var(--aui-font-13) * 1px); }
+.aui-checkbox--lg { --aui-checkbox-size: 22px; --aui-checkbox-line: calc(var(--aui-font-15) * 1.6px); gap: 10px; --aui-checkbox-font: calc(var(--aui-font-15) * 1px); }
+.aui-checkbox--inherit { --aui-checkbox-size: 1em; --aui-checkbox-line: 1.4em; gap: 0.45em; --aui-checkbox-font: 1em; color: inherit; }
+
+/* The box against its label's text: its middle where the digits and capitals have theirs above the text's baseline -
+   --aui-checkbox-mid, measured in the label's font by the component (0.355em in Segoe UI, 0.375em in Tahoma),
+   0.36em when the browser cannot tell; the middle of other scripts lies within 0.03em of it - whatever the font puts
+   above and below its letters. In the line the box stands on the baseline and takes no room above it (its
+   negative top margin), then it is moved up to that middle: the line is the label's own, a large box makes it no
+   taller. */
+/* (its place !important: a page's rule for spans in its cells, ".table td span", is stronger than one class, and a
+   margin, a position or a size from it moved the box off its label) */
+.aui-checkbox__control {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    display: block !important;
+    flex: none;
+    align-self: baseline;
+    width: var(--aui-checkbox-size) !important;
+    height: var(--aui-checkbox-size) !important;
+    margin: calc(-1 * var(--aui-checkbox-size)) 0 0 !important;
+    padding: 0 !important;
+    font-size: inherit !important;
+    transform: translateY(calc(var(--aui-checkbox-size) / 2 - var(--aui-checkbox-mid, 0.36em))) !important;
+}
+
+/* without a label, or in a field's box: in the middle (no text to stand by) */
+.aui-checkbox--bare .aui-checkbox__control,
+.aui-checkbox--container-border .aui-checkbox__control {
+    align-self: center;
+    margin: 0 !important;
+    transform: none !important;
+}
+
+/* (a page's checkbox rules do not reach it: rules that skip .custom leave it alone, the rest lose to !important) */
+.aui-checkbox .aui-checkbox__native {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    opacity: 0 !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    outline: none !important;
+    cursor: pointer;
+    z-index: 1;
+}
+
+/* a box without a label (a table's rows): a 24px target around it, whatever its size (no 0px in the min(): the
+   minifier writes it 0, and min(0, a length) is invalid) */
+.aui-checkbox--bare .aui-checkbox__native {
+    inset: calc((min(var(--aui-checkbox-size), 24px) - 24px) / 2) !important;
+    width: auto !important;
+    height: auto !important;
+}
+
+.aui-checkbox__box {
+    position: absolute !important;
+    inset: 0 !important;
+    display: block !important;
+    box-sizing: border-box;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 1px solid #8792a2;
+    border-radius: calc(var(--aui-checkbox-size) * 0.2);
+    background-color: var(--aui-control-background-color);
+    pointer-events: none;
+    /* its states change at once and it never moves (as aui-button): a colour fade runs on the main thread (a long
+       digest of the page right after a click froze it near white: the white check unseen, the click seemed late); a
+       press scale redrew its border at a fractional size. The check fades in (opacity: the compositor). */
+}
+
+/* the check and the mixed bar: white, through a mask over the whole box (2px lines at 16px). The check: 60% of the
+   box, its long arm near 45 degrees, its corner a little low and left (the eye's centre), as the common design systems. */
+.aui-checkbox__box::before,
+.aui-checkbox__box::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: #ffffff;
+    opacity: 0;
+    transition: opacity 0.12s ease-out;
+}
+
+.aui-checkbox__box::before {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.25 8.4l3.1 3.1 6.4-6.9'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.25 8.4l3.1 3.1 6.4-6.9'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+.aui-checkbox__box::after {
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 8h8'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 8h8'/%3E%3C/svg%3E") center / 100% 100% no-repeat;
+}
+
+.aui-checkbox--checked .aui-checkbox__box::before,
+.aui-checkbox--indeterminate .aui-checkbox__box::after {
+    opacity: 1;
+}
+
+.aui-checkbox:hover:not(.aui-checkbox--disabled) .aui-checkbox__box {
+    border-color: var(--aui-control-accent-color);
+}
+
+.aui-checkbox--checked .aui-checkbox__box,
+.aui-checkbox--indeterminate .aui-checkbox__box {
+    border-color: var(--aui-control-accent-color);
+    background-color: var(--aui-control-accent-color);
+}
+
+.aui-checkbox--checked:hover:not(.aui-checkbox--disabled) .aui-checkbox__box,
+.aui-checkbox--indeterminate:hover:not(.aui-checkbox--disabled) .aui-checkbox__box {
+    border-color: color-mix(in srgb, var(--aui-control-accent-color) 85%, #000000);
+    background-color: color-mix(in srgb, var(--aui-control-accent-color) 85%, #000000);
+}
+
+.aui-checkbox .aui-checkbox__native:focus-visible + .aui-checkbox__box {
+    border-color: var(--aui-control-accent-color);
+    box-shadow: 0 0 0 3px var(--aui-control-accent-a24);
+}
+
+
+.aui-checkbox--invalid .aui-checkbox__box,
+.aui-checkbox--invalid:hover .aui-checkbox__box {
+    border-color: var(--aui-control-invalid-color);
+}
+
+.aui-checkbox--invalid .aui-checkbox__native:focus-visible + .aui-checkbox__box {
+    border-color: var(--aui-control-invalid-color);
+    box-shadow: 0 0 0 3px var(--aui-control-invalid-a16);
+}
+
+.aui-checkbox--disabled {
+    color: var(--aui-control-disabled-color);
+    cursor: not-allowed;
+}
+
+.aui-checkbox--disabled .aui-checkbox__box {
+    border-color: #cbd5e1;
+    background-color: #f1f5f9;
+}
+
+.aui-checkbox--disabled.aui-checkbox--checked .aui-checkbox__box,
+.aui-checkbox--disabled.aui-checkbox--indeterminate .aui-checkbox__box {
+    border-color: #b8c2cf;
+    background-color: #b8c2cf;
+}
+
+.aui-checkbox--disabled .aui-checkbox__native {
+    cursor: not-allowed;
+}
+
+/* the label: a page's label and span rules (padding, bold, uppercase) do not reach it */
+/* (its size, line and place !important: a page's rule for spans in its cells moved the text off the box) */
+.aui-checkbox .aui-checkbox__label {
+    position: static !important;
+    display: block;
+    min-width: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    float: none !important;
+    color: inherit;
+    font-size: inherit !important;
+    font-weight: inherit;
+    line-height: inherit !important;
+    vertical-align: baseline !important;
+    /* digits of one width: row numbers (1, 7, 11) stand in line */
+    font-variant-numeric: tabular-nums;
+    /* a word too long for its place breaks, but a table short of room never squeezes the column below a whole word
+       ("anywhere" let it break a row number "10" into "1" / "0") */
+    overflow-wrap: break-word;
+}
+
+.aui-checkbox--label-left .aui-checkbox__label {
+    order: -1;
+}
+
+.aui-checkbox--bare .aui-checkbox__label {
+    display: none;
+}
+
+/* container-border: in a field's box (its border, height and focus ring are the fields', above); blue while checked */
+.aui-checkbox.aui-checkbox--container-border {
+    align-items: center !important;
+    padding: 0 10px !important;
+}
+
+.aui-checkbox--container-border.aui-checkbox--checked,
+.aui-checkbox--container-border.aui-checkbox--checked:hover:not(.aui-checkbox--disabled) {
+    border-color: var(--aui-control-accent-color);
+    background-color: var(--aui-control-accent-a05);
+}
+
+.aui-checkbox--container-border.aui-checkbox--disabled {
+    border-color: #e2e8f0;
+    background-color: var(--aui-control-readonly-background-color);
+}
+
+/* aui-checkbox-group: the select-all above the options; the options in a row (wrapping), a column or a grid */
+.aui-checkbox-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    max-width: 100%;
+}
+
+.aui-checkbox-group:not(.aui-checkbox-group--all) > .aui-checkbox--select-all {
+    display: none !important;
+}
+
+.aui-checkbox-group__options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    max-width: 100%;
+}
+
+.aui-checkbox-group--column .aui-checkbox-group__options {
+    flex-direction: column;
+    gap: 8px;
+}
+
+.aui-checkbox-group--grid {
+    align-items: stretch;
+}
+
+.aui-checkbox-group--grid .aui-checkbox-group__options {
+    display: grid;
+    grid-template-columns: repeat(var(--aui-checkbox-group-columns, 3), minmax(0, 1fr));
+    gap: 8px 16px;
+}
+
+/* boxes in their field's box: as wide as their label in a row */
+.aui-checkbox-group--row .aui-checkbox--container-border {
+    width: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aui-checkbox__box,
+    .aui-checkbox__box::before,
+    .aui-checkbox__box::after {
+        transition-duration: 0s;
+    }
+}
+
+@media (forced-colors: active) {
+    .aui-checkbox__box {
+        border-color: ButtonText;
+        background-color: ButtonFace;
+    }
+
+    .aui-checkbox--checked .aui-checkbox__box,
+    .aui-checkbox--indeterminate .aui-checkbox__box {
+        border-color: SelectedItem;
+        background-color: SelectedItem;
+    }
+
+    .aui-checkbox__box::before,
+    .aui-checkbox__box::after {
+        background-color: SelectedItemText;
+    }
+
+    .aui-checkbox--disabled .aui-checkbox__box {
+        border-color: GrayText;
+    }
+
+    .aui-checkbox .aui-checkbox__native:focus-visible + .aui-checkbox__box {
+        outline: 2px solid Highlight;
+        outline-offset: 2px;
+    }
+}

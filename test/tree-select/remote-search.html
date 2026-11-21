@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-tree-select: remote search</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        .cell .out { margin-top: 6px; font: 11px Consolas, monospace; color: #666; word-break: break-all; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .bottom-spacer { height: 320px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="remote-search.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="remote-search.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="RemoteSearchCtrl">
+<h1>aui-tree-select: server-side search</h1>
+<div class="grid">
+    <div class="cell" id="r-single"><label>Single, lazy, remote-search, show-path, search-delay 100</label>
+        <aui-tree-select ng-model="m.single" selected-items="m.singleItems" label-field="name" value-field="id" show-path
+                         load-children="loadChildren($node)" remote-search="remoteSearch($query, $signal, $cancel)"
+                         search-delay="100" placeholder="Single"></aui-tree-select>
+        <div class="out">model: {{ m.single | json }}</div>
+    </div>
+    <div class="cell" id="r-multi"><label>Multiple (linked, value-strategy all), lazy, remote-search</label>
+        <aui-tree-select ng-model="m.multi" selected-items="m.multiItems" label-field="name" value-field="id" multiple
+                         load-children="loadChildren($node)" remote-search="remoteSearch($query, $signal, $cancel)"
+                         search-delay="100" placeholder="Multiple"></aui-tree-select>
+        <div class="out">model: {{ m.multi | json }}</div>
+    </div>
+    <div class="cell" id="r-parent"><label>Multiple, value-strategy parent, lazy, remote-search</label>
+        <aui-tree-select ng-model="m.parent" label-field="name" value-field="id" multiple value-strategy="parent"
+                         load-children="loadChildren($node)" remote-search="remoteSearch($query, $signal, $cancel)"
+                         search-delay="100" placeholder="Strategy parent"></aui-tree-select>
+    </div>
+    <div class="cell" id="r-child"><label>Multiple, value-strategy child, lazy, remote-search</label>
+        <aui-tree-select ng-model="m.child" label-field="name" value-field="id" multiple value-strategy="child"
+                         load-children="loadChildren($node)" remote-search="remoteSearch($query, $signal, $cancel)"
+                         search-delay="100" placeholder="Strategy child"></aui-tree-select>
+    </div>
+    <div class="cell" id="r-limit"><label>Server returns at most 2 matches</label>
+        <aui-tree-select ng-model="m.limit" label-field="name" value-field="id"
+                         load-children="loadChildren($node)" remote-search="remoteSearchLimited($query, $signal, $cancel)"
+                         search-delay="100" placeholder="Limited"></aui-tree-select>
+    </div>
+    <div class="cell" id="r-destroy"><label>Destroyed while a search runs (ng-if)</label>
+        <aui-tree-select ng-if="showDestroyable" ng-model="m.gone" label-field="name" value-field="id"
+                         load-children="loadChildren($node)" remote-search="remoteSearch($query, $signal, $cancel)"
+                         search-delay="100" placeholder="Destroyable"></aui-tree-select>
+    </div>
+</div>
+<div class="bottom-spacer"></div>
+</body>
+</html>

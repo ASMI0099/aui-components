@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: the gaps around a label's divider</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .grid { display: grid; grid-template-columns: repeat(3, 300px); gap: 10px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="label-gap.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="label-gap.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="GapCtrl">
+<h1>The label's divider sits midway between the label and the value, wherever the field is</h1>
+<div class="grid" id="on-page">
+    <aui-select ng-model="m.single" options="options" show-label label-text="Hall" clearable></aui-select>
+    <aui-select ng-model="m.multi" options="options" show-label label-text="Tags" multiple clearable></aui-select>
+    <aui-tree-select ng-model="m.tree" options="tree" show-label label-text="Category" clearable></aui-tree-select>
+    <aui-input ng-model="m.code" input-style-type="form" show-label label-text="Code" clearable></aui-input>
+    <aui-input ng-model="m.empty" input-style-type="form" show-label label-text="Name" placeholder="Type a name"></aui-input>
+</div>
+<aui-modal is-open="modalOpen" width="70" height="60" show-footer="false">
+    <content>
+        <div class="grid" id="in-modal">
+            <aui-select ng-model="m.single" options="options" show-label label-text="Hall" clearable></aui-select>
+            <aui-select ng-model="m.multi" options="options" show-label label-text="Tags" multiple clearable></aui-select>
+            <aui-tree-select ng-model="m.tree" options="tree" show-label label-text="Category" clearable></aui-tree-select>
+            <aui-input ng-model="m.code" input-style-type="form" show-label label-text="Code" clearable></aui-input>
+            <aui-input ng-model="m.empty" input-style-type="form" show-label label-text="Name" placeholder="Type a name"></aui-input>
+        </div>
+    </content>
+</aui-modal>
+</body>
+</html>
