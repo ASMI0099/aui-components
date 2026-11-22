@@ -6,7 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `aui-button`: `aria-describedby`, `aria-haspopup`, `aria-pressed` and `tabindex` on the element are moved onto the
+  native button, where they act (also when written with `{{ }}`).
+
 ### Changed
+
+- `aui-button`: the keyboard focus is a 2px ring in the accent around a 2px gap on every variant and intent (it was a
+  light ring in the intent's colour); in forced-colours mode an outline in the system's highlight colour.
+- `aui-button`: the warning text on white and on its tints is a darker amber (`#a34a08`), 4.5:1 on the hover tint too.
+- `aui-button`: `done-duration` is held between 300 and 10000 ms.
 
 - Field borders are darker (`#8590a0`, 3.2:1 on white) so an empty field shows where it is; the hover border follows.
   The line between a label in the box and the value keeps the light colour through `--aui-control-divider-color`.
@@ -26,6 +36,13 @@ All notable changes to this project are documented here. The format follows
 - The field box takes `--aui-control-background-color` (a dark theme no longer draws white on white), and the fields
   follow a theme's `--aui-control-height` and `--aui-control-radius`.
 - A cut top label shows its whole text as a tooltip, as the label in the box does.
+- `aui-button`: an icon button with only a `title` is named by that title; a `{{ }}` label that becomes empty leaves
+  an icon alone, named by its icon.
+- `aui-button`: a promise of the browser's own returned by `on-click` (an async function, `fetch`) settles inside a
+  digest, so the page shows the result at once.
+- `aui-button`: a new click ends the previous done or copy feedback, and after quick repeated copies the latest
+  copy's outcome shows; the button keeps its width for "Copied" and for "Copy failed".
+- `aui-button`: `shape="square"` no longer squeezes a `link` button.
 
 ## [0.1.0]
 

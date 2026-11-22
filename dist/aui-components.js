@@ -6598,6 +6598,8 @@ angular.module('aui')
      * - icon: a family icon by name (auiIcons: add, edit, delete, search, refresh, download, upload, filter, settings,
      *   more, info, help...) or the classes of an icon font ("fa fa-plus"); icon-position="right": after the text. An icon
      *   alone is square, and named (and its tooltip) by the icon's name (auiTexts.icons) unless aria-label / title say.
+     *   A label written with {{ }} that becomes empty leaves an icon alone (named so), and its text back a text button.
+     * - aria-describedby, aria-haspopup, aria-pressed and tabindex on the element are moved onto the native button.
      * - disabled (also a bare `disabled`, and ng-disabled on the element): the native disabled button.
      * - loading: its spinner over the icon (or the text), its width kept; it keeps the focus and its name, and takes no
      *   click (aria-disabled, aria-busy). loading-text="Saving...": meanwhile the spinner and this text in place of the
@@ -6616,13 +6618,15 @@ angular.module('aui')
      *   show-more, two chevrons: more of a whole section), caret (a filled triangle, right turning down), plus (a box
      *   with a plus that becomes a minus).
      * - copy-text="{{ vm.code }}": a click copies the text (the Clipboard API; the older way where it is missing or
-     *   refused) and, for done-duration ms (2000), shows a ring with a check that draws itself in and "Copied"
-     *   (auiTexts.button) in place of its icon and text - or a ring with a cross and "Copy failed" - announced to screen
-     *   readers. copy-feedback="none": it copies, its look
-     *   stays. on-copy: $success, $text. It only writes to the clipboard, on a click, and never reads it.
-     * - done-text="Saved": after on-click's promise resolves, the drawn check and this text for done-duration ms. Without
-     *   copy-text or done-text nothing changes after a click. A text button keeps its width: it holds the room of the
-     *   longer text from the start.
+     *   refused) and, for done-duration ms (2000; held between 300 and 10000), shows "Copied" (auiTexts.button) in place
+     *   of its text - with a button that has an icon, a ring with a check that draws itself in, in place of the icon - or
+     *   "Copy failed" (a ring with a cross), announced to screen readers. Only the latest copy's outcome shows.
+     *   copy-feedback="none": it copies, its look stays. on-copy: $success, $text (every copy). It only writes to the
+     *   clipboard, on a click, and never reads it.
+     * - done-text="Saved": after on-click's promise resolves, this text (and the drawn check, with an icon) for
+     *   done-duration ms. A new click ends it at once. Without copy-text or done-text nothing changes after a click. A
+     *   text button keeps its width: it holds the room of its longest text from the start.
+     * - on-click's promise may be $q's or the browser's own: it settles inside Angular's digest either way.
      * Drawn without watchers: its attributes and parts are set when its bindings change.
      */
     .component('auiButton', {
@@ -6652,8 +6656,8 @@ angular.module('aui')
             doneDuration: '@?'
         },
         template: '<button class="aui-button"><span class="aui-button__inner"><span class="aui-button__label" ng-transclude></span></span></button>',
-        controller: ['$element', '$scope', '$attrs', '$parse', '$exceptionHandler', 'auiControlKit', 'auiTexts', 'auiIcons',
-            function ($element, $scope, $attrs, $parse, $exceptionHandler, kit, texts, icons) {
+        controller: ['$element', '$scope', '$attrs', '$parse', '$q', '$exceptionHandler', 'auiControlKit', 'auiTexts', 'auiIcons',
+            function ($element, $scope, $attrs, $parse, $q, $exceptionHandler, kit, texts, icons) {
                 const $ctrl = this;
                 const VARIANTS = ['solid', 'soft', 'outline', 'elevated', 'dashed', 'ghost', 'link'];
                 const INTENTS = ['neutral', 'brand', 'success', 'warning', 'danger'];
@@ -6675,10 +6679,17 @@ angular.module('aui')
                 let loadingLabel = null; // loading-text: shown in place of the label
                 let textShown = false;   // loading-text shown now (the width held from before it)
                 let waiting = false;     // on-click's promise not settled yet
+                let copies = 0;          // copy-text: the clicks that copied so far (only the latest one's outcome shows)
+                let labelShown = null;   // the label had something to show at the last drawing
+                let labelWatch = null;   // follows the label's text (a {{ }} in it can become empty, or come back)
                 // expanded: a disclosure button; the page's value written through its expression (null: not writable)
                 const disclosure = $attrs.expanded !== undefined;
                 const writeExpanded = disclosure ? ($parse($attrs.expanded).assign || null) : null;
                 let destroyed = false;
+
+                // the page's ARIA states and relations and its tab order, written on the element, are the native button's
+                // (the element has no role and is no tab stop of its own): moved onto the button
+                const FORWARDED = ['ariaDescribedby', 'ariaHaspopup', 'ariaPressed', 'tabindex'];
 
                 $ctrl.$postLink = function () {
                     button = host.firstElementChild;
@@ -6693,6 +6704,15 @@ angular.module('aui')
                             return a.name === 'class' && /^\s*(ng-[\w-]+\s*)*$/.test(a.value);
                         })) node.classList.add('aui-button__text');
                     });
+                    FORWARDED.forEach(forward);
+                    // a label written with {{ }} (or ng-if inside it) changes without a change of the bindings: drawn
+                    // again when it starts or stops having something to show (an icon with an empty label is an icon alone)
+                    if (typeof MutationObserver === 'function') {
+                        labelWatch = new MutationObserver(function () {
+                            if (hasLabel() !== labelShown) render();
+                        });
+                        labelWatch.observe(label, {childList: true, characterData: true, subtree: true});
+                    }
                     button.addEventListener('click', onClick);
                     kit.followNgFlags($attrs, render);
                     render();
@@ -6705,8 +6725,32 @@ angular.module('aui')
                 $ctrl.$onDestroy = function () {
                     destroyed = true;
                     clearTimeout(feedbackTimer);
+                    if (labelWatch) labelWatch.disconnect();
                     if (button) button.removeEventListener('click', onClick);
                 };
+
+                /** One of FORWARDED: set on the button and taken off the element, now and whenever it changes ({{ }}). */
+                function forward(name) {
+                    if ($attrs[name] === undefined) return;
+                    const htmlName = $attrs.$attr[name];
+                    const move = function (value) {
+                        set(htmlName, value === undefined || value === null ? null : String(value));
+                        host.removeAttribute(htmlName);
+                    };
+                    move($attrs[name]);
+                    $attrs.$observe(name, move);
+                }
+
+                /**
+                 * The label has something to show: a text (not only spaces), or an element of the page's own. The <span>
+                 * Angular wraps a text in counts by its text alone: left empty by its {{ }}, it is nothing.
+                 */
+                function hasLabel() {
+                    if (label.textContent.trim()) return true;
+                    return Array.prototype.some.call(label.children, function (child) {
+                        return !child.classList.contains('aui-button__text');
+                    });
+                }
 
                 function busy() {
                     return waiting || kit.readFlag($attrs, 'loading', $ctrl.loading, false);
@@ -6732,20 +6776,20 @@ angular.module('aui')
                     const shownFeedback = loading ? '' : feedback;
                     set('data-feedback', shownFeedback || null);
                     drawIcon(shownFeedback);
-                    // copy-text / done-text on a text button: the label holds the room of the feedback's text from the
-                    // start (a hidden copy of it under the text), so that the button keeps its width when it shows
-                    const room = label.firstChild && feedbackOn() ? feedbackText('done') : '';
-                    if (room) {
-                        if (label.getAttribute('data-room') !== room) label.setAttribute('data-room', room);
-                    } else if (label.hasAttribute('data-room')) {
-                        label.removeAttribute('data-room');
-                    }
+                    labelShown = hasLabel();
+                    // copy-text / done-text on a text button: the label holds the room of the feedback's texts from the
+                    // start (hidden copies of them under the text: "Copied" and, for a copy, "Copy failed"), so that the
+                    // button keeps its width whichever shows
+                    const room = labelShown && feedbackOn() ? feedbackText('done') : '';
+                    const failedRoom = room && $attrs.copyText !== undefined ? feedbackText('failed') : '';
+                    setLabelRoom('data-room', room);
+                    setLabelRoom('data-room-failed', failedRoom);
                     // loading-text: the spinner (at the icon, or in a place of its own before the text) and the text in
                     // place of the label; the width from before is held as the least (no button shrinking under the
                     // pointer), a longer text widens it. Not for an icon alone (its square stays). The feedback of
                     // copy-text / done-text takes the same place, without the spinner.
                     const loadingText = String($ctrl.loadingText || '').trim();
-                    const swapText = !label.firstChild ? '' :
+                    const swapText = !labelShown ? '' :
                         (loading && loadingText ? loadingText : (shownFeedback ? feedbackText(shownFeedback) : ''));
                     const withText = !!swapText;
                     if (withText && !textShown) button.style.minWidth = button.offsetWidth + 'px';
@@ -6766,18 +6810,27 @@ angular.module('aui')
                     }
                     button.classList.toggle('aui-button--text-hidden', loading && !iconBox && !withText);
                     button.classList.toggle('aui-button--loading-text', withText);
-                    // an icon alone: square, named by the icon (and its tooltip) unless aria-label / title say
-                    const iconOnly = !!iconBox && !label.firstChild;
+                    // an icon alone: square, named by the icon (and its tooltip) unless aria-label / title say: the page's
+                    // title is the name then (the browser names a button by its title when nothing else names it)
+                    const iconOnly = !!iconBox && !labelShown;
                     let iconName = iconOnly && icons.has(drawnIcon.toLowerCase()) ? texts.icons[drawnIcon.toLowerCase()] : '';
                     if (iconOnly && turning()) iconName = $ctrl.expanded ? texts.icons.collapse : texts.icons.expand;
                     if (iconOnly && shownFeedback) iconName = feedbackText(shownFeedback);
                     button.classList.toggle('aui-button--icon-only', iconOnly);
                     // the feedback names an icon alone even over the page's own name, for its moment
-                    set('aria-label', (iconOnly && shownFeedback ? iconName : $ctrl.ariaLabel) || iconName || null);
+                    set('aria-label', (iconOnly && shownFeedback ? iconName : $ctrl.ariaLabel) || ($ctrl.title ? '' : iconName) || null);
                     set('title', (iconOnly && shownFeedback ? iconName : $ctrl.title) || ($ctrl.ariaLabel ? '' : iconName) || null);
                     // the element itself names nothing (it has no role): its aria-label and title are the button's
                     host.removeAttribute('aria-label');
                     host.removeAttribute('title');
+                }
+
+                function setLabelRoom(name, text) {
+                    if (text) {
+                        if (label.getAttribute(name) !== text) label.setAttribute(name, text);
+                    } else if (label.hasAttribute(name)) {
+                        label.removeAttribute(name);
+                    }
                 }
 
                 /**
@@ -6880,6 +6933,9 @@ angular.module('aui')
                         event.stopImmediatePropagation();
                         return;
                     }
+                    // a new action: the feedback of the one before is over (a failure after an earlier success must not
+                    // show that success again)
+                    endFeedback();
                     // copy-text: the copy starts in the click itself (the browser allows writing to the clipboard only
                     // while it handles the user's gesture)
                     const copying = $attrs.copyText !== undefined;
@@ -6902,7 +6958,10 @@ angular.module('aui')
                     if (!result || typeof result.then !== 'function') return;
                     waiting = true;
                     render();
-                    result.then(function () {
+                    // through $q: a promise of the browser's own (async functions, fetch) settles outside Angular's
+                    // digest, and the page would not show what the click opened (ng-show on the expanded value) until
+                    // some other digest; $q settles it inside one
+                    $q.when(result).then(function () {
                         waiting = false;
                         if (destroyed) return;
                         if (disclosure) showExpanded(next);
@@ -6934,15 +6993,29 @@ angular.module('aui')
                     feedback = kind;
                     render();
                     announce(feedbackText(kind));
-                    const ms = Number($ctrl.doneDuration);
                     feedbackTimer = setTimeout(function () {
                         feedbackTimer = null;
-                        feedback = '';
-                        fadeIcon = true;
                         if (destroyed) return;
-                        render();
-                        if (status) status.textContent = '';
-                    }, isFinite(ms) && ms >= 300 ? Math.min(ms, 10000) : 2000);
+                        endFeedback();
+                    }, feedbackDuration());
+                }
+
+                /** The feedback over: the button as it was, its status text cleared. */
+                function endFeedback() {
+                    clearTimeout(feedbackTimer);
+                    feedbackTimer = null;
+                    if (status) status.textContent = '';
+                    if (!feedback) return;
+                    feedback = '';
+                    fadeIcon = true;
+                    render();
+                }
+
+                /** done-duration in ms, held between 300 and 10000; unset or not a number: 2000. */
+                function feedbackDuration() {
+                    const raw = $ctrl.doneDuration === undefined || $ctrl.doneDuration === null ? '' : String($ctrl.doneDuration).trim();
+                    const ms = raw === '' ? NaN : Number(raw);
+                    return isFinite(ms) ? Math.min(Math.max(ms, 300), 10000) : 2000;
                 }
 
                 /** A polite status element (aria-live) next to the button: the feedback read once, the same text twice in a row too. */
@@ -6962,9 +7035,12 @@ angular.module('aui')
 
                 function copy() {
                     const text = $ctrl.copyText === undefined || $ctrl.copyText === null ? '' : String($ctrl.copyText);
+                    // the outcome shown is the latest copy's: an earlier one that ends later (a slow refusal) only
+                    // reports to on-copy
+                    const run = ++copies;
                     writeClipboard(text).then(function (copied) {
                         if (destroyed) return;
-                        if (toToken($ctrl.copyFeedback) !== 'none') showFeedback(copied ? 'done' : 'failed');
+                        if (run === copies && toToken($ctrl.copyFeedback) !== 'none') showFeedback(copied ? 'done' : 'failed');
                         if (!$ctrl.onCopy) return;
                         const call = function () { $ctrl.onCopy({$success: copied, $text: text}); };
                         try {

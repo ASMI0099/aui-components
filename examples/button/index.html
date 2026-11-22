@@ -8,7 +8,10 @@
     <link rel="stylesheet" href="../../dist/aui-components.css"/>
     <link rel="stylesheet" href="../assets/examples.css"/>
     <style>
-        .bt-grid { display: grid; grid-template-columns: 90px repeat(5, max-content); gap: 10px 12px; align-items: center; }
+        /* the matrix scrolls on its own on a narrow screen (the page never does); its padding keeps the focus ring of
+           the outer buttons in view */
+        .bt-grid { display: grid; grid-template-columns: 90px repeat(5, max-content); gap: 10px 12px; align-items: center;
+            max-width: 100%; overflow-x: auto; padding: 4px; box-sizing: border-box; }
         .bt-grid > .bt-head { font: 12px/1.4 ui-monospace, Consolas, monospace; color: #64748b; }
         .bt-row { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; }
         .bt-code { padding: 4px 8px; border-radius: 4px; background: #f1f5f9; color: #1f2328; font-size: 13px; }

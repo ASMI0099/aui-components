@@ -37,4 +37,19 @@ angular.module('auiTest', ['aui'])
             $scope.lastEvent = $event && $event.type;
             return $timeout(function () { $scope.note('saved'); }, 300);
         };
+        // on-click returning a promise of the browser's own (not $q): it settles outside Angular's digest
+        $scope.openNative = function () {
+            return new Promise(function (resolve) { setTimeout(resolve, 50); });
+        };
+        // a save that fails while saveFails
+        $scope.saveFails = false;
+        $scope.saveMaybe = function () {
+            return $timeout(function () { if ($scope.saveFails) return $q.reject(new Error('not saved')); }, 100);
+        };
+        // copy-text whose text changes between two clicks; what on-copy reports
+        $scope.raceText = 'A';
+        $scope.races = [];
+        $scope.raced = function (success, text) { $scope.races.push([success, text]); };
+        $scope.dynLabel = '';
+        $scope.quick = function () { return $q.resolve(); };
     }]);

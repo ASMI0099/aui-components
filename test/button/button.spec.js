@@ -28,14 +28,15 @@
     const T = (name, expect, fn) => tests.push({name, expect, fn});
 
     T('B1 the defaults: a <button type="button">, solid, brand, md 34px, in the page\'s font; the element is its place (inline-flex); no watchers for 100 buttons',
-        {type: 'button', variant: 'solid', intent: 'brand', size: 'md', height: 34, font: '"Courier New"', host: true, watchers: 0},
+        {type: 'button', variant: 'solid', intent: 'brand', size: 'md', height: 34, font: 'Courier New', host: true, watchers: 0},
         async () => {
             const b = btn('b-plain');
-            const repeat = angular.element(host('many').firstElementChild).scope().$parent;
+            // the 100 buttons' own scopes (each repeated item's, with the button's scopes under it), not the page's
             let watchers = 0;
-            for (let c = repeat.$$childHead; c; c = c.$$nextSibling) watchers += count(c);
+            Array.prototype.forEach.call(host('many').children, el => { watchers += count(angular.element(el).scope()); });
             return {type: b.getAttribute('type'), variant: b.getAttribute('data-variant'), intent: b.getAttribute('data-intent'),
-                size: b.getAttribute('data-size'), height: Math.round(rect(b).height), font: getComputedStyle(b).fontFamily.split(',')[0],
+                // (the family's name without the quotes some browsers write around it)
+                size: b.getAttribute('data-size'), height: Math.round(rect(b).height), font: getComputedStyle(b).fontFamily.split(',')[0].replace(/["']/g, ''),
                 host: getComputedStyle(host('b-plain')).display !== 'contents', watchers};
         });
 
@@ -491,19 +492,143 @@
     T('B28 show-more and show-more-double: the chevrons after the text at the gap of an icon before its text (8.5 to 10.5 px at 14px), the double one two chevrons as wide as the one',
         {more: true, double: true, sameWidth: true, twoChevrons: true},
         async () => {
-            // the gap from the text to the drawn line: the path's box leaves out half the line's width (1 of 24 units)
+            // the gap from the text to the drawn line, from the path's geometry (getBBox: the same in every browser,
+            // where a path's screen box differs) less half the line's width (1 of the icon's 24 units)
             const inkGap = id => {
                 const b = btn(id);
                 const range = document.createRange();
                 range.selectNodeContents(b.querySelector('.aui-button__label'));
                 const svg = b.querySelector('.aui-button__icon svg');
-                return svg.querySelector('path').getBoundingClientRect().left - svg.getBoundingClientRect().width / 24 - range.getBoundingClientRect().right;
+                const box = svg.getBoundingClientRect();
+                const unit = box.width / 24;
+                return box.left + (svg.querySelector('path').getBBox().x - 1) * unit - range.getBoundingClientRect().right;
             };
             const inRange = g => g >= 8.5 && g <= 10.5;
             const width = id => btn(id).querySelector('.aui-button__icon svg path').getBoundingClientRect().width;
             return {more: inRange(inkGap('b-l-more')), double: inRange(inkGap('b-l-double')),
                 sameWidth: near(width('b-l-more'), width('b-l-double'), 0.5), twoChevrons: (iconOf('b-l-double') || '').split('M').length - 1 === 2};
         });
+
+    // ------------------------------------------------------------------ settled promises, feedback, names, forwarding
+
+    T('B29 on-click returning a promise of the browser\'s own (not $q): once it resolves, what it opens shows at once, with no other digest of the page',
+        {open: true, shown: true, expanded: 'true'},
+        async () => {
+            click(btn('b-native'));
+            await until(() => btn('b-native').getAttribute('aria-busy') !== 'true', 2000);
+            const out = {open: !!scope().state.nativeOpen, shown: getComputedStyle(document.getElementById('native-panel')).display !== 'none',
+                expanded: btn('b-native').getAttribute('aria-expanded')};
+            apply(s => { s.state.nativeOpen = false; });
+            return out;
+        });
+
+    T('B30 done-text: a second save during the first one\'s "Saved" that fails shows no "Saved" (nor its status): the button as it was',
+        {first: 'Saved', afterFailure: {shown: null, feedback: null, status: '', icon: 'upload'}},
+        async () => {
+            apply(s => { s.saveFails = false; });
+            click(btn('b-retry'));
+            await until(() => shownText('b-retry') === 'Saved', 2000);
+            const first = shownText('b-retry');
+            apply(s => { s.saveFails = true; });
+            click(btn('b-retry'));
+            await until(() => btn('b-retry').getAttribute('aria-busy') === 'true', 1000);
+            await until(() => btn('b-retry').getAttribute('aria-busy') !== 'true', 2000);
+            await sleep(100);
+            const b = btn('b-retry');
+            const afterFailure = {shown: shownText('b-retry'), feedback: b.getAttribute('data-feedback'), status: statusOf('b-retry'),
+                icon: iconOf('b-retry') === drawing('upload') ? 'upload' : iconOf('b-retry')};
+            apply(s => { s.saveFails = false; });
+            return {first, afterFailure};
+        });
+
+    T('B31 copy-text, two clicks whose copies end in the other order (the first one refused, last): the latest copy\'s outcome shows; on-copy reports both',
+        {shown: 'Copied', feedback: 'done', races: [[true, 'B'], [false, 'A']]},
+        async () => {
+            const clip = navigator.clipboard;
+            const exec = document.execCommand;
+            const pending = [];
+            clip.writeText = text => new Promise((resolve, reject) => pending.push({text, resolve, reject}));
+            document.execCommand = () => false;   // the older way fails too
+            try {
+                scope().races.length = 0;
+                apply(s => { s.raceText = 'A'; });
+                click(btn('b-race'));
+                apply(s => { s.raceText = 'B'; });
+                click(btn('b-race'));
+                pending[1].resolve();
+                await sleep(50);
+                pending[0].reject(new Error('refused'));
+                await sleep(100);
+                return {shown: shownText('b-race'), feedback: btn('b-race').getAttribute('data-feedback'), races: scope().races.slice()};
+            } finally {
+                delete clip.writeText;
+                document.execCommand = exec;
+            }
+        });
+
+    T('B32 an icon with a {{ }} label: empty, an icon alone (square, named by its icon); with text, a text button; empty again, an icon alone again',
+        {empty: {iconOnly: true, name: 'Settings'}, text: {iconOnly: false, name: null}, again: {iconOnly: true, name: 'Settings'}},
+        async () => {
+            const look = () => ({iconOnly: btn('b-dyn').classList.contains('aui-button--icon-only'), name: btn('b-dyn').getAttribute('aria-label')});
+            const empty = look();
+            apply(s => { s.dynLabel = 'Settings of this page'; });
+            await sleep(30);
+            const text = look();
+            apply(s => { s.dynLabel = ''; });
+            await sleep(30);
+            return {empty, text, again: look()};
+        });
+
+    T('B33 an icon alone with a title: the title names it (no aria-label of the icon\'s name over it) and is its tooltip',
+        {ariaLabel: null, title: 'Remove this item'},
+        async () => ({ariaLabel: btn('b-titled').getAttribute('aria-label'), title: btn('b-titled').getAttribute('title')}));
+
+    T('B34 shape="square" on a link: a link has no box, so it keeps its own size (no 34px-wide rectangle)',
+        {notStretched: true, square: true},
+        async () => {
+            const r = rect(btn('b-sqlink'));
+            return {notStretched: r.width < 30, square: near(r.width, r.height, 1)};
+        });
+
+    T('B35 copy-text on a text button: "Copy failed" fits the room it holds from the start (the button does not grow)',
+        {failed: 'Copy failed', sameWidth: true},
+        async () => withClipboard('refused', async () => {
+            const w0 = rect(btn('b-copy-width')).width;
+            click(btn('b-copy-width'));
+            await until(() => btn('b-copy-width').getAttribute('data-feedback') === 'failed', 1000);
+            return {failed: shownText('b-copy-width'), sameWidth: near(rect(btn('b-copy-width')).width, w0, 0.5)};
+        }));
+
+    T('B36 done-duration below 300 ms is held at 300 ms (not the 2000 ms default)',
+        {shown: 'Done', held: true},
+        async () => {
+            click(btn('b-dur'));
+            await until(() => shownText('b-dur') === 'Done', 1000);
+            const shown = shownText('b-dur');
+            const from = performance.now();
+            await until(() => shownText('b-dur') === null, 3000);
+            const lasted = performance.now() - from;
+            return {shown, held: lasted >= 200 && lasted < 1500};
+        });
+
+    T('B37 aria-describedby, aria-haspopup, aria-pressed and tabindex on the element: on the native button (following {{ }}), none left on the element',
+        {button: {describedby: 'b-aria-help', haspopup: 'menu', pressed: null, tabindex: '-1'},
+            element: {describedby: null, haspopup: null, pressed: null, tabindex: null}, pressedLater: 'true'},
+        async () => {
+            const read = el => ({describedby: el.getAttribute('aria-describedby'), haspopup: el.getAttribute('aria-haspopup'),
+                pressed: el.getAttribute('aria-pressed'), tabindex: el.getAttribute('tabindex')});
+            const out = {button: read(btn('b-aria')), element: read(host('b-aria'))};
+            apply(s => { s.state.pressed = true; });
+            await sleep(30);
+            out.pressedLater = btn('b-aria').getAttribute('aria-pressed');
+            apply(s => { s.state.pressed = undefined; });
+            return out;
+        });
+
+    T('B38 the warning text reads at 4.5:1 on its hover tint too (#a34a08); the focus ring is the accent at 2px around a 2px gap, for every variant',
+        {warning: 'rgb(163, 74, 8)', ring: true},
+        async () => ({warning: getComputedStyle(btn('b-warn')).color,
+            ring: /rgb\(13, 110, 253\)/.test(getComputedStyle(btn('b-plain')).getPropertyValue('--aui-button-focus-ring'))}));
 
     AuiTest.run('aui-* family: aui-button', tests);
 })();

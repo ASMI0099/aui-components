@@ -70,8 +70,14 @@ aui-button {
     outline: none;
 }
 
+/* the keyboard's focus: a 2px ring in the family's accent (the fields' focus colour, 4.5:1 on white) with a 2px gap in
+   the background's colour, for every variant and intent - on a link, whose only box it is, too */
+.aui-button {
+    --aui-button-focus-ring: 0 0 0 2px var(--aui-control-background-color), 0 0 0 4px var(--aui-control-accent-color);
+}
+
 .aui-button:focus-visible {
-    box-shadow: 0 0 0 3px var(--aui-button-ring) !important;
+    box-shadow: var(--aui-button-focus-ring) !important;
 }
 
 .aui-button:disabled {
@@ -94,7 +100,6 @@ aui-button {
     --aui-button-soft: var(--aui-control-accent-a08);
     --aui-button-soft-hover: var(--aui-control-accent-a15);
     --aui-button-border: var(--aui-control-accent-soft);
-    --aui-button-ring: var(--aui-control-accent-a32);
 }
 
 .aui-button[data-intent="neutral"] {
@@ -105,7 +110,6 @@ aui-button {
     --aui-button-soft: var(--aui-button-gray-100);
     --aui-button-soft-hover: var(--aui-button-gray-150);
     --aui-button-border: var(--aui-button-gray-200);
-    --aui-button-ring: rgba(17, 21, 26, 0.22);
 }
 
 .aui-button[data-intent="success"] {
@@ -116,19 +120,18 @@ aui-button {
     --aui-button-soft: #dcf3e5;
     --aui-button-soft-hover: #c6ead4;
     --aui-button-border: #a3cfbb;
-    --aui-button-ring: rgba(25, 135, 84, 0.35);
 }
 
-/* amber, its text dark on the fill; on white an amber dark enough to read */
+/* amber, its text dark on the fill; on white and on its tints an amber dark enough to read (4.5:1 on the hover tint
+   too: 4.76:1) */
 .aui-button[data-intent="warning"] {
     --aui-button-color: #f59e0b;
     --aui-button-color-hover: #fbbf24;
     --aui-button-color-active: #e8920a;
-    --aui-button-fg: #b45309;
+    --aui-button-fg: #a34a08;
     --aui-button-soft: #fef3c7;
     --aui-button-soft-hover: #fde68a;
     --aui-button-border: #fcd34d;
-    --aui-button-ring: rgba(245, 158, 11, 0.4);
 }
 
 .aui-button[data-intent="danger"] {
@@ -139,7 +142,6 @@ aui-button {
     --aui-button-soft: #fde7e9;
     --aui-button-soft-hover: #f9d0d4;
     --aui-button-border: #f1aeb5;
-    --aui-button-ring: rgba(220, 53, 69, 0.35);
 }
 
 .aui-button[data-size="xs"] { --aui-button-height: 26px; --aui-button-padding-x: 9px; --aui-button-font-size: calc(var(--aui-font-12) * 1px); --aui-button-gap: 5px; --aui-button-radius: calc(var(--aui-button-radius-base) - 2px); }
@@ -212,7 +214,7 @@ aui-button {
 }
 .aui-button[data-intent="neutral"][data-variant="elevated"] { color: var(--aui-button-gray-900); }
 .aui-button[data-variant="elevated"]:focus-visible {
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 0 0 3px var(--aui-button-ring) !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), var(--aui-button-focus-ring) !important;
 }
 
 .aui-button[data-variant="dashed"] {
@@ -229,7 +231,8 @@ aui-button {
 .aui-button[data-intent="neutral"][data-variant="dashed"]:hover:not(:disabled):not([aria-disabled="true"]) { color: var(--aui-button-gray-900); border-color: var(--aui-button-gray-500); background: var(--aui-button-gray-50); }
 
 .aui-button[data-shape="pill"] { --aui-button-radius: 999px; }
-.aui-button[data-shape="square"],
+/* square: the boxed variants only - a link has no box (its height is its text's), so shape leaves it as it is */
+.aui-button[data-shape="square"]:not([data-variant="link"]),
 .aui-button--icon-only:not([data-variant="link"]) { flex: none; width: var(--aui-button-height); padding: 0; }
 .aui-button[data-block="true"] { width: 100%; }
 
@@ -422,15 +425,18 @@ aui-button {
 .aui-button[data-feedback="failed"]:not([data-variant="solid"]):not([data-variant="elevated"]) .aui-button__icon {
     color: var(--aui-control-invalid-color, #dc3545) !important;
 }
-/* a text button with copy-text / done-text holds the room of the feedback's text from the start: a hidden copy of it,
-   no height, under the label (the label as wide as the longer of the two) - the button does not grow when it shows */
-.aui-button__label[data-room]::after {
-    content: attr(data-room);
+/* a text button with copy-text / done-text holds the room of the feedback's texts from the start: hidden copies of
+   them ("Copied", and for a copy "Copy failed"), no height, under the label (the label as wide as the longest) - the
+   button does not grow when one shows */
+.aui-button__label[data-room]::after,
+.aui-button__label[data-room-failed]::before {
     display: block;
     height: 0;
     overflow: hidden;
     visibility: hidden;
 }
+.aui-button__label[data-room]::after { content: attr(data-room); }
+.aui-button__label[data-room-failed]::before { content: attr(data-room-failed); }
 /* the status element (aria-live) that reads the feedback to screen readers: present, not seen */
 .aui-button__status {
     position: absolute !important;
@@ -470,8 +476,15 @@ aui-button {
     to { transform: rotate(360deg); }
 }
 
+/* High contrast (forced colours) drops every box-shadow, the focus ring with it: the focus shows as an outline in the
+   system's highlight colour there, as the fields' does */
 @media (forced-colors: active) {
     .aui-button {
         border-color: ButtonText;
+    }
+
+    .aui-button:focus-visible {
+        outline: 2px solid Highlight;
+        outline-offset: 2px;
     }
 }

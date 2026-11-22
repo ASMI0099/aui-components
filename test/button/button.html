@@ -69,6 +69,21 @@
                     on-copy="copied($success, $text)"></aui-button>
         <aui-button id="b-done" icon="upload" on-click="save($event)" done-text="Saved" done-duration="600">Save</aui-button>
     </div>
+    <div class="row" id="more-cases">
+        <aui-button id="b-native" variant="ghost" expanded="state.nativeOpen" on-click="openNative()">Native</aui-button>
+        <span id="native-panel" ng-show="state.nativeOpen">Opened</span>
+        <aui-button id="b-retry" icon="upload" on-click="saveMaybe()" done-text="Saved" done-duration="3000">Save</aui-button>
+        <aui-button id="b-race" variant="outline" copy-text="{{ raceText }}" on-copy="raced($success, $text)" done-duration="3000">Copy</aui-button>
+        <aui-button id="b-dyn" icon="settings" variant="ghost">{{ dynLabel }}</aui-button>
+        <aui-button id="b-titled" icon="delete" variant="ghost" title="Remove this item"></aui-button>
+        <aui-button id="b-sqlink" variant="link" shape="square" icon="settings"></aui-button>
+        <aui-button id="b-copy-width" variant="outline" copy-text="width" done-duration="600">Copy</aui-button>
+        <aui-button id="b-dur" on-click="quick()" done-text="Done" done-duration="100">Quick</aui-button>
+        <aui-button id="b-aria" variant="outline" aria-describedby="b-aria-help" aria-haspopup="menu" aria-pressed="{{ state.pressed }}"
+                    tabindex="-1">More</aui-button>
+        <span id="b-aria-help">Opens more actions</span>
+        <aui-button id="b-warn" variant="soft" intent="warning">Warning</aui-button>
+    </div>
 </form>
 
 <table>
