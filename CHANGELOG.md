@@ -17,7 +17,11 @@ All notable changes to this project are documented here. The format follows
   light ring in the intent's colour); in forced-colours mode an outline in the system's highlight colour.
 - `aui-button`: the warning text on white and on its tints is a darker amber (`#a34a08`), 4.5:1 on the hover tint too.
 - `aui-button`: `done-duration` is held between 300 and 10000 ms.
-
+- `aui-modal`: `width` and `height` each work on their own (the other dimension comes from `size`) and take CSS lengths
+  (`480px`, `30rem`, `calc(...)`), as documented; a number from 5 to 100 is still that share of the window.
+- `aui-modal`: on a small window the preset sizes keep at least 20rem × 12rem (never more than the window), and the
+  footer's actions wrap to a second line instead of running out of the dialog.
+- `aui-modal` without `<dialog>` (older browsers): the page behind an open dialog is hidden from screen readers.
 - Field borders are darker (`#8590a0`, 3.2:1 on white) so an empty field shows where it is; the hover border follows.
   The line between a label in the box and the value keeps the light colour through `--aui-control-divider-color`.
 - `aui-input` basic style: a thin resting line under the text.
@@ -41,8 +45,21 @@ All notable changes to this project are documented here. The format follows
 - `aui-button`: a promise of the browser's own returned by `on-click` (an async function, `fetch`) settles inside a
   digest, so the page shows the result at once.
 - `aui-button`: a new click ends the previous done or copy feedback, and after quick repeated copies the latest
-  copy's outcome shows; the button keeps its width for "Copied" and for "Copy failed".
+  copy's outcome shows; the button keeps its width for "Copied" and for "Copy failed", and a button with an icon keeps
+  its icon's gap to the text (the room held for the feedback no longer sits between them).
 - `aui-button`: `shape="square"` no longer squeezes a `link` button.
+- `aui-modal`: with a `<footer>` of its own and `show-confirm-button`, a page without jQuery no longer throws (the
+  default buttons are no longer built and then replaced).
+- `aui-modal`: opened again from its own `on-close`, the dialog stays open (the earlier close's event no longer closes it).
+- `aui-modal`: a promise of the browser's own returned by `on-confirm` that resolves to `false` or fails leaves the
+  Confirm button ready at once.
+- `aui-modal`: `confirm-loading-text` shows while the save runs.
+- `aui-modal`: a short dialog no longer scrolls by a few pixels on a page without a `border-box` rule.
+- `aui-modal`: a dialog left alone after the one under it closed dims the page as a single dialog does.
+- `AuiModal.open`: a closed dialog lets go of its content and callbacks, also while the page keeps the returned promise.
+- `aui-modal` without `<dialog>` (older browsers): Shift+Tab goes round from the first control to the last; a tall
+  auto-size dialog scrolls, so its footer can be reached; closing leaves no data in AngularJS's cache (pages without
+  jQuery); the backdrop colour set around the modal applies; the scroll lock gives back the page's `!important` values.
 
 ## [0.1.0]
 

@@ -31,8 +31,9 @@
         <pre class="ex-out">item: {{ vm.item | json }}</pre>
 
         <aui-modal is-open="vm.editing" size="small" show-confirm-button="true" confirm-text="Save"
-                   confirm-loading-text="Saving..." on-confirm="vm.save()" initial-focus="aui-input input">
-            <header><h2 class="ex-dialog-title">Edit the item</h2></header>
+                   confirm-loading-text="Saving..." on-confirm="vm.save()" initial-focus="aui-input input"
+                   close-on-esc="true" aria-labelledby="ex-edit-title">
+            <header><h2 class="ex-dialog-title" id="ex-edit-title">Edit the item</h2></header>
             <content>
                 <form name="vm.editForm" class="ex-dialog-form" novalidate>
                     <aui-input name="name" ng-model="vm.draft.name" input-style-type="form" show-label label-text="Name"

@@ -110,9 +110,11 @@
     transition: opacity 260ms ease;
 }
 
+/* background-color: a modal left alone over the page (the one under it closed first) darkens to the single dimming
+   while the other's backdrop fades out (aui-modal--stacked taken off as that one starts to close) */
 .aui-modal.is-open::backdrop {
     opacity: 1;
-    transition: opacity 300ms ease;
+    transition: opacity 300ms ease, background-color 260ms ease;
 }
 
 @supports (transition-behavior: allow-discrete) {
@@ -126,6 +128,7 @@
     .aui-modal.is-open::backdrop {
         transition:
                 opacity 300ms ease,
+                background-color 260ms ease,
                 overlay 400ms allow-discrete,
                 display 400ms allow-discrete;
     }
@@ -159,6 +162,7 @@
 }
 
 .aui-modal .aui-modal__container {
+    box-sizing: border-box;
     padding: 2px;
 }
 
@@ -172,7 +176,10 @@
 }
 
 
+/* The fallback box scrolls when its content is taller than it may be (auto-size up to 88vh), as the browser's own
+   modal dialog does: the page under it is locked, so nothing else would bring its footer into view */
 .aui-modal--fallback {
+    overflow: auto;
     position: fixed;
     top: 0;
     right: 0;
@@ -233,7 +240,19 @@
 
 .aui-modal--fallback-overlay.is-open::before {
     opacity: 1;
-    transition: opacity 300ms ease;
+    transition: opacity 300ms ease, background-color 260ms ease;
+}
+
+/* A preset size (size, or none given) is a share of the window: on a phone or a low window it still leaves room for a
+   form and its actions - at least 20rem wide and 12rem high, never more than the window gives (as the browser's own
+   limit on a modal dialog). A width or height of the page's own, and auto-size, are left as they are. A browser
+   without min() drops these: the share alone. */
+.aui-modal.aui-modal--preset-width:not(.aui-modal--auto) {
+    min-width: min(20rem, calc(100% - 2em - 6px));
+}
+
+.aui-modal.aui-modal--preset-height:not(.aui-modal--auto) {
+    min-height: min(12rem, calc(100% - 2em - 6px));
 }
 
 .aui-modal--auto {
@@ -274,15 +293,15 @@
         transform: none !important;
     }
     .aui-modal::backdrop {
-        transition: opacity 150ms linear !important;
+        transition: opacity 150ms linear, background-color 150ms linear !important;
     }
     .aui-modal--fallback-overlay::before {
-        transition: opacity 150ms linear !important;
+        transition: opacity 150ms linear, background-color 150ms linear !important;
     }
     @supports (transition-behavior: allow-discrete) {
         .aui-modal,
         .aui-modal::backdrop {
-            transition: opacity 150ms linear, overlay 150ms allow-discrete, display 150ms allow-discrete !important;
+            transition: opacity 150ms linear, background-color 150ms linear, overlay 150ms allow-discrete, display 150ms allow-discrete !important;
         }
     }
 }
@@ -353,6 +372,7 @@
 
 .aui-imperative-modal__footer {
     display: flex;
+    flex-wrap: wrap;
     width: 100%;
     align-items: center;
     justify-content: center;

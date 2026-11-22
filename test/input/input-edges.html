@@ -107,6 +107,10 @@
         <div class="cell" id="narrow"><label>165px, many parts</label>
             <aui-input ng-model="m.narrow" input-type="number" width="165" show-label label-text="Price" prefix-text="$"
                        suffix-text="per unit" clearable show-count value-max-length="12" input-style-type="form"></aui-input></div>
+        <div class="cell" id="basic-affix"><label>basic, a unit and a sign</label>
+            <aui-input ng-model="m.ba" prefix-text="$" suffix-text="kg" placeholder="Weight"></aui-input></div>
+        <div class="cell" id="basic-narrow"><label>basic, 90px</label>
+            <aui-input ng-model="m.bn" width="90" suffix-text="per unit" placeholder="Price"></aui-input></div>
     </div>
 </form>
 <div class="bottom-spacer"></div>

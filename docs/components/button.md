@@ -77,7 +77,7 @@ checkboxes, focus marks and links; hover is one step deeper (#0b5ed7); the soft,
 shade (#0a58ca), the soft backgrounds its tints. A page or a container that sets `--aui-control-accent-color` gets
 matching buttons and fields. Success is the green of Bootstrap 5 (#198754), warning an amber with dark text on its fill
 (on white and on its tints its text is a dark amber, #a34a08), danger the fields' error red: a delete button and a field's error match.
-A neutral outline hovers like a field (its hover grey).
+A neutral outline's light border turns a step darker on hover (#b8c1cf, a soft grey).
 The text is in the page's own font. Hover and press change colour at once (a colour that fades repaints the page each
 frame) and nothing moves: no press scale, no hover lift (either redrew the text and the icon at a fractional size, and
 the icon hopped about a pixel against its text). The keyboard's focus shows a 2px ring in the accent around a 2px gap,

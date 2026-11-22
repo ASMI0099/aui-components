@@ -60,6 +60,27 @@
            on-close="note('closed confirm')">
     <content><div style="padding: 8px;">A form whose save takes a while</div></content>
 </aui-modal>
+<aui-modal id="m-own" is-open="open.own" size="small" show-confirm-button="true" on-close="note('closed own')">
+    <content><div style="padding: 8px;">A footer of its own, with show-confirm-button</div></content>
+    <footer><aui-button id="own-done" aui-modal-close>Done</aui-button></footer>
+</aui-modal>
+
+<aui-modal id="m-reopen" is-open="open.reopen" size="small" on-close="reopenOnce()">
+    <content><div style="padding: 8px;">Opened again from its own on-close</div></content>
+</aui-modal>
+
+<aui-modal id="m-native" is-open="open.native" size="small" show-confirm-button="true" confirm-text="Save"
+           confirm-loading-text="Saving changes" on-confirm="saveNative()" on-close="note('closed native')">
+    <content><div style="padding: 8px;">A save with a promise of the browser's own</div></content>
+</aui-modal>
+
+<aui-modal id="m-sized" is-open="open.sized" size="small" width="{{ sized.w }}" height="{{ sized.h }}">
+    <content><div style="padding: 8px;">A size of its own</div></content>
+</aui-modal>
+
+<aui-modal id="m-upper" is-open="open.upper" size="small">
+    <content><div style="padding: 8px;">Opened over another one</div></content>
+</aui-modal>
 <!-- the page scrolls (it has a scrollbar), as most pages do -->
 <div id="tall-page" style="height: 2400px;"></div>
 </body>

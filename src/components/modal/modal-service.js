@@ -183,9 +183,17 @@ angular.module('aui')
                 item.isOpen = false;
                 const resolution = {reason: item.closeReason, value: item.result};
                 item._deferred.resolve(resolution);
-                if (item._onClose) {
+                const onClose = item._onClose;
+                // the dialog is over: what it showed and the page's functions are let go, so that a page that keeps the
+                // returned promise (its close() and dismiss() hold this item) does not keep its content alive
+                item.content = null;
+                item.render = null;
+                item._onConfirm = null;
+                item._onCancel = null;
+                item._onClose = null;
+                if (onClose) {
                     try {
-                        item._onClose(resolution);
+                        onClose(resolution);
                     } catch (error) {
                     }
                 }

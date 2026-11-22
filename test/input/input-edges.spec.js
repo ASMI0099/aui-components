@@ -374,6 +374,39 @@
                 suffixCut: suffix.scrollWidth > suffix.clientWidth};
         });
 
+    T('E32 the basic style: a unit and a sign at an ordinary width are shown whole (the text takes the room left, the row does not run over); in a narrow field the suffix gives way and the text keeps its room',
+        {prefixWhole: true, suffixWhole: true, rowFits: true, narrowSuffixCut: true, narrowTextRoom: true},
+        async () => {
+            const whole = el => el.scrollWidth <= el.clientWidth;
+            const affix = (id, side) => host(id).querySelector('.aui-input__affix--' + side + ' .aui-input__affix-text');
+            const row = host('basic-affix').querySelector('.aui-input-container');
+            return {prefixWhole: whole(affix('basic-affix', 'prefix')), suffixWhole: whole(affix('basic-affix', 'suffix')),
+                rowFits: row.scrollWidth <= row.clientWidth,
+                narrowSuffixCut: !whole(affix('basic-narrow', 'suffix')), narrowTextRoom: box('basic-narrow').getBoundingClientRect().width >= 20};
+        });
+
+    T('E33 a table cell (input-style-type="cell") hovers to a soft grey border (#b8c1cf), not the fields\' darker hover border',
+        {rest: 'rgba(0, 0, 0, 0)', hover: 'rgb(184, 193, 207)'},
+        async () => {
+            const trigger = host('name-host').querySelector('.aui-input__form-trigger');
+            let declared = null;
+            for (const sheet of document.styleSheets) {
+                let rules;
+                try { rules = sheet.cssRules; } catch (e) { continue; }
+                for (const r of rules) {
+                    if (r.selectorText && r.selectorText.indexOf('.aui-input--cell') >= 0 && r.selectorText.indexOf(':hover') >= 0 &&
+                        r.style.getPropertyValue('border-color')) declared = r.style.getPropertyValue('border-color');
+                }
+            }
+            // the declared value resolved where the cell's box is, as the browser would draw it
+            const probe = document.createElement('span');
+            probe.style.color = declared;
+            trigger.appendChild(probe);
+            const hover = getComputedStyle(probe).color;
+            probe.remove();
+            return {rest: getComputedStyle(trigger).borderTopColor, hover};
+        });
+
     T('E19 no Angular errors in the whole suite',
         {errors: 0},
         async () => ({errors: window.__ngErrors.length}));

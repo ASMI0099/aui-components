@@ -630,5 +630,44 @@
         async () => ({warning: getComputedStyle(btn('b-warn')).color,
             ring: /rgb\(13, 110, 253\)/.test(getComputedStyle(btn('b-plain')).getPropertyValue('--aui-button-focus-ring'))}));
 
+    T('B39 a neutral outline hovers to a soft grey a step darker than its border (#b8c1cf), not the fields\' darker hover border',
+        {rest: 'rgb(223, 227, 232)', hover: 'rgb(184, 193, 207)'},
+        async () => {
+            const b = btn('b-plain');
+            let declared = null;
+            for (const sheet of document.styleSheets) {
+                let rules; try { rules = sheet.cssRules; } catch (e) { continue; }
+                for (const r of rules) {
+                    if (r.selectorText && r.selectorText.indexOf('[data-intent="neutral"][data-variant="outline"]:hover') >= 0 &&
+                        r.style.getPropertyValue('border-color')) declared = r.style.getPropertyValue('border-color');
+                }
+            }
+            // the declared value resolved on a button, as the browser would draw it
+            const probe = document.createElement('span');
+            probe.style.color = declared;
+            b.appendChild(probe);
+            const hover = getComputedStyle(probe).color;
+            probe.style.color = 'var(--aui-button-gray-200)';
+            const rest = getComputedStyle(probe).color;
+            probe.remove();
+            return {rest, hover};
+        });
+
+    T('B40 an icon and a short text with copy-text: the room for "Copy failed" is held, while the icon keeps its own gap to the text and the content stays centred',
+        {gap: true, centred: true, roomHeld: true},
+        async () => {
+            const b = btn('b-copy-text');
+            const icon = b.querySelector('.aui-button__inner > .aui-button__icon');
+            const label = b.querySelector('.aui-button__label');
+            const range = document.createRange();
+            range.selectNodeContents(label);
+            const t = range.getBoundingClientRect(), i = icon.getBoundingClientRect(), r = b.getBoundingClientRect();
+            const own = parseFloat(getComputedStyle(b).getPropertyValue('--aui-button-gap'));
+            const room = b.querySelector('.aui-button__room').getBoundingClientRect().width;
+            return {gap: Math.abs((t.left - i.right) - own) < 0.6,
+                centred: Math.abs((i.left - r.left) - (r.right - t.right)) < 1,
+                roomHeld: r.width >= room};
+        });
+
     AuiTest.run('aui-* family: aui-button', tests);
 })();

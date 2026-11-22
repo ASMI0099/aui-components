@@ -792,6 +792,7 @@ aui-button {
     --aui-button-gray-150: #e7eaef;
     --aui-button-gray-200: #dfe3e8;
     --aui-button-gray-300: #c8ccd2;
+    --aui-button-gray-400: #b8c1cf;
     --aui-button-gray-500: #7b8694;
     --aui-button-gray-600: #5b6573;
     --aui-button-gray-700: #4a5360;
@@ -940,8 +941,9 @@ aui-button {
 .aui-button[data-variant="outline"]:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--aui-button-soft); border-color: var(--aui-button-color); }
 .aui-button[data-variant="outline"]:active:not(:disabled):not([aria-disabled="true"]) { background: var(--aui-button-soft-hover); }
 .aui-button[data-intent="neutral"][data-variant="outline"] { color: var(--aui-button-gray-700); }
-/* neutral: the fields' hover border (a soft grey, not its near-black colour) */
-.aui-button[data-intent="neutral"][data-variant="outline"]:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--aui-control-border-hover-color); }
+/* neutral: a step darker than its light border, a soft grey (not its near-black colour). Its own value, not the
+   fields' hover border: a field rests on a much darker border, and its hover step would read as black here */
+.aui-button[data-intent="neutral"][data-variant="outline"]:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--aui-button-gray-400); }
 
 .aui-button[data-variant="ghost"] {
     background: transparent;
@@ -1190,18 +1192,32 @@ aui-button {
 .aui-button[data-feedback="failed"]:not([data-variant="solid"]):not([data-variant="elevated"]) .aui-button__icon {
     color: var(--aui-control-invalid-color, #dc3545) !important;
 }
-/* a text button with copy-text / done-text holds the room of the feedback's texts from the start: hidden copies of
-   them ("Copied", and for a copy "Copy failed"), no height, under the label (the label as wide as the longest) - the
-   button does not grow when one shows */
-.aui-button__label[data-room]::after,
-.aui-button__label[data-room-failed]::before {
+/* a text button with copy-text / done-text holds the room of the feedback from the start, so that it does not grow
+   when one shows: hidden copies of its texts ("Copied", and for a copy "Copy failed"; with an icon, beside the place
+   of the mark that takes the icon's), no height, in the button's one cell with its content. The button is as wide as
+   the widest of them, and its content stays centred with its own gap. */
+.aui-button[data-room] {
+    display: inline-grid;
+    grid-template-columns: minmax(0, 1fr);
+}
+.aui-button[data-room] > .aui-button__inner,
+.aui-button[data-room] > .aui-button__room {
+    grid-area: 1 / 1;
+}
+.aui-button__room {
     display: block;
     height: 0;
     overflow: hidden;
     visibility: hidden;
+    white-space: nowrap;
+    pointer-events: none;
 }
-.aui-button__label[data-room]::after { content: attr(data-room); }
-.aui-button__label[data-room-failed]::before { content: attr(data-room-failed); }
+.aui-button__room > span {
+    display: block;
+}
+.aui-button[data-room="icon"] > .aui-button__room {
+    padding-left: calc(1.25em + var(--aui-button-gap));
+}
 /* the status element (aria-live) that reads the feedback to screen readers: present, not seen */
 .aui-button__status {
     position: absolute !important;
@@ -1633,9 +1649,11 @@ aui-button {
     transition: opacity 260ms ease;
 }
 
+/* background-color: a modal left alone over the page (the one under it closed first) darkens to the single dimming
+   while the other's backdrop fades out (aui-modal--stacked taken off as that one starts to close) */
 .aui-modal.is-open::backdrop {
     opacity: 1;
-    transition: opacity 300ms ease;
+    transition: opacity 300ms ease, background-color 260ms ease;
 }
 
 @supports (transition-behavior: allow-discrete) {
@@ -1649,6 +1667,7 @@ aui-button {
     .aui-modal.is-open::backdrop {
         transition:
                 opacity 300ms ease,
+                background-color 260ms ease,
                 overlay 400ms allow-discrete,
                 display 400ms allow-discrete;
     }
@@ -1682,6 +1701,7 @@ aui-button {
 }
 
 .aui-modal .aui-modal__container {
+    box-sizing: border-box;
     padding: 2px;
 }
 
@@ -1695,7 +1715,10 @@ aui-button {
 }
 
 
+/* The fallback box scrolls when its content is taller than it may be (auto-size up to 88vh), as the browser's own
+   modal dialog does: the page under it is locked, so nothing else would bring its footer into view */
 .aui-modal--fallback {
+    overflow: auto;
     position: fixed;
     top: 0;
     right: 0;
@@ -1756,7 +1779,19 @@ aui-button {
 
 .aui-modal--fallback-overlay.is-open::before {
     opacity: 1;
-    transition: opacity 300ms ease;
+    transition: opacity 300ms ease, background-color 260ms ease;
+}
+
+/* A preset size (size, or none given) is a share of the window: on a phone or a low window it still leaves room for a
+   form and its actions - at least 20rem wide and 12rem high, never more than the window gives (as the browser's own
+   limit on a modal dialog). A width or height of the page's own, and auto-size, are left as they are. A browser
+   without min() drops these: the share alone. */
+.aui-modal.aui-modal--preset-width:not(.aui-modal--auto) {
+    min-width: min(20rem, calc(100% - 2em - 6px));
+}
+
+.aui-modal.aui-modal--preset-height:not(.aui-modal--auto) {
+    min-height: min(12rem, calc(100% - 2em - 6px));
 }
 
 .aui-modal--auto {
@@ -1797,15 +1832,15 @@ aui-button {
         transform: none !important;
     }
     .aui-modal::backdrop {
-        transition: opacity 150ms linear !important;
+        transition: opacity 150ms linear, background-color 150ms linear !important;
     }
     .aui-modal--fallback-overlay::before {
-        transition: opacity 150ms linear !important;
+        transition: opacity 150ms linear, background-color 150ms linear !important;
     }
     @supports (transition-behavior: allow-discrete) {
         .aui-modal,
         .aui-modal::backdrop {
-            transition: opacity 150ms linear, overlay 150ms allow-discrete, display 150ms allow-discrete !important;
+            transition: opacity 150ms linear, background-color 150ms linear, overlay 150ms allow-discrete, display 150ms allow-discrete !important;
         }
     }
 }
@@ -1876,6 +1911,7 @@ aui-button {
 
 .aui-imperative-modal__footer {
     display: flex;
+    flex-wrap: wrap;
     width: 100%;
     align-items: center;
     justify-content: center;
@@ -2342,8 +2378,10 @@ aui-button {
     align-items: center;
 }
 
+/* the text takes the room the others leave (a basis of 0, as the form style's text): with its width of 100% as the
+   basis, the row ran over by the others' width and a shrinking suffix gave a pixel of it, cut ("k...") */
 .aui-input.aui-input--row .aui-input-container > input.aui-input-field {
-    flex: 1 1 auto;
+    flex: 1 1 0%;
     min-width: 0 !important;
 }
 
@@ -2684,10 +2722,12 @@ aui-button {
     box-shadow: none;
 }
 
-/* under the pointer: its border only (no shadow); not while readonly or invalid (a cell keeps its look there). Focused (a
+/* under the pointer: its border only (no shadow), a soft grey (--aui-input-cell-hover-border); not while readonly or
+   invalid (a cell keeps its look there). Its own colour, not the fields' hover border: a field steps there from its
+   darker resting border, a cell from none, and a table of cells would light up near-black under the pointer. Focused (a
    cell is focused by a click, so the pointer is still over it), the focused skin lies over it. */
 .aui-input--cell:not(.aui-input--disabled):not(.aui-input--readonly) .aui-input__form-trigger:not(.aui-input__form-trigger--invalid):hover {
-    border-color: var(--aui-control-border-hover-color);
+    border-color: var(--aui-input-cell-hover-border, #b8c1cf);
     box-shadow: none;
 }
 

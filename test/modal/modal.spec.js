@@ -8,7 +8,7 @@
 // - Escape: closes with close-on-esc, never without it, a held key closes nothing more; its default always prevented;
 // - a modal opened over another open one dims the page less (stacked); background-opacity="OPAQUE_LIKE".
 (function () {
-    const {sleep} = AuiTest;
+    const {sleep, until} = AuiTest;
     const scope = () => angular.element(document.body).scope();
     const apply = fn => { const s = scope(); s.$apply(() => fn(s)); };
     const svc = name => angular.element(document.body).injector().get(name);
@@ -187,7 +187,7 @@
             return r;
         });
 
-    T('M10 the close takes the closing motion (180 ms) and then shuts the dialog at once',
+    T('M10 the close takes the closing motion (the box 220 ms, its backdrop 260 ms) and then shuts the dialog at once',
         {inTime: true},
         async () => {
             apply(s => { s.open.plain = true; });
@@ -223,6 +223,16 @@
     // centre: only a layout change moves it). lockAnyway: the registry answers that the browser does not hold the page
     // (an older browser), so the component locks it. rootRule: a rule for the page's root element.
     const scrollbar = () => window.innerWidth - document.documentElement.clientWidth;
+    // whether this browser gives a scrollbar room of its own (classic scrollbars) or draws it over the page (overlay
+    // scrollbars: no room, nothing to take away or give back): the checks below compare with that
+    const classicScrollbars = () => {
+        const probe = document.createElement('div');
+        probe.style.cssText = 'position: absolute; top: -200px; width: 100px; height: 100px; overflow: scroll;';
+        document.body.appendChild(probe);
+        const room = probe.offsetWidth - probe.clientWidth;
+        probe.remove();
+        return room > 0;
+    };
     const pageStyles = () => (document.documentElement.getAttribute('style') || '') + ' | ' + (document.body.getAttribute('style') || '');
     async function openOnScrollingPage(lockAnyway, rootRule) {
         const registry = angular.element(document.body).injector().get('auiModalRegistry');
@@ -261,7 +271,11 @@
         async () => {
             const cssHolds = angular.element(document.body).injector().get('auiModalRegistry').cssHoldsPage();
             const r = await openOnScrollingPage(false, null);
-            r.atOpen.scrollbar = r.atOpen.scrollbar > 0 ? 15 : r.atOpen.scrollbar;
+            const classic = classicScrollbars();
+            // where scrollbars take no room, there is none to keep: read as kept
+            r.before = r.before || !classic;
+            r.atOpen.scrollbar = r.atOpen.scrollbar > 0 || !classic ? 15 : r.atOpen.scrollbar;
+            r.after.scrollbar = r.after.scrollbar || !classic;
             return {cssHolds, r};
         });
 
@@ -269,15 +283,18 @@
         {before: true, atOpen: {scrollbar: 0, bodyOverflow: 'hidden', rootOverflow: 'visible', stylesChanged: true}, boxMoved: false, after: {scrollbar: true, stylesBack: true}},
         async () => {
             const r = await openOnScrollingPage(true, null);
-            return {before: r.before, atOpen: {scrollbar: r.atOpen.scrollbar, bodyOverflow: r.atOpen.bodyOverflow, rootOverflow: r.atOpen.rootOverflow,
-                stylesChanged: r.atOpen.styles !== ' | '}, boxMoved: r.boxMoved, after: r.after};
+            const classic = classicScrollbars();
+            return {before: r.before || !classic, atOpen: {scrollbar: r.atOpen.scrollbar, bodyOverflow: r.atOpen.bodyOverflow, rootOverflow: r.atOpen.rootOverflow,
+                stylesChanged: r.atOpen.styles !== ' | '}, boxMoved: r.boxMoved, after: {scrollbar: r.after.scrollbar || !classic, stylesBack: r.after.stylesBack}};
         });
 
     T('M12c the lock on a page whose root scrolls itself (html { overflow-y: scroll }): the root is locked (a body lock would leave it scrolling), and put back',
         {before: true, atOpen: {scrollbar: 0, rootOverflow: 'hidden'}, boxMoved: false, after: {scrollbar: true, stylesBack: true}},
         async () => {
             const r = await openOnScrollingPage(true, 'html { overflow-y: scroll; }');
-            return {before: r.before, atOpen: {scrollbar: r.atOpen.scrollbar, rootOverflow: r.atOpen.rootOverflow}, boxMoved: r.boxMoved, after: r.after};
+            const classic = classicScrollbars();
+            return {before: r.before || !classic, atOpen: {scrollbar: r.atOpen.scrollbar, rootOverflow: r.atOpen.rootOverflow}, boxMoved: r.boxMoved,
+                after: {scrollbar: r.after.scrollbar || !classic, stylesBack: r.after.stylesBack}};
         });
 
     T('M13 a confirm still saving when the modal is closed and opened again: its late answer neither closes the new opening nor ends its loading; the new opening\'s own confirm closes it',
@@ -306,6 +323,162 @@
             await sleep(900);
             const ownConfirmCloses = !dialog('m-confirm').open && scope().open.confirm === false;
             return {loadingBefore, newOpeningLoading, answered, stillOpen, closes, ownConfirmCloses};
+        });
+
+    const ctrlOf = id => angular.element(document.getElementById(id)).isolateScope().$ctrl;
+    const footerButtons = id => Array.from(dialog(id).querySelectorAll('.aui-modal__footer aui-button button'));
+
+    T('M14 a <footer> of its own with show-confirm-button: only its own buttons are built (no default Close / Confirm, no Angular error)',
+        {own: true, buttons: ['Done'], footers: 1},
+        async () => {
+            apply(s => { s.open.own = true; });
+            await until(() => dialog('m-own').open, 2000);
+            await sleep(100);
+            const r = {own: ctrlOf('m-own').ownFooter, buttons: footerButtons('m-own').map(b => b.textContent.trim()),
+                footers: dialog('m-own').querySelectorAll('.aui-modal__footer').length};
+            apply(s => { s.open.own = false; });
+            await sleep(400);
+            return r;
+        });
+
+    T('M15 opened again from its own on-close (a microtask): the new opening stays open; the close event of the earlier close does not close it',
+        {reopened: 1, open: true, model: true, closes: 1},
+        async () => {
+            clearLog();
+            apply(s => { s.reopenNext = true; s.reopens = 0; s.open.reopen = true; });
+            await sleep(500);
+            closeButton('m-reopen').click();
+            await until(() => scope().reopens === 1, 2000);
+            await sleep(300);     // the earlier close's event has long arrived
+            const r = {reopened: scope().reopens, open: dialog('m-reopen').open, model: scope().open.reopen, closes: entries('closed reopen').length};
+            apply(s => { s.open.reopen = false; });
+            await sleep(500);
+            return r;
+        });
+
+    T('M16 on-confirm with a promise of the browser\'s own: resolved false or rejected, the Confirm button is ready again at once (no other digest needed); resolved, the dialog closes',
+        {busyWhileSaving: true, afterFalse: {busy: false, open: true}, afterReject: {busy: false, open: true}, afterResolve: {open: false}},
+        async () => {
+            apply(s => { s.open.native = true; });
+            await sleep(500);
+            const confirm = () => footerButtons('m-native').pop();
+            const busy = () => confirm().getAttribute('aria-busy') === 'true';
+            confirm().click();
+            await sleep(50);
+            const busyWhileSaving = busy();
+            scope().nativeAnswer.resolve(false);
+            await sleep(100);
+            const afterFalse = {busy: busy(), open: dialog('m-native').open};
+            confirm().click();
+            await sleep(50);
+            scope().nativeAnswer.reject(new Error('refused'));
+            await sleep(100);
+            const afterReject = {busy: busy(), open: dialog('m-native').open};
+            confirm().click();
+            await sleep(50);
+            scope().nativeAnswer.resolve(true);
+            await until(() => !dialog('m-native').open, 2000);
+            return {busyWhileSaving, afterFalse, afterReject, afterResolve: {open: dialog('m-native').open}};
+        });
+
+    T('M17 confirm-loading-text: shown in the Confirm button while the save runs (the label hidden meanwhile)',
+        {text: 'Saving changes', visible: true, label: 'Save', labelHidden: true},
+        async () => {
+            apply(s => { s.open.native = true; });
+            await sleep(500);
+            const button = footerButtons('m-native').pop();
+            button.click();
+            await sleep(100);
+            const loading = button.querySelector('.aui-button__label--loading');
+            const label = button.querySelector('.aui-button__label:not(.aui-button__label--loading)');
+            const shows = el => !!el && el.getClientRects().length > 0 && getComputedStyle(el).visibility === 'visible' &&
+                Number(getComputedStyle(el).opacity) > 0.9;
+            const r = {text: loading ? loading.textContent.trim() : null, visible: shows(loading),
+                label: label ? label.textContent.trim() : null, labelHidden: !shows(label)};
+            scope().nativeAnswer.resolve(true);
+            await until(() => !dialog('m-native').open, 2000);
+            await sleep(100);
+            return r;
+        });
+
+    T('M18 width and height each on its own: CSS lengths as given, a number a share of the window, the other dimension from size; a preset dimension keeps a minimum, a page\'s own none',
+        {px: ['480px', '260px', false, false], rem: ['30rem', 'calc(40vh - 40px)', false, true], share: ['55vw', '45vh', false, false],
+            none: ['40vw', 'calc(40vh - 40px)', true, true], minWidth: true, minHeight: true, ownNoMin: true},
+        async () => {
+            const read = async (w, h) => {
+                apply(s => { s.sized.w = w; s.sized.h = h; });
+                await sleep(0);
+                const d = dialog('m-sized');
+                // the browser writes a calc() its own way: the small preset's height read back as it writes it
+                const probe = document.createElement('div');
+                probe.style.height = 'calc(40vh - 40px)';
+                const small = h => h === probe.style.height ? 'calc(40vh - 40px)' : h;
+                return [d.style.width, small(d.style.height), d.classList.contains('aui-modal--preset-width'), d.classList.contains('aui-modal--preset-height')];
+            };
+            const px = await read('480px', '260px');
+            const rem = await read('30rem', '');
+            const share = await read('55', '45');
+            const none = await read('', '');
+            // the preset's minimum: on this wide window the share is larger anyway, so the rule itself is read
+            apply(s => { s.open.sized = true; });
+            await sleep(400);
+            const d = dialog('m-sized');
+            const minWidth = ['0px', 'auto'].indexOf(getComputedStyle(d).minWidth) < 0;
+            const minHeight = ['0px', 'auto'].indexOf(getComputedStyle(d).minHeight) < 0;
+            await read('480px', '260px');
+            const ownNoMin = ['0px', 'auto'].indexOf(getComputedStyle(d).minWidth) >= 0;
+            apply(s => { s.open.sized = false; s.sized.w = ''; s.sized.h = ''; });
+            await sleep(400);
+            return {px, rem, share, none, minWidth, minHeight, ownNoMin};
+        });
+
+    T('M19 the default footer wraps its actions where the dialog is too narrow; the dialog does not scroll on a page without a border-box rule',
+        {wrap: 'wrap', scrollsX: false, scrollsY: false},
+        async () => {
+            apply(s => { s.open.plain = true; });
+            await sleep(500);
+            const d = dialog('m-plain');
+            const footer = d.querySelector('.aui-modal__footer');
+            const r = {wrap: getComputedStyle(footer).flexWrap, scrollsX: d.scrollWidth > d.clientWidth, scrollsY: d.scrollHeight > d.clientHeight};
+            apply(s => { s.open.plain = false; });
+            await sleep(500);
+            return r;
+        });
+
+    T('M20 two open, the lower one closed first: the one left dims the page as a single one does (no longer stacked)',
+        {stackedOver: true, aloneAtOnce: true, alone: true},
+        async () => {
+            apply(s => { s.open.plain = true; });
+            await sleep(400);
+            apply(s => { s.open.upper = true; });
+            await sleep(400);
+            const stackedOver = dialog('m-upper').classList.contains('aui-modal--stacked');
+            apply(s => { s.open.plain = false; });
+            await sleep(50);
+            const aloneAtOnce = !dialog('m-upper').classList.contains('aui-modal--stacked');
+            await sleep(500);
+            const alone = !dialog('m-upper').classList.contains('aui-modal--stacked');
+            apply(s => { s.open.upper = false; });
+            await sleep(500);
+            return {stackedOver, aloneAtOnce, alone};
+        });
+
+    T('M21 AuiModal.open: once closed, the dialog lets go of its content and the page\'s functions (a page that keeps the returned promise keeps only a small record)',
+        {resolved: 'close', content: null, render: null, onConfirm: null, onClose: null, closedCalled: true},
+        async () => {
+            const AuiModal = svc('AuiModal');
+            const node = document.createElement('p');
+            node.textContent = 'Kept by the page';
+            let closedCalled = false;
+            let resolved = null;
+            const handle = AuiModal.open({content: node, onConfirm: function () { return true; }, onClose: function () { closedCalled = true; }});
+            handle.then(r => { resolved = r.reason; });
+            await until(() => document.querySelector('aui-modal-host dialog[open]'), 2000);
+            const item = AuiModal.state.current;
+            await sleep(400);
+            handle.close();
+            await until(() => resolved !== null, 2000);
+            return {resolved, content: item.content, render: item.render, onConfirm: item._onConfirm, onClose: item._onClose, closedCalled};
         });
 
     T('M11 no Angular errors on the page',

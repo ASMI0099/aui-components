@@ -27,6 +27,7 @@ aui-button {
     --aui-button-gray-150: #e7eaef;
     --aui-button-gray-200: #dfe3e8;
     --aui-button-gray-300: #c8ccd2;
+    --aui-button-gray-400: #b8c1cf;
     --aui-button-gray-500: #7b8694;
     --aui-button-gray-600: #5b6573;
     --aui-button-gray-700: #4a5360;
@@ -175,8 +176,9 @@ aui-button {
 .aui-button[data-variant="outline"]:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--aui-button-soft); border-color: var(--aui-button-color); }
 .aui-button[data-variant="outline"]:active:not(:disabled):not([aria-disabled="true"]) { background: var(--aui-button-soft-hover); }
 .aui-button[data-intent="neutral"][data-variant="outline"] { color: var(--aui-button-gray-700); }
-/* neutral: the fields' hover border (a soft grey, not its near-black colour) */
-.aui-button[data-intent="neutral"][data-variant="outline"]:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--aui-control-border-hover-color); }
+/* neutral: a step darker than its light border, a soft grey (not its near-black colour). Its own value, not the
+   fields' hover border: a field rests on a much darker border, and its hover step would read as black here */
+.aui-button[data-intent="neutral"][data-variant="outline"]:hover:not(:disabled):not([aria-disabled="true"]) { border-color: var(--aui-button-gray-400); }
 
 .aui-button[data-variant="ghost"] {
     background: transparent;
@@ -425,18 +427,32 @@ aui-button {
 .aui-button[data-feedback="failed"]:not([data-variant="solid"]):not([data-variant="elevated"]) .aui-button__icon {
     color: var(--aui-control-invalid-color, #dc3545) !important;
 }
-/* a text button with copy-text / done-text holds the room of the feedback's texts from the start: hidden copies of
-   them ("Copied", and for a copy "Copy failed"), no height, under the label (the label as wide as the longest) - the
-   button does not grow when one shows */
-.aui-button__label[data-room]::after,
-.aui-button__label[data-room-failed]::before {
+/* a text button with copy-text / done-text holds the room of the feedback from the start, so that it does not grow
+   when one shows: hidden copies of its texts ("Copied", and for a copy "Copy failed"; with an icon, beside the place
+   of the mark that takes the icon's), no height, in the button's one cell with its content. The button is as wide as
+   the widest of them, and its content stays centred with its own gap. */
+.aui-button[data-room] {
+    display: inline-grid;
+    grid-template-columns: minmax(0, 1fr);
+}
+.aui-button[data-room] > .aui-button__inner,
+.aui-button[data-room] > .aui-button__room {
+    grid-area: 1 / 1;
+}
+.aui-button__room {
     display: block;
     height: 0;
     overflow: hidden;
     visibility: hidden;
+    white-space: nowrap;
+    pointer-events: none;
 }
-.aui-button__label[data-room]::after { content: attr(data-room); }
-.aui-button__label[data-room-failed]::before { content: attr(data-room-failed); }
+.aui-button__room > span {
+    display: block;
+}
+.aui-button[data-room="icon"] > .aui-button__room {
+    padding-left: calc(1.25em + var(--aui-button-gap));
+}
 /* the status element (aria-live) that reads the feedback to screen readers: present, not seen */
 .aui-button__status {
     position: absolute !important;

@@ -90,6 +90,8 @@ angular.module('aui')
                 let spinner = null;
                 let spinnerBox = null;   // loading-text without an icon: the spinner's place before the text
                 let loadingLabel = null; // loading-text: shown in place of the label
+                let roomEl = null;       // copy-text / done-text: the room of the feedback's texts (setRoom)
+                let roomText = '';
                 let textShown = false;   // loading-text shown now (the width held from before it)
                 let waiting = false;     // on-click's promise not settled yet
                 let copies = 0;          // copy-text: the clicks that copied so far (only the latest one's outcome shows)
@@ -190,13 +192,11 @@ angular.module('aui')
                     set('data-feedback', shownFeedback || null);
                     drawIcon(shownFeedback);
                     labelShown = hasLabel();
-                    // copy-text / done-text on a text button: the label holds the room of the feedback's texts from the
-                    // start (hidden copies of them under the text: "Copied" and, for a copy, "Copy failed"), so that the
-                    // button keeps its width whichever shows
+                    // copy-text / done-text on a text button: the room of the feedback's texts ("Copied" and, for a copy,
+                    // "Copy failed") held from the start, so that the button keeps its width whichever shows (setRoom)
                     const room = labelShown && feedbackOn() ? feedbackText('done') : '';
                     const failedRoom = room && $attrs.copyText !== undefined ? feedbackText('failed') : '';
-                    setLabelRoom('data-room', room);
-                    setLabelRoom('data-room-failed', failedRoom);
+                    setRoom([room, failedRoom].filter(Boolean));
                     // loading-text: the spinner (at the icon, or in a place of its own before the text) and the text in
                     // place of the label; the width from before is held as the least (no button shrinking under the
                     // pointer), a longer text widens it. Not for an icon alone (its square stays). The feedback of
@@ -238,12 +238,35 @@ angular.module('aui')
                     host.removeAttribute('title');
                 }
 
-                function setLabelRoom(name, text) {
-                    if (text) {
-                        if (label.getAttribute(name) !== text) label.setAttribute(name, text);
-                    } else if (label.hasAttribute(name)) {
-                        label.removeAttribute(name);
+                /**
+                 * The room of the feedback's texts: hidden copies of them, beside the place of the icon that the
+                 * feedback's mark takes, in the button's one cell under its content (CSS: .aui-button[data-room]). The
+                 * button is as wide as the widest, and its content stays centred with its own gap: a label made as wide
+                 * as the feedback's text (as before) centred its text in that width, away from its icon.
+                 */
+                function setRoom(lines) {
+                    if (!lines.length) {
+                        if (roomEl && roomEl.parentNode) roomEl.parentNode.removeChild(roomEl);
+                        set('data-room', null);
+                        return;
                     }
+                    if (!roomEl) {
+                        roomEl = document.createElement('span');
+                        roomEl.className = 'aui-button__room';
+                        roomEl.setAttribute('aria-hidden', 'true');
+                    }
+                    const text = lines.join('\n');
+                    if (roomText !== text) {
+                        roomText = text;
+                        roomEl.textContent = '';
+                        lines.forEach(function (line) {
+                            const one = document.createElement('span');
+                            one.textContent = line;
+                            roomEl.appendChild(one);
+                        });
+                    }
+                    if (roomEl.parentNode !== button) button.appendChild(roomEl);
+                    set('data-room', iconBox ? 'icon' : 'text');
                 }
 
                 /**

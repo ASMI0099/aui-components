@@ -21,7 +21,25 @@ angular.module('auiTest', ['aui'])
         };
     }])
     .controller('ModalCtrl', ['$scope', '$q', '$timeout', function ($scope, $q, $timeout) {
-        $scope.open = {plain: false, deferred: false, rendered: false, actions: false, glass: false, noesc: false, confirm: false};
+        $scope.open = {plain: false, deferred: false, rendered: false, actions: false, glass: false, noesc: false, confirm: false,
+            own: false, reopen: false, native: false, sized: false, upper: false};
+        $scope.sized = {w: '', h: ''};
+        // on-close of m-reopen: the page opens it again at once (a microtask, as after an awaited call), once
+        $scope.reopens = 0;
+        $scope.reopenNext = false;
+        $scope.reopenOnce = function () {
+            $scope.log.push({what: 'closed reopen', at: performance.now()});
+            if (!$scope.reopenNext) return;
+            $scope.reopenNext = false;
+            Promise.resolve().then(function () {
+                $scope.$apply(function () { $scope.reopens += 1; $scope.open.reopen = true; });
+            });
+        };
+        // on-confirm of m-native: a promise of the browser's own; the test settles it (nativeAnswer)
+        $scope.nativeAnswer = null;
+        $scope.saveNative = function () {
+            return new Promise(function (resolve, reject) { $scope.nativeAnswer = {resolve: resolve, reject: reject}; });
+        };
         // on-confirm of m-confirm: a save that answers saveMs later (true: saved)
         $scope.saveMs = 600;
         $scope.saveSlow = function () {

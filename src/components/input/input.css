@@ -33,8 +33,10 @@
     align-items: center;
 }
 
+/* the text takes the room the others leave (a basis of 0, as the form style's text): with its width of 100% as the
+   basis, the row ran over by the others' width and a shrinking suffix gave a pixel of it, cut ("k...") */
 .aui-input.aui-input--row .aui-input-container > input.aui-input-field {
-    flex: 1 1 auto;
+    flex: 1 1 0%;
     min-width: 0 !important;
 }
 

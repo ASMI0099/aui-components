@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: aui-modal fallback</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .row { padding: 4px 0; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <!-- a browser without <dialog>: the modal's fallback runs (set before AngularJS reads it). No jQuery: AngularJS's
+         own jqLite, as on a page that does not load it -->
+    <script>delete HTMLDialogElement.prototype.showModal;</script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="fallback.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="fallback.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="FallbackCtrl">
+<h1>aui-modal without &lt;dialog&gt; and without jQuery: the fallback box</h1>
+<div id="page-main"><button id="page-button" type="button">A control of the page</button></div>
+<div id="page-note" aria-hidden="false">A note the page keeps readable</div>
+
+<aui-modal id="f-own" is-open="open.own" size="small" show-confirm-button="true">
+    <content><div style="padding: 8px;">A footer of its own, with show-confirm-button</div></content>
+    <footer><aui-button id="own-done" aui-modal-close>Done</aui-button></footer>
+</aui-modal>
+
+<aui-modal id="f-tab" is-open="open.tab" size="medium" show-confirm-button="true">
+    <content>
+        <div style="padding: 8px;">
+            <input id="tab-first" aria-label="First"/>
+            <input id="tab-middle" aria-label="Middle"/>
+        </div>
+    </content>
+</aui-modal>
+
+<aui-modal id="f-tall" is-open="open.tall" auto-size="true">
+    <content>
+        <div style="padding: 8px; width: 280px;">
+            <div class="row" ng-repeat="n in rows">Review note {{ n }}</div>
+        </div>
+    </content>
+    <footer><aui-button id="tall-done" aui-modal-close>Done</aui-button></footer>
+</aui-modal>
+
+<section style="--aui-modal-backdrop-color: rgb(10 120 60 / 50%);">
+    <aui-modal id="f-theme" is-open="open.theme" size="small">
+        <content><div style="padding: 8px;">A backdrop colour of its section</div></content>
+    </aui-modal>
+</section>
+
+<aui-modal id="f-lower" is-open="open.lower" size="medium">
+    <content><div style="padding: 8px;">The lower one</div></content>
+</aui-modal>
+
+<aui-modal id="f-upper" is-open="open.upper" size="small">
+    <content><div style="padding: 8px;">The upper one</div></content>
+</aui-modal>
+<!-- the page scrolls, as most pages do -->
+<div style="height: 2400px;"></div>
+</body>
+</html>

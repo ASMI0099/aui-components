@@ -3715,10 +3715,53 @@ angular.module('aui')
             }
         }
 
+        /**
+         * A modal over another open one dims the page less (its own backdrop "stacked"): told again whenever one opens,
+         * starts to close or turns back, so that a modal left alone (the one under it closed first) dims the page as a
+         * single one does - its backdrop's colour changes as the other's fades out (the stylesheet's transition).
+         */
+        function restack() {
+            let openBelow = false;
+            for (let i = 0; i < stackArr.length; i += 1) {
+                const e = stackArr[i];
+                if (e.setStacked) e.setStacked(openBelow);
+                if (e.isOpen && e.isOpen()) openBelow = true;
+            }
+        }
+
+        /**
+         * The fallback's page behind it, for screen readers: a native modal dialog makes everything outside it inert;
+         * the fallback's box is only drawn over the page, so while one is open the body's other children are hidden
+         * from assistive technology (aria-hidden; the toasts' host stays readable: its notices show over the modals).
+         * Whatever aria-hidden the page had there is put back when the last fallback closes.
+         */
+        const hiddenBehind = [];
+
+        function hideBehind() {
+            let topOverlay = null;
+            for (let i = stackArr.length - 1; i >= 0 && !topOverlay; i -= 1) topOverlay = stackArr[i].overlayEl || null;
+            showBehind();
+            if (!topOverlay || !document.body) return;
+            Array.prototype.forEach.call(document.body.children, function (el) {
+                if (el === topOverlay || /^(SCRIPT|STYLE|LINK|AUI-MESSAGE-HOST)$/.test(el.tagName)) return;
+                hiddenBehind.push({el: el, value: el.getAttribute('aria-hidden')});
+                el.setAttribute('aria-hidden', 'true');
+            });
+        }
+
+        function showBehind() {
+            hiddenBehind.splice(0).forEach(function (hidden) {
+                if (hidden.value === null) hidden.el.removeAttribute('aria-hidden');
+                else hidden.el.setAttribute('aria-hidden', hidden.value);
+            });
+        }
+
         const stack = {
             push: function (entry) {
                 stackArr.push(entry);
                 rebalanceZ();
+                restack();
+                hideBehind();
                 layer.changed(null);
                 return entry;
             },
@@ -3727,9 +3770,12 @@ angular.module('aui')
                 if (idx >= 0) {
                     stackArr.splice(idx, 1);
                     rebalanceZ();
+                    restack();
+                    hideBehind();
                     layer.changed(null);
                 }
             },
+            restack: restack,
             top: function () {
                 return stackArr.length ? stackArr[stackArr.length - 1] : null;
             },
@@ -3803,7 +3849,40 @@ angular.module('aui')
             return null;
         }
 
+        // the controls Tab reaches in a box, in order (shown, not taken out of the tab order)
+        function tabStops(root) {
+            return Array.prototype.filter.call(root.querySelectorAll(FOCUSABLE_SELECTOR), function (el) {
+                return el.offsetParent !== null && el.tabIndex >= 0;
+            });
+        }
+
         let focusinHandler = null;
+        let tabHandler = null;
+
+        /**
+         * Tab and Shift+Tab go round inside the fallback's top box: from its last control to its first, from its first
+         * (or the box itself) to its last. Between them the browser moves the focus as usual; focusin brings back a
+         * focus that got out some other way.
+         */
+        function onTab(event) {
+            if ((event.key !== 'Tab' && event.keyCode !== 9) || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+            const top = stack.top();
+            if (!top || !top.overlayEl) return;
+            const box = top.modalEl;
+            const stops = tabStops(box);
+            const active = document.activeElement;
+            const inside = box.contains(active);
+            let target = null;
+            if (!stops.length) target = box;
+            else if (event.shiftKey && (!inside || active === box || active === stops[0])) target = stops[stops.length - 1];
+            else if (!event.shiftKey && (!inside || active === stops[stops.length - 1])) target = stops[0];
+            if (!target) return;
+            event.preventDefault();
+            try {
+                target.focus();
+            } catch (e) {
+            }
+        }
 
         // The fallback's focus trap (a native modal dialog keeps the focus inside itself)
         const focus = {
@@ -3830,6 +3909,10 @@ angular.module('aui')
                     };
                     document.addEventListener('focusin', focusinHandler, true);
                 }
+                if (!tabHandler) {
+                    tabHandler = onTab;
+                    document.addEventListener('keydown', tabHandler);
+                }
             },
             deactivate: function (entry) {
                 const isTop = (stack.top() === entry);
@@ -3842,6 +3925,10 @@ angular.module('aui')
                 if (stack.size() <= 1 && focusinHandler) {
                     document.removeEventListener('focusin', focusinHandler, true);
                     focusinHandler = null;
+                }
+                if (stack.size() <= 1 && tabHandler) {
+                    document.removeEventListener('keydown', tabHandler);
+                    tabHandler = null;
                 }
             }
         };
@@ -3976,11 +4063,14 @@ angular.module('aui')
         transclude: {
             header: '?header', content: '?content', footer: '?footer'
         },
-        controller: ['$element', '$document', '$scope', '$timeout', '$exceptionHandler', 'auiModalRegistry', 'auiControlKit', 'auiTexts',
-            function ($element, $document, $scope, $timeout, $exceptionHandler, auiModalRegistry, kit, texts) {
+        controller: ['$element', '$document', '$scope', '$timeout', '$q', '$exceptionHandler', '$transclude', 'auiModalRegistry', 'auiControlKit', 'auiTexts',
+            function ($element, $document, $scope, $timeout, $q, $exceptionHandler, $transclude, auiModalRegistry, kit, texts) {
                 const $ctrl = this;
                 $ctrl.t = texts.modal;
                 $ctrl.componentId = 'aui-modal-' + $scope.$id;
+                // the page gives a <footer> of its own: the default Close / Confirm buttons are not built at all (built
+                // and then replaced by it, the Confirm button's ng-if went on and threw without jQuery)
+                $ctrl.ownFooter = $transclude.isSlotFilled('footer');
 
                 $ctrl.state = 'closed';
                 $ctrl.contentMounted = false;
@@ -4073,7 +4163,10 @@ angular.module('aui')
                         _shut();
                     } else {
                         _shut();
-                        if (fbModalEl) angular.element(fbModalEl).removeData('$auiModalController');
+                        // the box was moved out of the component's element, so AngularJS's own removal of that element
+                        // never reaches it: removed here the same way, its data (scopes, controllers, bindings) let go -
+                        // without jQuery that data stays in AngularJS's cache for good otherwise
+                        if (fbOverlayEl) angular.element(fbOverlayEl).remove();
                         fbOverlayEl = null;
                         fbModalEl = null;
                     }
@@ -4128,7 +4221,14 @@ angular.module('aui')
                     }
 
                     const shownBefore = !!fbOverlayEl.parentNode;
-                    if (!shownBefore) document.body.appendChild(fbOverlayEl);
+                    if (!shownBefore) {
+                        // under the body, the overlay no longer inherits from the modal's place in the page: the
+                        // backdrop colour set there (on a section, a form) is taken along
+                        const backdrop = window.getComputedStyle($element[0]).getPropertyValue('--aui-modal-backdrop-color').trim();
+                        if (backdrop) fbOverlayEl.style.setProperty('--aui-modal-backdrop-color', backdrop);
+                        else fbOverlayEl.style.removeProperty('--aui-modal-backdrop-color');
+                        document.body.appendChild(fbOverlayEl);
+                    }
                     _enter(shownBefore);
                 }
 
@@ -4158,6 +4258,8 @@ angular.module('aui')
                     }
                     _motionEls().forEach(el => el.classList.add('is-open'));
                     _pushStack();
+                    // opened again while it faded out: the modals over it dim less again
+                    if (shownBefore) auiModalRegistry.stack.restack();
                     $ctrl.contentMounted = true;
                     if (!$ctrl.deferRender) $ctrl.bodyMounted = true;
                     if ($ctrl.isOpen !== true) $ctrl.isOpen = true;
@@ -4243,6 +4345,8 @@ angular.module('aui')
                     $ctrl.state = 'closing';
                     _motionEls().forEach(el => el.classList.remove('is-open'));
                     _modalEl().classList.add('aui-modal--closing');
+                    // a modal over this one now dims the page alone: its backdrop darkens as this one's fades out
+                    auiModalRegistry.stack.restack();
                     closeTimer = setTimeout(function () {
                         closeTimer = null;
                         if (token !== transitionToken || isDestroyed) return;
@@ -4325,6 +4429,9 @@ angular.module('aui')
                         overlayEl: $ctrl.useNative ? null : fbOverlayEl,
                         modalEl: _modalEl(),
                         isOpen: function () { return $ctrl.state === 'open'; },
+                        setStacked: function (stacked) {
+                            _motionEls().forEach(el => { if (el) el.classList.toggle('aui-modal--stacked', stacked); });
+                        },
                         getCloseOnEsc: function () { return !!$ctrl.closeOnEsc; },
                         dismiss: function () { _close(null); }
                     });
@@ -4359,10 +4466,12 @@ angular.module('aui')
 
                     if (result && result.then instanceof Function) {
                         // the answer of this opening's confirm: one that comes after the modal was closed and opened
-                        // again belongs to the opening before, and neither closes this one nor ends its loading
+                        // again belongs to the opening before, and neither closes this one nor ends its loading. Through
+                        // $q: a promise of the browser's own (an async function, fetch) settles outside AngularJS's
+                        // digest, and the Confirm button would stay busy after a failed save until some other digest.
                         const own = opening;
                         $ctrl.confirmInFlight = true;
-                        result.then(
+                        $q.when(result).then(
                             (value) => {
                                 if (own !== opening) return;
                                 $ctrl.confirmInFlight = false;
@@ -4385,9 +4494,13 @@ angular.module('aui')
                 // Closed by other code (dialog.close(), a form with method="dialog"): the close, as if asked (the
                 // stylesheet's display / overlay transitions keep the dialog on screen for the fade). Its own shut, and
                 // a close while it fades out (the fade's timer ends it), are left alone.
+                // A close event that arrives while the dialog is shown again belongs to a close before this opening (the
+                // browser sends it a task later: the page opened the modal again from on-close in the meantime): left
+                // alone, or it would close the new opening.
                 $ctrl.onModalClose = function (event) {
                     if (event && event.target !== dialogEl) return;
                     if ($ctrl.state !== 'open' || isDestroyed) return;
+                    if (dialogEl && dialogEl.open) return;
                     _close(null);
                 };
 
@@ -4471,19 +4584,34 @@ angular.module('aui')
                     return dialogEl || $element[0].querySelector('dialog.aui-modal');
                 }
 
+                /**
+                 * width / height: each on its own; the other one comes from size (or the default). A number is a share
+                 * of the window (55: 55vw, 55vh; from 5 to 100), anything else a CSS length (480px, 30rem, 50%,
+                 * calc(...)) the browser accepts. A preset dimension keeps a minimum on a small window (the stylesheet:
+                 * aui-modal--preset-width / -height).
+                 */
                 function _setSize() {
-                    const width = parseInt($ctrl.width);
-                    const height = parseInt($ctrl.height);
-                    const size = $ctrl.size;
-                    if (!Number.isNaN(width) && !Number.isNaN(height) && width >= 5 && width <= 100 && height >= 5 && height <= 100) {
-                        $ctrl.effectiveWidth = width + 'vw';
-                        $ctrl.effectiveHeight = height + 'vh';
-                    } else if (size && MODAL_SIZES[size]) {
-                        $ctrl.effectiveWidth = MODAL_SIZES[size].width;
-                        $ctrl.effectiveHeight = MODAL_SIZES[size].height;
-                    } else {
-                        $ctrl.effectiveWidth = DEFAULT_WIDTH;
-                        $ctrl.effectiveHeight = DEFAULT_HEIGHT;
+                    const preset = Object.prototype.hasOwnProperty.call(MODAL_SIZES, $ctrl.size)
+                        ? MODAL_SIZES[$ctrl.size] : {width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT};
+                    const width = _lengthOf($ctrl.width, 'vw');
+                    const height = _lengthOf($ctrl.height, 'vh');
+                    $ctrl.effectiveWidth = width || preset.width;
+                    $ctrl.effectiveHeight = height || preset.height;
+                    $ctrl.presetWidth = !width;
+                    $ctrl.presetHeight = !height;
+                }
+
+                function _lengthOf(value, unit) {
+                    const text = String(value == null ? '' : value).trim();
+                    if (!text) return null;
+                    if (/^\d+(\.\d+)?$/.test(text)) {
+                        const share = Number(text);
+                        return share >= 5 && share <= 100 ? share + unit : null;
+                    }
+                    try {
+                        return window.CSS && CSS.supports('width', text) ? text : null;
+                    } catch (e) {
+                        return null;
                     }
                 }
 
@@ -4518,10 +4646,10 @@ angular.module('aui')
                     const gutterKept = /stable/.test(rootStyle.scrollbarGutter || '');
                     lockState.snapshot = {
                         scroller: scroller,
-                        overflow: scroller.style.overflow || null,
-                        overflowX: scroller.style.overflowX || null,
-                        overflowY: scroller.style.overflowY || null,
-                        paddingRight: bodyEl.style.paddingRight || null
+                        overflow: _inlineOf(scroller, 'overflow'),
+                        overflowX: _inlineOf(scroller, 'overflow-x'),
+                        overflowY: _inlineOf(scroller, 'overflow-y'),
+                        paddingRight: _inlineOf(bodyEl, 'padding-right')
                     };
 
                     scroller.style.overflow = 'hidden';
@@ -4545,11 +4673,22 @@ angular.module('aui')
 
                     const snapshot = lockState.snapshot;
                     const scroller = snapshot.scroller || bodyEl;
-                    scroller.style.overflow = snapshot.overflow != null ? snapshot.overflow : '';
-                    scroller.style.overflowX = snapshot.overflowX != null ? snapshot.overflowX : '';
-                    scroller.style.overflowY = snapshot.overflowY != null ? snapshot.overflowY : '';
-                    bodyEl.style.paddingRight = snapshot.paddingRight != null ? snapshot.paddingRight : '';
+                    // the shorthand first: putting it back (or taking it away) sets both of its parts
+                    _putInline(scroller, 'overflow', snapshot.overflow);
+                    _putInline(scroller, 'overflow-x', snapshot.overflowX);
+                    _putInline(scroller, 'overflow-y', snapshot.overflowY);
+                    _putInline(bodyEl, 'padding-right', snapshot.paddingRight);
                     lockState.snapshot = null;
+                }
+
+                // a page's own inline value with its priority (!important), put back as it was
+                function _inlineOf(el, name) {
+                    return {value: el.style.getPropertyValue(name), priority: el.style.getPropertyPriority(name)};
+                }
+
+                function _putInline(el, name, saved) {
+                    if (saved && saved.value) el.style.setProperty(name, saved.value, saved.priority);
+                    else el.style.removeProperty(name);
                 }
 
                 function _getBodyLockState(bodyEl) {
@@ -4561,6 +4700,11 @@ angular.module('aui')
             }
         ],
         template: ['auiModalRegistry', function (auiModalRegistry) {
+            // the footer: the page's own <footer>, or the default buttons - never both built (see ownFooter). Its actions
+            // wrap to a second line where the box is too narrow for one. The Confirm button shows confirm-loading-text
+            // while on-confirm's promise runs (the button's own loading-text: a label is hidden while it loads).
+            const FOOTER = 'class="aui-modal__footer" style="display: flex;flex-direction: row;flex-wrap: wrap;align-items: center;' +
+                'justify-content: center;max-height: 100px;padding-bottom: 5px;gap: 10px;"';
             // the body's place while defer-render waits for the first frame: aui-modal__content--pending
             const INNER = `
                         <div class="aui-modal__container" aui-modal-mount="$ctrl.contentMounted"
@@ -4571,15 +4715,14 @@ angular.module('aui')
                                  style="display: flex;flex-direction: row;flex: 1;overflow-y: auto;"></div>
                             <div class="aui-modal__content aui-modal__content--pending" aui-modal-mount="!$ctrl.bodyMounted" aria-busy="true"
                                  style="display: flex;flex-direction: row;flex: 1;overflow-y: auto;"></div>
-                            <div class="aui-modal__footer" ng-if="$ctrl.showFooter" ng-transclude="footer"
-                                 style="display: flex;flex-direction: row;align-items: center;justify-content: center;max-height: 100px;padding-bottom: 5px;gap: 10px;">
+                            <div ${FOOTER} ng-if="$ctrl.showFooter && $ctrl.ownFooter" ng-transclude="footer"></div>
+                            <div ${FOOTER} ng-if="$ctrl.showFooter && !$ctrl.ownFooter">
                                 <aui-button variant="outline" intent="neutral" aui-modal-close>{{ ::$ctrl.t.close }}</aui-button>
                                 <aui-button intent="brand"
                                             ng-if="$ctrl.showConfirmButton"
                                             loading="$ctrl.confirmInFlight"
-                                            ng-click="$ctrl.handleConfirm($event)">
-                                    {{ $ctrl.confirmInFlight ? ($ctrl.confirmLoadingText || $ctrl.confirmText || $ctrl.t.confirm) : ($ctrl.confirmText || $ctrl.t.confirm) }}
-                                </aui-button>
+                                            loading-text="{{ $ctrl.confirmLoadingText }}"
+                                            ng-click="$ctrl.handleConfirm($event)">{{ $ctrl.confirmText || $ctrl.t.confirm }}</aui-button>
                             </div>
                         </div>`;
 
@@ -4594,7 +4737,9 @@ angular.module('aui')
                                 'aui-modal--full-screen': $ctrl.size === 'fullScreen',
                                 'aui-modal--auto':        $ctrl.autoSize,
                                 'aui-modal--content-fill': $ctrl.fillContent,
-                                'aui-modal--deferred':    $ctrl.deferRender
+                                'aui-modal--deferred':    $ctrl.deferRender,
+                                'aui-modal--preset-width':  $ctrl.presetWidth,
+                                'aui-modal--preset-height': $ctrl.presetHeight
                             }"
                             ng-style="{
                                 'width': $ctrl.effectiveWidth,
@@ -4618,7 +4763,9 @@ angular.module('aui')
                              'aui-modal--display-top': $ctrl.shouldDisplayOnTop,
                              'aui-modal--auto':        $ctrl.autoSize,
                              'aui-modal--content-fill': $ctrl.fillContent,
-                             'aui-modal--deferred':    $ctrl.deferRender
+                             'aui-modal--deferred':    $ctrl.deferRender,
+                             'aui-modal--preset-width':  $ctrl.presetWidth,
+                             'aui-modal--preset-height': $ctrl.presetHeight
                          }"
                          ng-style="{
                              'width': $ctrl.effectiveWidth,
@@ -4880,9 +5027,17 @@ angular.module('aui')
                 item.isOpen = false;
                 const resolution = {reason: item.closeReason, value: item.result};
                 item._deferred.resolve(resolution);
-                if (item._onClose) {
+                const onClose = item._onClose;
+                // the dialog is over: what it showed and the page's functions are let go, so that a page that keeps the
+                // returned promise (its close() and dismiss() hold this item) does not keep its content alive
+                item.content = null;
+                item.render = null;
+                item._onConfirm = null;
+                item._onCancel = null;
+                item._onClose = null;
+                if (onClose) {
                     try {
-                        item._onClose(resolution);
+                        onClose(resolution);
                     } catch (error) {
                     }
                 }
@@ -6677,6 +6832,8 @@ angular.module('aui')
                 let spinner = null;
                 let spinnerBox = null;   // loading-text without an icon: the spinner's place before the text
                 let loadingLabel = null; // loading-text: shown in place of the label
+                let roomEl = null;       // copy-text / done-text: the room of the feedback's texts (setRoom)
+                let roomText = '';
                 let textShown = false;   // loading-text shown now (the width held from before it)
                 let waiting = false;     // on-click's promise not settled yet
                 let copies = 0;          // copy-text: the clicks that copied so far (only the latest one's outcome shows)
@@ -6777,13 +6934,11 @@ angular.module('aui')
                     set('data-feedback', shownFeedback || null);
                     drawIcon(shownFeedback);
                     labelShown = hasLabel();
-                    // copy-text / done-text on a text button: the label holds the room of the feedback's texts from the
-                    // start (hidden copies of them under the text: "Copied" and, for a copy, "Copy failed"), so that the
-                    // button keeps its width whichever shows
+                    // copy-text / done-text on a text button: the room of the feedback's texts ("Copied" and, for a copy,
+                    // "Copy failed") held from the start, so that the button keeps its width whichever shows (setRoom)
                     const room = labelShown && feedbackOn() ? feedbackText('done') : '';
                     const failedRoom = room && $attrs.copyText !== undefined ? feedbackText('failed') : '';
-                    setLabelRoom('data-room', room);
-                    setLabelRoom('data-room-failed', failedRoom);
+                    setRoom([room, failedRoom].filter(Boolean));
                     // loading-text: the spinner (at the icon, or in a place of its own before the text) and the text in
                     // place of the label; the width from before is held as the least (no button shrinking under the
                     // pointer), a longer text widens it. Not for an icon alone (its square stays). The feedback of
@@ -6825,12 +6980,35 @@ angular.module('aui')
                     host.removeAttribute('title');
                 }
 
-                function setLabelRoom(name, text) {
-                    if (text) {
-                        if (label.getAttribute(name) !== text) label.setAttribute(name, text);
-                    } else if (label.hasAttribute(name)) {
-                        label.removeAttribute(name);
+                /**
+                 * The room of the feedback's texts: hidden copies of them, beside the place of the icon that the
+                 * feedback's mark takes, in the button's one cell under its content (CSS: .aui-button[data-room]). The
+                 * button is as wide as the widest, and its content stays centred with its own gap: a label made as wide
+                 * as the feedback's text (as before) centred its text in that width, away from its icon.
+                 */
+                function setRoom(lines) {
+                    if (!lines.length) {
+                        if (roomEl && roomEl.parentNode) roomEl.parentNode.removeChild(roomEl);
+                        set('data-room', null);
+                        return;
                     }
+                    if (!roomEl) {
+                        roomEl = document.createElement('span');
+                        roomEl.className = 'aui-button__room';
+                        roomEl.setAttribute('aria-hidden', 'true');
+                    }
+                    const text = lines.join('\n');
+                    if (roomText !== text) {
+                        roomText = text;
+                        roomEl.textContent = '';
+                        lines.forEach(function (line) {
+                            const one = document.createElement('span');
+                            one.textContent = line;
+                            roomEl.appendChild(one);
+                        });
+                    }
+                    if (roomEl.parentNode !== button) button.appendChild(roomEl);
+                    set('data-room', iconBox ? 'icon' : 'text');
                 }
 
                 /**

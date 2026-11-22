@@ -13,10 +13,12 @@
     box-shadow: none;
 }
 
-/* under the pointer: its border only (no shadow); not while readonly or invalid (a cell keeps its look there). Focused (a
+/* under the pointer: its border only (no shadow), a soft grey (--aui-input-cell-hover-border); not while readonly or
+   invalid (a cell keeps its look there). Its own colour, not the fields' hover border: a field steps there from its
+   darker resting border, a cell from none, and a table of cells would light up near-black under the pointer. Focused (a
    cell is focused by a click, so the pointer is still over it), the focused skin lies over it. */
 .aui-input--cell:not(.aui-input--disabled):not(.aui-input--readonly) .aui-input__form-trigger:not(.aui-input__form-trigger--invalid):hover {
-    border-color: var(--aui-control-border-hover-color);
+    border-color: var(--aui-input-cell-hover-border, #b8c1cf);
     box-shadow: none;
 }
 
