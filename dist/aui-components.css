@@ -2877,8 +2877,11 @@ aui-button {
     height: 16px !important;
     display: block !important;
     background-color: #6b7280 !important;
-    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 6L8 10.5L12.5 6'/%3E%3C/svg%3E") center / 12px 12px no-repeat !important;
-    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 6L8 10.5L12.5 6'/%3E%3C/svg%3E") center / 12px 12px no-repeat !important;
+    /* the drawing covers the whole box (the 12px chevron drawn in it, not a 12px image placed 2px in): at a screen scale
+       such as 125% a 2px inset falls on half a device pixel, which the field's paint and the turn's layer round apart -
+       the chevron hopped a pixel as each turn ended */
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.625 6.5L8 9.875L11.375 6.5'/%3E%3C/svg%3E") center / 16px 16px no-repeat !important;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.625 6.5L8 9.875L11.375 6.5'/%3E%3C/svg%3E") center / 16px 16px no-repeat !important;
     pointer-events: none !important;
     /* Only the turn moves, on the compositor, which gives the chevron a layer of its own while it turns; still, it is
        drawn with the field, on its whole pixels (a layer kept for good placed it on the field's fractions of a pixel,

@@ -430,5 +430,13 @@
             return out;
         });
 
+    T('T33 the chevron\'s drawing covers its whole box (no image placed inside it): an inset falls on half a device pixel at a screen scale such as 125%, and the chevron hopped a pixel as each turn ended',
+        {box: '16px 16px', mask: '16px 16px'},
+        async () => {
+            const chevron = trig('c-s1').querySelector('.aui-select__chevron');
+            const style = getComputedStyle(chevron);
+            return {box: style.width + ' ' + style.height, mask: style.webkitMaskSize || style.maskSize};
+        });
+
     AuiTest.run('aui-select: core', tests, {delay: 0});
 })();

@@ -48,6 +48,8 @@ All notable changes to this project are documented here. The format follows
   copy's outcome shows; the button keeps its width for "Copied" and for "Copy failed", and a button with an icon keeps
   its icon's gap to the text (the room held for the feedback no longer sits between them).
 - `aui-button`: `shape="square"` no longer squeezes a `link` button.
+- `aui-select`, `aui-tree-select`: the chevron no longer hops a pixel as it finishes turning on open and close, at
+  screen scales such as 125%.
 - `aui-modal`: with a `<footer>` of its own and `show-confirm-button`, a page without jQuery no longer throws (the
   default buttons are no longer built and then replaced).
 - `aui-modal`: opened again from its own `on-close`, the dialog stays open (the earlier close's event no longer closes it).
