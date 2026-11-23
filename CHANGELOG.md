@@ -46,6 +46,11 @@ All notable changes to this project are documented here. The format follows
   the committed value (its model follows, as Angular's `$validate` has it) and the text commits as the rules are then;
   a form submit commits it too. A text the rules refuse, typed into an empty field, keeps `required` until it commits
   and then marks the field dirty.
+- `aui-input` with `ng-model-options`: a refused text saved, then corrected and saved again, saves the corrected value
+  (it saved nothing while the form said valid); `form.$rollbackViewValue()` after a refused text was committed shows
+  that text again with its error (the box went empty and the form valid).
+- `aui-input` basic style: in a field narrower than its parts, the clear button takes no click outside the field;
+  `api.blur()` also takes the focus off the field's clear button or eye.
 - `aui-input`: the form's native reset leaves the field showing its model (the box, its count and its clear button);
   a field without a `name` adds nothing to the form's data.
 - `aui-input`: a search still waiting runs no more once a `<fieldset>` around the field is disabled; inside a disabled

@@ -549,6 +549,39 @@
             return {inside: r.right <= frame.right + 0.5, outsideHit, model: scope().m.n95};
         });
 
+    T('E48 a 55px basic field with many parts: its clear button takes no click outside the field (1-12px past it); a click 8px past it clears nothing',
+        {outsideHit: false, model: 123.45},
+        async () => {
+            const field = host('basic-55');
+            // the field as drawn (its .aui-input, 55px wide): the custom element itself can be wider than it
+            const outer = (field.querySelector('.aui-input') || field).getBoundingClientRect();
+            const clear = field.querySelector('.aui-control-clear');
+            const r = clear.getBoundingClientRect();
+            const y = r.top + r.height / 2;
+            const hits = [];
+            for (let dx = 1; dx <= 12; dx += 1) {
+                const hit = document.elementFromPoint(outer.right + dx, y);
+                if (hit && clear.contains(hit)) hits.push(dx);
+            }
+            const hit = document.elementFromPoint(outer.right + 8, y);
+            if (hit) hit.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true, clientX: outer.right + 8, clientY: y}));
+            await sleep(20);
+            return {outsideHit: hits.length > 0, model: scope().m.b55};
+        });
+
+    T('E49 api.blur() with the focus on the field\'s own clear button: the focus leaves the field',
+        {onClear: true, after: false},
+        async () => {
+            apply(s => { s.m.ce = 'Some text'; });
+            await sleep(20);
+            const clear = host('clear-empty').querySelector('.aui-control-clear');
+            clear.focus();
+            const onClear = document.activeElement === clear;
+            scope().ceApi.blur();
+            await sleep(20);
+            return {onClear, after: host('clear-empty').contains(document.activeElement)};
+        });
+
     T('E47 an auto-height textarea fits its text again when the theme\'s font scale changes',
         {fits: true, height: 'grew'},
         async () => {

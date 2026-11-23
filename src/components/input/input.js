@@ -1379,10 +1379,18 @@ angular.module('aui')
                 host.$render = () => {
                     typedText = null;   // the page's value: counted as it is
                     cancelPendingSearch();   // the text typed is replaced: its search does not come
-                    // the committed value shown (the page's value, a rollback): the box's text is its own again (a
-                    // clear of a deferred field shows a text still waiting: the committed text stays as it was)
-                    if (host.$viewValue === host.$$lastCommittedViewValue) committed = null;
-                    $ctrl.internalValue = toBoxValue(host.$viewValue);
+                    const atCommitted = host.$viewValue === host.$$lastCommittedViewValue;
+                    if (atCommitted && committed && committed.view === host.$viewValue) {
+                        // the committed value shown again (form.$rollbackViewValue()): its text as it was committed - a
+                        // text the checks refused shows again (its value stays empty, its error with it), as Angular's
+                        // own field shows its committed text; the box's value alone was empty, and the field valid
+                        $ctrl.internalValue = committed.value;
+                    } else {
+                        // a value of the page's: the box's text is its own again (a clear of a deferred field shows a
+                        // text still waiting: the committed text stays as it was)
+                        if (atCommitted) committed = null;
+                        $ctrl.internalValue = toBoxValue(host.$viewValue);
+                    }
                     reportedText = $ctrl.internalValue;
                 };
                 host.$render();
@@ -1415,8 +1423,13 @@ angular.module('aui')
                     const commitViewValue = host.$commitViewValue;
                     host.$commitViewValue = function () {
                         const typed = !!box && !isNaNValue(box.$viewValue) && box.$viewValue !== committedState().text;
-                        const result = commitViewValue.apply(host, arguments);
+                        // the text that commits is the committed one before Angular's commit runs the field's checks: they
+                        // read it (see boxRefuses) - recorded after, the text before (a refused "bad") was still the
+                        // committed one in that commit, and a corrected "OK" was refused by the field's own pattern
                         committed = box ? {value: box.$$rawModelValue, text: box.$viewValue, errors: angular.extend({}, box.$error)} : null;
+                        const result = commitViewValue.apply(host, arguments);
+                        // the host's view it stands for (a refused text: undefined), to know it again on a rollback
+                        if (committed) committed.view = host.$$lastCommittedViewValue;
                         if (typed && host.$pristine) host.$setDirty();
                         takeOverBoxState();
                         return result;
@@ -1476,7 +1489,12 @@ angular.module('aui')
                 if (!target || typeof target !== 'object') return;
                 const methods = {
                     focus: function () { if (boxEl && !boxLocked()) boxEl.focus(); },
-                    blur: function () { if (boxEl) boxEl.blur(); },
+                    /** Takes the focus out of the field: off its box, or off its own clear button or eye if it is there. */
+                    blur: function () {
+                        const active = document.activeElement;
+                        if (active && active !== boxEl && $element[0].contains(active) && typeof active.blur === 'function') active.blur();
+                        else if (boxEl) boxEl.blur();
+                    },
                     /** Clears the value (as the clear button does, not when disabled or readonly); the focus stays where it is. */
                     clear: function () { $scope.$evalAsync(() => clearField(null, false, 'api')); },
                     /** Selects the text of the box (e.g. to be typed over). */

@@ -2429,6 +2429,15 @@ aui-button {
     align-items: center;
 }
 
+/* The basic style's row narrower than all its parts (a field of 55px with a label, a unit, a sign and a count): its
+   parts past its end are cut there, and so are their targets - the clear button, narrowed to nothing, still took
+   clicks a few pixels outside the whole field. Cut sideways only (its caption above the line stays); 4px of margin
+   keep the focus rings of the parts at its ends. The form style's frame holds its own parts (see below). */
+.aui-input--basic.aui-input--row .aui-input-container {
+    overflow-x: clip;
+    overflow-clip-margin: 4px;
+}
+
 /* the text takes the room the others leave (a basis of 0, as the form style's text): with its width of 100% as the
    basis, the row ran over by the others' width and a shrinking suffix gave a pixel of it, cut ("k...") */
 .aui-input.aui-input--row .aui-input-container > input.aui-input-field {

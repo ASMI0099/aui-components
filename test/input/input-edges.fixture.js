@@ -18,7 +18,7 @@ angular.module('auiTest', ['aui'])
             fsSearch: false, tsz: 'small', lateDesc: undefined};
         angular.extend($scope.m, {dl: 'AA', dp: 'GOOD', fl: '', fsq: '', bl: '', n2w: 123.45, nz: 2, afv: '', lad: '', rs: 'kept',
             un: 'free', tsz: new Array(5).join('one two three four five six seven eight nine ten '),
-            n95: 123.45, tfont: new Array(5).join('one two three four five six seven eight nine ten ')});
+            n95: 123.45, b55: 123.45, tfont: new Array(5).join('one two three four five six seven eight nine ten ')});
         $scope.fsApi = {};
         $scope.foApi = {};
         $scope.ceApi = {};

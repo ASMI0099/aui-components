@@ -184,6 +184,59 @@
             return {now, after: {aui: look('clearKeep', 'a'), native: look('clearKeep', 'n')}};
         });
 
+    T('D14 a refused text saved, then corrected and saved again: the second Save gets the corrected value (as the native input)',
+        {first: {valid: false, a: 'undefined', n: 'undefined'}, second: {valid: true, a: '"OK"', n: '"OK"'}},
+        async () => {
+            const saves = scope().patternSaves;
+            saves.length = 0;
+            typeBoth('pattern-fix', 'bad');
+            document.getElementById('pattern-save').click();
+            await sleep(30);
+            typeBoth('pattern-fix', 'OK');
+            document.getElementById('pattern-save').click();
+            await sleep(30);
+            await leaveBoth('pattern-fix');
+            const view = s => s && {valid: s.valid, a: show(s.a), n: show(s.n)};
+            return {first: view(saves[0]), second: view(saves[1])};
+        });
+
+    T('D15 a refused text committed, another typed, then form.$rollbackViewValue(): the refused text shows again, its error kept, its value empty',
+        {aui: {shown: 'LONG', errors: ['maxlength'], model: 'undefined'}, native: {shown: 'LONG', errors: ['maxlength'], model: 'undefined'}, saved: {valid: false}},
+        async () => {
+            typeBoth('refused', 'LONG');
+            await leaveBoth('refused');
+            typeBoth('refused', 'B');
+            apply(s => { s.r.$rollbackViewValue(); });
+            await sleep(30);
+            const rf = scope().r;
+            const r = {aui: {shown: auiBox('refused').value, errors: errors(rf.arefused), model: show(scope().a.refused)},
+                native: {shown: nativeBox('refused').value, errors: errors(rf.nrefused), model: show(scope().n.refused)}};
+            scope().rollbackSaves.length = 0;
+            document.getElementById('rollback-save').click();
+            await sleep(30);
+            r.saved = {valid: scope().rollbackSaves[0] ? scope().rollbackSaves[0].valid : null};
+            return r;
+        });
+
+    T('D16 the same with the length relaxed before the rollback: the text shows again and Save gets it (as the native input)',
+        {aui: {shown: 'LONG'}, native: {shown: 'LONG'}, saved: {valid: true, a: '"LONG"', n: '"LONG"'}},
+        async () => {
+            // from D15: LONG committed and refused; a new text waits, the rule relaxes, then the rollback
+            typeBoth('refused', 'B');
+            apply(s => { s.rule.refused = 8; });
+            await sleep(20);
+            apply(s => { s.r.$rollbackViewValue(); });
+            await sleep(30);
+            const r = {aui: {shown: auiBox('refused').value}, native: {shown: nativeBox('refused').value}};
+            scope().rollbackSaves.length = 0;
+            document.getElementById('rollback-save').click();
+            await sleep(30);
+            const save = scope().rollbackSaves[0];
+            r.saved = save && {valid: save.valid, a: show(save.a), n: show(save.n)};
+            auiBox('refused').blur();
+            return r;
+        });
+
     T('D13 no Angular errors in the whole suite',
         {errors: 0},
         async () => ({errors: window.__ngErrors.length}));

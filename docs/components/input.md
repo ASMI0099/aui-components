@@ -93,14 +93,15 @@ the model follows the check as Angular's own fields do, the field stays pristine
 | `on-search` | A search field: `fn($value)`, the text in the box without the spaces around it (all of it with `ng-trim="false"`). |
 | `on-focus`, `on-blur` | `fn($event, $value)`. |
 | `on-clear` | After the value was cleared: `fn($event)`. |
-| `api` | An object that receives methods: `focus()`, `blur()`, `clear()`, `select()`. |
+| `api` | An object that receives methods: `focus()`, `blur()` (the focus out of the field, also off its clear button or eye), `clear()`, `select()`. |
 
 `ng-model-options` acts on the field as on Angular's own inputs: `updateOn` (`blur` included, with its debounce),
 `debounce` and `getterSetter`; with `updateOn` or a debounce the field is dirty once a changed text commits, as Angular's
 own (an invalid text too, whose value stays empty). Until a typed text commits, the field's value and validity stay
 those of the value before it: a rule that changes meanwhile re-checks that value, and the model follows as Angular's
 `$validate` has it (empty once invalid); the typed text then commits with the rules as they are at its commit (a form
-submit commits it too). `form.$rollbackViewValue()` brings the value before it back. `allowInvalid` is not supported:
+submit commits it too). `form.$rollbackViewValue()` brings the committed text back, a text the rules refused too (its
+value stays empty and its error stays), as Angular's own input does. `allowInvalid` is not supported:
 an invalid text leaves the model empty. `ng-trim="false"` keeps the spaces around the text in the model.
 
 A form's native reset (a reset button, `form.reset()`) does not change Angular models: the field keeps showing its

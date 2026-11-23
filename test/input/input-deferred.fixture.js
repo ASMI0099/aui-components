@@ -18,6 +18,14 @@ angular.module('auiTest', ['aui'])
         $scope.rule = {tight: 8, relax: 2, num: 40, keep: 8, back: 8, numKeep: 40, debRelax: 2, submit: 2, clearKeep: 8};
         $scope.changes = [];
         $scope.changed = function (field, value) { $scope.changes.push(field + ':' + String(value)); };
+        $scope.a.refused = 'AA';
+        $scope.n.refused = 'AA';
+        $scope.rule.refused = 2;
+        // each Save of these forms: the models and the form's validity as ng-submit sees them
+        $scope.patternSaves = [];
+        $scope.patternSaved = function (form) { $scope.patternSaves.push({valid: form.$valid, a: $scope.a.code, n: $scope.n.code}); };
+        $scope.rollbackSaves = [];
+        $scope.rollbackSaved = function (form) { $scope.rollbackSaves.push({valid: form.$valid, a: $scope.a.refused, n: $scope.n.refused}); };
         $scope.submits = [];
         $scope.submitted = function (form) { $scope.submits.push({valid: form.$valid, value: $scope.a.submit}); };
     }]);

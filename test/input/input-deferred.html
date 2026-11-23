@@ -73,6 +73,20 @@
             <input class="native" name="nclearKeep" ng-model="n.clearKeep" ng-model-options="{updateOn: 'blur'}" ng-maxlength="rule.clearKeep"></div>
     </div>
 </form>
+<form name="p" id="pattern-form" novalidate ng-submit="patternSaved(p)">
+    <div class="cell" id="pattern-fix"><label>updateOn blur, pattern, no model yet: saved refused, corrected, saved again</label>
+        <aui-input name="acode" ng-model="a.code" ng-model-options="{updateOn: 'blur'}" pattern="[A-Z]+" required
+                   input-style-type="form"></aui-input>
+        <input class="native" name="ncode" ng-model="n.code" ng-model-options="{updateOn: 'blur'}" pattern="[A-Z]+" required>
+        <button type="submit" id="pattern-save">Save</button></div>
+</form>
+<form name="r" id="rollback-form" novalidate ng-submit="rollbackSaved(r)">
+    <div class="cell" id="refused"><label>updateOn blur, length 2, AA: LONG committed (refused), B typed, rolled back</label>
+        <aui-input name="arefused" ng-model="a.refused" ng-model-options="{updateOn: 'blur'}" value-max-length="{{ rule.refused }}"
+                   input-style-type="form"></aui-input>
+        <input class="native" name="nrefused" ng-model="n.refused" ng-model-options="{updateOn: 'blur'}" ng-maxlength="rule.refused">
+        <button type="submit" id="rollback-save">Save</button></div>
+</form>
 <form name="s" id="submit-form" novalidate ng-submit="submitted(s)">
     <div class="cell" id="submit"><label>updateOn blur, length 2 then 8, then submitted</label>
         <aui-input name="asubmit" ng-model="a.submit" ng-model-options="{updateOn: 'blur'}" value-max-length="{{ rule.submit }}"
