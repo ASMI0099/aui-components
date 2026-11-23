@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: aui-modal fallback, round checks</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        #help { position: fixed; right: 12px; bottom: 12px; z-index: 2100; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <!-- a browser without <dialog>: the modal's fallback runs; no jQuery (AngularJS's own jqLite) -->
+    <script>delete HTMLDialogElement.prototype.showModal;</script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="fallback-round.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="fallback-round.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="FallbackRoundCtrl">
+<h1>aui-modal fallback: the page behind it, keyboard rounds, toasts, sizes</h1>
+<button type="button" id="outside">Outside</button>
+<div id="toolbar-a" ng-attr-aria-hidden="{{ panel.expanded ? 'false' : 'true' }}"><button type="button">Toolbar A</button></div>
+<div id="toolbar-b" ng-attr-aria-hidden="{{ panel.collapsed ? 'true' : 'false' }}"><button type="button">Toolbar B</button></div>
+<button type="button" id="help">Help</button>
+
+<aui-modal id="f-bg" is-open="open.bg" size="small" show-confirm-button="true">
+    <content><div style="padding: 8px;"><input id="bg-input" aria-label="Field"/></div></content>
+</aui-modal>
+
+<aui-modal id="f-fs" is-open="open.fs" size="small" show-footer="false">
+    <content>
+        <div style="padding: 8px;">
+            <fieldset disabled><input id="fs-off" aria-label="Locked"/></fieldset>
+            <input id="fs-on" aria-label="Name"/>
+            <button type="button" id="fs-save">Save</button>
+        </div>
+    </content>
+</aui-modal>
+
+<aui-modal id="f-hid" is-open="open.hid" size="small" show-footer="false">
+    <content>
+        <div style="padding: 8px;">
+            <input id="hid-hidden" aria-label="Hidden" style="visibility: hidden"/>
+            <div inert><input id="hid-inert" aria-label="Later step"/></div>
+            <input id="hid-on" aria-label="Name"/>
+            <button type="button" id="hid-save">Save</button>
+        </div>
+    </content>
+</aui-modal>
+
+<aui-modal id="f-radio" is-open="open.radio" size="small" show-footer="false">
+    <content>
+        <div style="padding: 8px;">
+            <input type="radio" name="pay" value="wire" id="r-wire" aria-label="Wire"/>
+            <input type="radio" name="pay" value="card" id="r-card" aria-label="Card" checked/>
+            <input id="r-note" aria-label="Note"/>
+            <button type="button" id="r-save">Save</button>
+        </div>
+    </content>
+</aui-modal>
+
+<aui-modal id="f-pos" is-open="open.pos" size="small" show-footer="false">
+    <content>
+        <div style="padding: 8px;">
+            <button type="button" id="p-two" tabindex="2">Two</button>
+            <button type="button" id="p-one" tabindex="1">One</button>
+            <button type="button" id="p-zero">Zero</button>
+        </div>
+    </content>
+</aui-modal>
+
+<aui-modal id="f-big" is-open="open.big" width="9999px" height="9999px" show-confirm-button="true">
+    <content><div style="padding: 8px;">A size larger than any window</div></content>
+</aui-modal>
+
+<aui-modal id="f-top" is-open="open.top" size="medium" height="98vh" display-on-top="true" show-confirm-button="true">
+    <content><div style="padding: 8px;">Tall, on top</div></content>
+</aui-modal>
+</body>
+</html>

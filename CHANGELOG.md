@@ -21,6 +21,13 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- `aui-modal`: `aria-describedby` describes the dialog itself; the header and footer slots take the height they need
+  (they were cut at 80px and 100px).
+- AuiMessageBox: a box with neither button shows its OK (it could not be closed); without a title it is named by its
+  type and described by its message; blank button captions keep the defaults.
+- AuiMessage: the pointer (not a tap) and the keyboard's focus hold a notice; a notice without a title says its kind to
+  screen readers; the Close cross is darker (4.8:1); on a phone the two places form one column.
+- The message services mount one set of hosts per AngularJS application on the page, removed when it ends.
 - `aui-button`: the keyboard focus is a 2px ring in the accent around a 2px gap on every variant and intent (it was a
   light ring in the intent's colour); in forced-colours mode an outline in the system's highlight colour.
 - `aui-button`: the warning text on white and on its tints is a darker amber (`#a34a08`), 4.5:1 on the hover tint too.
@@ -42,6 +49,31 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- AuiModal, AuiMessageBox, AuiMessage: a second AngularJS application on the page shows its own dialogs, boxes and
+  toasts (they waited for a host of the first one); a box asked for as an application starts shows at once.
+- AuiModal, AuiMessageBox, AuiMessage: errors thrown by the page's callbacks (on-cancel, on-close, render, the box's
+  callbacks) reach the application's `$exceptionHandler`.
+- AuiModal, AuiMessageBox: a host removed with its application settles the dialog it showed.
+- `aui-modal`: a save promise made in another window (an editor in a frame) keeps the dialog open while it runs.
+- `aui-modal`: with `display-on-top`, a tall dialog stays inside the window; without `<dialog>`, a fixed size larger
+  than the window is held to it.
+- `aui-modal` without `<dialog>`: parts the page adds behind the dialog are hidden too, the page's own `aria-hidden`
+  changes are kept on close, the page behind is inert where the browser knows `inert`; Tab goes round correctly past a
+  disabled fieldset, hidden or inert controls, a radio group and positive `tabindex`; toasts over it take the focus.
+- AuiModal: content built by `render()` and closed in its opening turn lets go of AngularJS's data on it.
+- AuiMessageBox: a box asked for by the answer of one closed with Escape waits behind the box already waiting; a
+  queued box costs the page no digest and is formatted when shown; on a narrow window the buttons wrap, a long title
+  wraps, a short window still shows the message, and a long message can be reached with the keyboard.
+- AuiMessage: a held notice given a duration later keeps waiting; an update given as a plain dictionary works; a
+  duration past 24 days no longer ends at once; `clearAll()` draws once; a title-only update does not format the
+  message again; a closed notice's content is let go; the notices are repeated without `track by` (a closed one is not
+  kept); a leaving notice takes no clicks; a focused link keeps the focus across an update; `type: undefined` is
+  `info`; a card's padding no longer widens it past a phone's screen; a long message and a full stack scroll;
+  preformatted text scrolls sideways.
+- Rich messages keep `scope`, `lang`, `dir` and an ordered list's `start`; a relative link resolves from the
+  document's base.
+- AuiMessage, AuiMessageBox: in forced colours (high contrast) the status icons show; on a page with a dark colour
+  scheme the white cards and dialogs keep their links readable.
 - `aui-input` with `ng-model-options` (`updateOn`, a debounce): a rule that changes while a typed text waits re-checks
   the committed value (its model follows, as Angular's `$validate` has it) and the text commits as the rules are then;
   a form submit commits it too. A text the rules refuse, typed into an empty field, keeps `required` until it commits

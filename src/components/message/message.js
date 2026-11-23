@@ -8,11 +8,15 @@ angular.module('aui')
      * services on window as well (window.AuiMessage, window.AuiMessageBox, window.AuiModal: page code calls them
      * there too).
      */
-    .factory('AuiMessage', ['$rootScope', '$timeout', 'AuiSafeHtml',
-        function ($rootScope, $timeout, AuiSafeHtml) {
+    .factory('AuiMessage', ['$rootScope', '$timeout', '$exceptionHandler', 'AuiSafeHtml',
+        function ($rootScope, $timeout, $exceptionHandler, AuiSafeHtml) {
 
             const EXIT_MS = 180;
             const ENTER_MS = 240;
+            // the longest wait a browser's timer keeps (about 24.8 days): a longer duration overflowed it and the
+            // message left at once
+            const MAX_DELAY_MS = 2147483647;
+            const has = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
             const POSITIONS = {'top-right': true, 'top-center': true};
 
             let nextId = 1;
@@ -56,10 +60,6 @@ angular.module('aui')
                 return typeof input === 'string' ? {message: input} : input;
             }
 
-            function trust(value) {
-                return AuiSafeHtml.trust(value);
-            }
-
             function normPosition(p) {
                 return POSITIONS[p] ? p : 'top-right';
             }
@@ -75,7 +75,7 @@ angular.module('aui')
                 item._timer = $timeout(function () {
                     item._timer = null;
                     beginExit(item);
-                }, ms, false);
+                }, Math.min(ms, MAX_DELAY_MS), false);
             }
 
             function cancelAutoDismiss(item) {
@@ -87,44 +87,66 @@ angular.module('aui')
 
             // The whole countdown from its start: a new message, an update with a duration, a message brought back.
             // Held by the pointer: it starts when the pointer leaves.
+            // Held by the pointer or by the keyboard's focus (also while it had no countdown: one given by an update
+            // starts when it is let go)
             function restartCountdown(item) {
-                cancelAutoDismiss(item);
                 if (!(item.duration > 0)) {
+                    cancelAutoDismiss(item);
                     item._paused = false;
                     return;
                 }
-                if (item._paused) {
+                if (item._paused || item._hover || item._focus) {
+                    cancelAutoDismiss(item);
+                    item._paused = true;
                     item._left = item.duration;
                     return;
                 }
                 startCountdown(item, item.duration);
             }
 
-            function beginExit(item) {
-                if (!item || item.state !== 'visible') return;
+            // the page's own function failed (on-close): told to the application's $exceptionHandler
+            function report(error) {
+                try {
+                    $exceptionHandler(error);
+                } catch (e) { /* a handler that throws itself: nothing more to tell */ }
+            }
+
+            function beginExit(item, quiet) {
+                if (!item || item.state !== 'visible') return false;
                 cancelAutoDismiss(item);
                 item._paused = false;
                 item.state = 'leaving';
-                item._removeTimer = $timeout(function () {
-                    item._removeTimer = null;
-                    remove(item);
-                }, EXIT_MS, false);
-                notify();
+                if (!quiet) {
+                    item._removeTimer = $timeout(function () {
+                        item._removeTimer = null;
+                        remove(item);
+                    }, EXIT_MS, false);
+                    notify();
+                }
+                return true;
             }
 
-            function remove(item) {
+            /*
+             * Out of its stack (the host draws it gone, unless quiet: several at once draw once). What it showed is let
+             * go: a page that keeps the returned handle (its close and update hold the item) does not keep its message
+             * alive - the handle does nothing any more.
+             */
+            function remove(item, quiet) {
                 const list = state[item.position];
                 const idx = list.indexOf(item);
                 if (idx >= 0) list.splice(idx, 1);
                 item.state = 'gone';
-                notify();
+                if (!quiet) notify();
                 const onClose = item.onClose;
-                item._handleClose = null;
                 item.onClose = null;
+                item.message = '';
+                item.title = null;
+                item._trustedMessage = null;
                 if (typeof onClose === 'function') {
                     try {
                         onClose();
-                    } catch (e) { /* user code must never break us */
+                    } catch (e) {
+                        report(e);
                     }
                     // page code: the page shows what it changed (one digest of the page for messages that close together)
                     $rootScope.$applyAsync();
@@ -132,7 +154,12 @@ angular.module('aui')
             }
 
             function add(input) {
-                const raw = coerce(input);
+                const given = coerce(input);
+                // an option given as undefined (passed along by a helper of the page) is not given: its default holds
+                const raw = {};
+                Object.keys(given).forEach(function (key) {
+                    if (given[key] !== undefined) raw[key] = given[key];
+                });
                 const cfg = angular.extend({}, DEFAULTS, raw);
 
                 // Type-specific implicit defaults (only when the caller didn't set them).
@@ -161,17 +188,21 @@ angular.module('aui')
                     _timer: null,
                     _removeTimer: null,
                     _paused: false,
+                    _hover: false,             // the pointer is on it
+                    _focus: false,             // the keyboard's focus is in it
                     _deadline: 0,
                     _left: 0,
                     _barCycle: 0,              // the countdown started over: its bar drawn again from full
                     _pulse: 0,                 // updated: a short highlight
                     _handleClose: null
                 };
-                if (item.useHtml) item._trustedMessage = trust(item.message);
+                if (item.useHtml) item._trustedMessage = AuiSafeHtml.trust(item.message);
 
-                item._handleClose = function () {
+                // its close: the Close button's and the handle's (late calls, after it is gone, do nothing)
+                const close = function () {
                     beginExit(item);
                 };
+                item._handleClose = close;
 
                 state[position].push(item);
                 restartCountdown(item);
@@ -182,9 +213,7 @@ angular.module('aui')
 
                 return {
                     id: item.id,
-                    close: function () {
-                        beginExit(item);
-                    },
+                    close: close,
                     update: function (patch) {
                         update(item, patch);
                     }
@@ -197,19 +226,24 @@ angular.module('aui')
                 // content, and its countdown starts over; on-close does not run
                 const revived = item.state === 'leaving';
                 if (revived) {
-                    if (item._removeTimer) $timeout.cancel(item._removeTimer);
+                    // its own removal timer is cancelled; one shared with others (clearAll) only forgets it
+                    if (item._removeTimer && !isShared(item._removeTimer)) $timeout.cancel(item._removeTimer);
                     item._removeTimer = null;
                     item.state = 'visible';
                 }
-                if (patch.hasOwnProperty('type')) item.type = patch.type;
-                if (patch.hasOwnProperty('title')) item.title = patch.title;
-                if (patch.hasOwnProperty('useHtml')) item.useHtml = !!patch.useHtml;
-                if (patch.hasOwnProperty('message')) item.message = patch.message;
-                if (patch.hasOwnProperty('dismissible')) item.dismissible = patch.dismissible !== false;
-                item._trustedMessage = item.useHtml ? trust(item.message) : null;
+                const before = {message: item.message, useHtml: item.useHtml};
+                if (has(patch, 'type') && patch.type !== undefined) item.type = patch.type;
+                if (has(patch, 'title')) item.title = patch.title;
+                if (has(patch, 'useHtml')) item.useHtml = !!patch.useHtml;
+                if (has(patch, 'message')) item.message = patch.message;
+                if (has(patch, 'dismissible')) item.dismissible = patch.dismissible !== false;
+                // formatted again only when its message or its kind changed (a title or a duration alone: kept)
+                if (item.message !== before.message || item.useHtml !== before.useHtml || (item.useHtml && item._trustedMessage === null)) {
+                    item._trustedMessage = item.useHtml ? AuiSafeHtml.trust(item.message) : null;
+                }
                 item._pulse += 1;
 
-                const hasDuration = patch.hasOwnProperty('duration');
+                const hasDuration = has(patch, 'duration');
                 if (hasDuration && typeof patch.duration === 'number' && patch.duration >= 0) {
                     item.duration = patch.duration;
                 }
@@ -220,28 +254,66 @@ angular.module('aui')
                 notify();
             }
 
+            /*
+             * Held by the pointer (hover) and by the keyboard's focus (focus): its countdown waits while either holds
+             * it. Returns whether its countdown changed (a notice that has none changes nothing: no drawing).
+             */
+            function hold(item, by, on) {
+                if (!item || item.state !== 'visible') return false;
+                const key = by === 'focus' ? '_focus' : '_hover';
+                if (item[key] === on) return false;
+                item[key] = on;
+                if (on) return pause(item);
+                return item._hover || item._focus ? false : resume(item);
+            }
+
             function pause(item) {
-                if (!item || item.state !== 'visible' || item._paused || !(item.duration > 0)) return;
+                if (!item || item.state !== 'visible' || item._paused || !(item.duration > 0)) return false;
                 item._paused = true;
                 item._left = Math.max(0, item._deadline - now());
                 cancelAutoDismiss(item);
+                return true;
             }
 
             function resume(item) {
-                if (!item || item.state !== 'visible' || !item._paused) return;
+                if (!item || item.state !== 'visible' || !item._paused) return false;
                 item._paused = false;
-                if (!(item.duration > 0)) return;
+                if (!(item.duration > 0)) return true;
                 // the time it had left; none (held just as its time ran out, before its timer came): it leaves now,
                 // never with its whole time again
                 if (item._left > 0) startCountdown(item, item._left);
                 else beginExit(item);
+                return true;
             }
 
+            // All at once: one drawing for their exit and one for their removal (each drew twice of its own)
             function clearAll() {
+                const leaving = [];
                 Object.keys(state).forEach(function (pos) {
-                    const snap = state[pos].slice();
-                    for (let i = 0; i < snap.length; i++) beginExit(snap[i]);
+                    state[pos].slice().forEach(function (item) {
+                        if (beginExit(item, true)) leaving.push(item);
+                    });
                 });
+                if (!leaving.length) return;
+                notify();
+                const timer = $timeout(function () {
+                    leaving.forEach(function (item) {
+                        if (item._removeTimer === timer && item.state === 'leaving') {
+                            item._removeTimer = null;
+                            remove(item, true);
+                        }
+                    });
+                    notify();
+                }, EXIT_MS, false);
+                leaving.forEach(function (item) { item._removeTimer = timer; });
+            }
+
+            function isShared(timer) {
+                let count = 0;
+                Object.keys(state).forEach(function (pos) {
+                    state[pos].forEach(function (other) { if (other._removeTimer === timer) count += 1; });
+                });
+                return count > 1;
             }
 
             function find(id) {
@@ -281,6 +353,7 @@ angular.module('aui')
                 error: shortcut('error'),
                 loading: shortcut('loading'),
                 clearAll: clearAll,
+                _hold: hold,
                 _pause: pause,
                 _resume: resume,
                 _find: find,
@@ -295,6 +368,10 @@ angular.module('aui')
             $ctrl.t = texts.modal;
             $ctrl.svc = AuiMessage;
             $ctrl.positions = ['top-right', 'top-center'];
+            // a notice without a title says its kind as text (the icon is a picture only): "Error: ..."
+            $ctrl.typeText = function (type) {
+                return texts.modal.titles[type] || (type === 'loading' ? texts.list.loading : '');
+            };
 
             let hostEl = null;
             let supportsPopover = false;
@@ -310,9 +387,72 @@ angular.module('aui')
             // instead: see kit.digestOwn), then its place
             function render() {
                 if (destroyed) return;
-                if ($scope.$root.$$phase) $scope.$evalAsync(angular.noop);
-                else kit.digestOwn($scope);
+                const mark = focusMark();
+                if ($scope.$root.$$phase) {
+                    $scope.$evalAsync(angular.noop);
+                    $scope.$$postDigest(function () {
+                        if (mark) focusBack(mark);
+                        fitStacks();
+                    });
+                } else {
+                    kit.digestOwn($scope);
+                    if (mark) focusBack(mark);
+                    fitStacks();
+                }
                 place(null);
+            }
+
+            /*
+             * A stack that runs past the window's bottom (more notices than it holds) scrolls: the newest were below the
+             * screen, out of reach. Only then: a stack that fits keeps its look (its cards' shadows and slide-in are not
+             * cut by a scrolling box). A phone's single column scrolls on its own (the stylesheet).
+             */
+            function fitStacks() {
+                if (destroyed || !hostEl) return;
+                const limit = window.innerHeight - 32;
+                Array.prototype.forEach.call(hostEl.querySelectorAll('.aui-message-host__stack'), function (stack) {
+                    const over = stack.children.length > 1 && stack.scrollHeight > limit;
+                    if (stack.classList.contains('aui-message-host__stack--scroll') !== over) {
+                        stack.classList.toggle('aui-message-host__stack--scroll', over);
+                    }
+                });
+            }
+
+            /*
+             * A link in a notice's message has the focus while the notice is updated (its progress, a count): the new
+             * message replaces the old one's elements, and the focus fell to the page. It goes to the same link in the
+             * new message (the same address and text, else the one at the same place); none there, the notice no
+             * longer holds its countdown for the focus.
+             */
+            function focusMark() {
+                const active = document.activeElement;
+                if (!active || !hostEl || !hostEl.contains(active) || !active.closest) return null;
+                const content = active.closest('.aui-message__content');
+                const card = active.closest('.aui-message');
+                if (!content || !card) return null;
+                return {
+                    id: card.getAttribute('data-aui-message-id'), el: active, tag: active.tagName,
+                    href: active.getAttribute('href'), text: active.textContent,
+                    index: Array.prototype.indexOf.call(content.querySelectorAll(active.tagName), active)
+                };
+            }
+
+            function focusBack(mark) {
+                if (destroyed || !hostEl || document.contains(mark.el)) return;
+                const active = document.activeElement;
+                if (active && active !== document.body && active !== document.documentElement) return;
+                const card = hostEl.querySelector('.aui-message[data-aui-message-id="' + mark.id + '"]');
+                const content = card ? card.querySelector('.aui-message__content') : null;
+                const same = content ? Array.prototype.slice.call(content.querySelectorAll(mark.tag)) : [];
+                const match = same.filter(function (el) {
+                    return el.getAttribute('href') === mark.href && el.textContent === mark.text;
+                })[0] || same[mark.index];
+                if (match && typeof match.focus === 'function') {
+                    kit.focusQuietly(match);
+                    if (document.activeElement === match) return;
+                }
+                const item = AuiMessage._find(Number(mark.id));
+                if (item && AuiMessage._hold(item, 'focus', false)) render();
             }
 
             /**
@@ -325,13 +465,20 @@ angular.module('aui')
              * browsers) the stacks' z-index keeps them above the fallback's overlays, and nothing is inert there.
              */
             function place(leaving) {
-                if (destroyed || !hostEl || !supportsPopover) return;
-                const target = registry.layer.topDialog(leaving) || $element[0];
+                if (destroyed || !hostEl) return;
+                // a native modal dialog (with popovers), else a fallback's overlay (its focus is kept inside it: the
+                // notices go in, after its box, where Tab reaches them), else home
+                const target = (supportsPopover ? registry.layer.topDialog(leaving) : null) ||
+                    registry.layer.topOverlay(leaving) || $element[0];
                 let running = null;
                 if (hostEl.parentNode !== target) {
                     running = animationsNow();
                     target.appendChild(hostEl);
                     popoverShown = false;
+                }
+                if (!supportsPopover) {
+                    if (running) resumeAnimations(running);
+                    return;
                 }
                 if (totalCount() === 0) {
                     if (popoverShown) {
@@ -357,9 +504,16 @@ angular.module('aui')
             }
 
             function resumeAnimations(before) {
+                // looked up by element (each has one or two): matched in one pass, not a search of all per animation
+                const byTarget = new Map();
+                before.forEach(function (w) {
+                    const list = byTarget.get(w.target);
+                    if (list) list.push(w);
+                    else byTarget.set(w.target, [w]);
+                });
                 hostEl.getAnimations({subtree: true}).forEach(function (a) {
                     if (!a.animationName || !a.effect) return;
-                    const was = before.find(w => w.target === a.effect.target && w.pseudo === a.effect.pseudoElement && w.name === a.animationName);
+                    const was = (byTarget.get(a.effect.target) || []).filter(w => w.pseudo === a.effect.pseudoElement && w.name === a.animationName)[0];
                     try {
                         if (!was) a.finish();
                         else if (was.time !== null) a.currentTime = was.time;
@@ -382,21 +536,32 @@ angular.module('aui')
                 if (!hostEl) return;
                 supportsPopover = typeof hostEl.showPopover === 'function';
                 if (supportsPopover) hostEl.setAttribute('popover', 'manual');
-                // the pointer on a message holds its countdown; its close button closes it (no digest of the page)
-                listen('mouseenter', function (event) {
-                    if (!event.target.classList || !event.target.classList.contains('aui-message')) return;
+                // The pointer on a message holds its countdown - a mouse's or a pen's: a touch taps it and is lifted (a
+                // tap left it held as if hovered, for good). The keyboard's focus in it holds it too (a link being
+                // read, its Close). Drawn only when its countdown changed (a notice without one changes nothing).
+                // Its close button closes it (no digest of the page).
+                const pointer = typeof window.PointerEvent === 'function';
+                const onCard = event => !!(event.target.classList && event.target.classList.contains('aui-message'));
+                listen(pointer ? 'pointerenter' : 'mouseenter', function (event) {
+                    if (event.pointerType === 'touch' || !onCard(event)) return;
                     const item = itemAt(event.target);
-                    if (!item) return;
-                    AuiMessage._pause(item);
-                    render();
+                    if (item && AuiMessage._hold(item, 'hover', true)) render();
                 }, true);
-                listen('mouseleave', function (event) {
-                    if (!event.target.classList || !event.target.classList.contains('aui-message')) return;
+                listen(pointer ? 'pointerleave' : 'mouseleave', function (event) {
+                    if (event.pointerType === 'touch' || !onCard(event)) return;
                     const item = itemAt(event.target);
-                    if (!item) return;
-                    AuiMessage._resume(item);
-                    render();
+                    if (item && AuiMessage._hold(item, 'hover', false)) render();
                 }, true);
+                listen('focusin', function (event) {
+                    const item = itemAt(event.target);
+                    if (item && AuiMessage._hold(item, 'focus', true)) render();
+                });
+                listen('focusout', function (event) {
+                    const card = event.target.closest ? event.target.closest('.aui-message') : null;
+                    if (!card || (event.relatedTarget && card.contains(event.relatedTarget))) return;
+                    const item = itemAt(card);
+                    if (item && AuiMessage._hold(item, 'focus', false)) render();
+                });
                 listen('click', function (event) {
                     const button = event.target && event.target.closest ? event.target.closest('.aui-message__close') : null;
                     const item = button ? itemAt(button) : null;
@@ -429,11 +594,12 @@ angular.module('aui')
                              'aui-message--leaving':    m.state === 'leaving',
                              'aui-message--with-title': !!m.title
                          }"
-                         ng-repeat="m in $ctrl.svc.state[pos] track by m.id">
+                         ng-repeat="m in $ctrl.svc.state[pos]">
                         <span class="aui-message__pulse" aria-hidden="true"
-                              ng-repeat="p in [m._pulse] track by p" aui-modal-mount="m._pulse > 0"></span>
+                              ng-repeat="p in [m._pulse]" aui-modal-mount="m._pulse > 0"></span>
                         <span class="aui-message__icon" aria-hidden="true"></span>
                         <div class="aui-message__body">
+                            <span class="aui-message__type" aui-modal-mount="!m.title && $ctrl.typeText(m.type)">{{ $ctrl.typeText(m.type) }}: </span>
                             <div class="aui-message__title"
                                  aui-modal-mount="m.title"
                                  ng-bind="m.title"></div>
@@ -448,7 +614,7 @@ angular.module('aui')
                                 aui-modal-mount="m.dismissible"
                                 aria-label="{{ ::$ctrl.t.close }}">&times;</button>
                         <div class="aui-message__progress"
-                             ng-repeat="c in [m._barCycle] track by c"
+                             ng-repeat="c in [m._barCycle]"
                              aui-modal-mount="m.duration > 0 && m.state !== 'leaving'"
                              ng-style="{ 'animation-duration': m.duration + 'ms', 'animation-play-state': m._paused ? 'paused' : 'running' }"></div>
                     </div>

@@ -7,6 +7,9 @@
     border-radius: 0.375rem;
     background-color: #ffffff;
     color: rgb(17 24 39);
+    /* a white box: what it holds (links, controls, scrollbars) in the light scheme, also on a page that declares a dark
+       one (a dark scheme's link colour was 2.4:1 on it) */
+    color-scheme: light;
     box-shadow:
             0 24px 64px -18px rgb(15 23 42 / 38%),
             0 8px 24px -12px rgb(15 23 42 / 24%);
@@ -188,15 +191,17 @@
     margin: auto;
     padding: 1em;
     box-sizing: border-box;
-    box-shadow: 0 24px 64px -18px rgba(15, 23, 42, 0.38),
-                0 8px 24px -12px rgba(15, 23, 42, 0.24);
+    /* never larger than the window, as the browser's own modal dialog (a width of 48rem on a phone put its actions
+       off the screen); auto-size keeps its own, smaller caps */
+    max-width: calc(100vw - 2em - 6px);
+    max-height: calc(100vh - 2em - 6px);
     transition: opacity 220ms ease,
                 transform 220ms ease;
 }
 
+/* its own opening transition: the box's (.aui-modal.is-open) adds display and overlay, which a box that is no dialog
+   has not (its shadow, look and open pose are the box's own) */
 .aui-modal--fallback.is-open {
-    opacity: 1;
-    transform: translateY(0) scale(1);
     transition: opacity 240ms cubic-bezier(0.2, 0, 0, 1),
                 transform 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }

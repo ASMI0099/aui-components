@@ -20,7 +20,8 @@ Several dialogs can be open; Escape closes the top one where that one allows it 
 
 The parts are given as `<header>`, `<content>` and `<footer>`. Without a `<footer>` the dialog shows a Close
 button, and a Confirm button with `show-confirm-button="true"`; with a `<footer>` only its own content shows (the
-default buttons are not built). Where the dialog is too narrow for its actions they wrap to a second line. Inside the dialog, `aui-modal-close` on any element
+default buttons are not built). Where the dialog is too narrow for its actions they wrap to a second line. The header
+and the footer take the height their content needs; the body between them scrolls. Inside the dialog, `aui-modal-close` on any element
 closes it (`aui-modal-close="vm.cancel()"` evaluates the expression too).
 
 | Attribute | |
@@ -32,22 +33,28 @@ closes it (`aui-modal-close="vm.cancel()"` evaluates the expression too).
 | `show-header`, `show-footer` | `"false"` hides the part. |
 | `show-confirm-button` | `"true"` adds the Confirm button to the default footer. |
 | `confirm-text`, `confirm-loading-text` | The Confirm button's text, and its text while `on-confirm`'s promise runs. |
-| `on-confirm` | Called by Confirm. Return `false` to stay open, or a promise: the button shows its loading state, and the dialog closes when the promise resolves to anything but `false`. |
+| `on-confirm` | Called by Confirm. Return `false` to stay open, or a promise (also one made in another window, such as an editor in a frame): the button shows its loading state, and the dialog closes when the promise resolves to anything but `false`. |
 | `on-close` | Called when the dialog closes. |
 | `close-on-esc` | `"true"`: Escape closes it. Off by default (a form is not lost to a stray key); `AuiModal.open` closes on Escape unless `closeOnEsc: false`. |
 | `initial-focus` | A selector inside the dialog for the element that takes the focus on open. |
 | `content-layout` | `fill`: the content without padding and outer scrolling (a full-size editor, a chart). |
 | `border-radius` | The corners, in px. |
-| `display-on-top` | `"true"` with `size="medium"`: the dialog sits higher on the page. |
+| `display-on-top` | `"true"` with `size="medium"`: the dialog sits higher on the page - less high where its height needs the room, so it never leaves the window. |
 | `background-opacity` | `OPAQUE_LIKE`: a translucent, blurred dialog; otherwise opaque. |
 | `defer-render` | `"true"`: the body is built right after the dialog's first frame, so a large body opens without a pause. |
-| `on-rendered` | Called once per opening, after the body was built. |
+| `on-rendered` | Called once per opening, after the body was built. Opened again while it still fades out, the dialog turns back with the body it has: no new call then. |
 | `aria-label`, `aria-labelledby` | The dialog's accessible name ("Dialog" by default): with a title in the header, give `aria-labelledby` its id, so that the dialog is announced by its title. |
+| `aria-describedby` | The id of the element that describes the dialog (read with its name), set on the dialog itself. |
+
+Escape is the page's key: pressed inside a frame (`<iframe>`) in the dialog it belongs to the frame's document and
+does not close the dialog; the frame's page can close it (`AuiModal.close()`, its own Close button).
 
 ## AuiModal
 
 `AuiModal.open(options)` opens a dialog from code and returns a promise that resolves once it has closed, with
-`{reason, value}`: `reason` is `confirm`, `cancel` or `close`. Dialogs opened while one is shown wait their turn.
+`{reason, value}`: `reason` is `confirm`, `cancel` or `close`, or the reason given to `dismiss(reason, value)`.
+Dialogs opened while one is shown wait their turn. If the page removes the dialogs' host (its application ends), the
+dialog shown settles (`close`) and the others wait for a host.
 
 ```js
 AuiModal.open({
@@ -69,8 +76,8 @@ AuiModal.open({
 | `showCancel`, `cancelText` | The cancel button (shown by default; "Close"). |
 | `showConfirm`, `confirmText` | The confirm button (hidden by default; "OK"). |
 | `onConfirm` | Called by the confirm button: `false` keeps the dialog open; a promise keeps it open until it settles. |
-| `onCancel`, `onClose` | Called on cancel, and after the dialog closed (with `{reason, value}`). |
-| `size`, `width`, `height`, `autoSize`, `contentLayout`, `contentClass`, `initialFocus`, `borderRadius`, `showHeader`, `showFooter`, `closeOnEsc`, `displayOnTop`, `backgroundOpacity`, `ariaLabel` | As the attributes of `aui-modal`. |
+| `onCancel`, `onClose` | `onCancel`: called by the cancel button and `controls.cancel()` (its return value is the result's value); `dismiss('cancel')` closes without it. `onClose`: after the dialog closed (with `{reason, value}`). An error thrown by these, by `render` or by its cleanup goes to the application's `$exceptionHandler`. |
+| `size`, `width`, `height`, `autoSize`, `contentLayout`, `contentClass`, `initialFocus`, `borderRadius`, `showHeader`, `showFooter`, `closeOnEsc`, `displayOnTop`, `backgroundOpacity`, `ariaLabel` | As the attributes of `aui-modal`. With a `title` shown, the dialog is named by its title; `ariaLabel` names a dialog without one (`showHeader: false`, no title). |
 
 The returned promise also has `close(value)` and `dismiss(reason, value)`; `AuiModal.close(reason, value)` closes the
 dialog shown.
@@ -78,11 +85,15 @@ dialog shown.
 ## Older browsers
 
 Where the browser has no `<dialog>` (Safari before 15.4, Firefox before 98), the dialog is a fixed box over a dimmed
-overlay, moved under `<body>`. Tab and Shift+Tab stay inside it, the page scrolls no more, and the page behind it is
-hidden from screen readers (`aria-hidden`, put back on close). Two limits of that path: the overlays sit at z-index
-2000 and up (20 per dialog), so a page's own fixed element stacked higher stays above them; and design tokens set on a
-container around `<aui-modal>` do not reach the moved box (`--aui-modal-backdrop-color` is taken along): set them
-on `:root` there.
+overlay, moved under `<body>`, never larger than the window. Tab and Shift+Tab stay inside it (in the browser's order:
+a disabled fieldset, hidden and inert controls skipped, a radio group by its checked button, positive `tabindex`
+first), the page scrolls no more, and the page behind it is hidden from screen readers (`aria-hidden`) and inert where
+the browser knows `inert`. Parts the page adds to the body meanwhile are hidden too, and a value of `aria-hidden` the
+page sets meanwhile is the one it finds on close. Toasts shown over it go into it and can take the focus. Two limits of
+that path: where the browser has no `inert`, a page's own fixed element stacked above z-index 2000 (20 per dialog)
+stays clickable above it; and design tokens set on a container around `<aui-modal>` do not reach the moved box
+(`--aui-modal-backdrop-color` is taken along): set them on `:root` there.
 
-The services are mounted once in the page's body when the module starts. For code outside AngularJS they are also on
-`window` (`window.AuiModal`, `window.AuiMessage`, `window.AuiMessageBox`).
+The services' hosts are mounted in the page's body when the module starts - one set per AngularJS application (a page
+with several gets one each, removed when that application ends). For code outside AngularJS the services are also on
+`window` (`window.AuiModal`, `window.AuiMessage`, `window.AuiMessageBox`): those of the application started last.

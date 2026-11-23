@@ -11,8 +11,8 @@ angular.module('aui')
      * Omit these options to retain the standard modal presentation and focus behavior.
      * The returned promise resolves after close and exposes close()/dismiss().
      */
-    .factory('AuiModal', ['$rootScope', '$timeout', '$q', 'auiTexts',
-        function ($rootScope, $timeout, $q, texts) {
+    .factory('AuiModal', ['$rootScope', '$timeout', '$q', '$exceptionHandler', 'auiTexts',
+        function ($rootScope, $timeout, $q, $exceptionHandler, texts) {
             const state = {current: null, queue: []};
             let sequence = 0;
             let advancingQueue = false;
@@ -49,6 +49,14 @@ angular.module('aui')
 
             function asFunction(value) {
                 return typeof value === 'function' ? value : null;
+            }
+
+            // the page's own function failed (on-cancel, on-close, render, its cleanup): told to the application's
+            // $exceptionHandler (its error reporting); the dialog goes on as it would have
+            function report(error) {
+                try {
+                    $exceptionHandler(error);
+                } catch (e) { /* a handler that throws itself: nothing more to tell */ }
             }
 
             function buildItem(input) {
@@ -172,6 +180,7 @@ angular.module('aui')
                         result = item._onCancel();
                     } catch (error) {
                         result = undefined;
+                        report(error);
                     }
                 }
                 dismissItem(item, 'cancel', result);
@@ -195,6 +204,7 @@ angular.module('aui')
                     try {
                         onClose(resolution);
                     } catch (error) {
+                        report(error);
                     }
                 }
             }
@@ -228,6 +238,18 @@ angular.module('aui')
                 resolveItem(item);
             }
 
+            /*
+             * The host went (its application, or a page that removed it): the dialog it showed cannot close itself any
+             * more - it is closed now (its promise settles with the reason it had, else close; on-close runs), and the
+             * dialogs after it wait for a host (one mounted again shows them).
+             */
+            function hostGone() {
+                const item = state.current;
+                if (!item || item._resolved) return;
+                item.isOpen = false;
+                onAfterClose(item);
+            }
+
             return {
                 state: state,
                 open: open,
@@ -236,7 +258,9 @@ angular.module('aui')
                 _confirmCurrent: confirmCurrent,
                 _cancelCurrent: cancelCurrent,
                 _onRendered: onRendered,
-                _onAfterClose: onAfterClose
+                _onAfterClose: onAfterClose,
+                _hostGone: hostGone,
+                _report: report
             };
         }])
 
@@ -246,15 +270,25 @@ angular.module('aui')
             link: function (scope, element, attrs) {
                 const readItem = $parse(attrs.auiModalContentRenderer);
                 let disposeContent = null;
+                let rendered = false;   // the content is render()'s (page code built it: Angular data may hang on it)
 
+                /*
+                 * The content goes: render()'s through jqLite / jQuery, so that what Angular keeps on its elements (data,
+                 * scopes, $destroy listeners) goes with them - removed plainly while the dialog closed in its opening
+                 * turn, it stayed in Angular's cache for good. A node the page handed over (content) is the page's: only
+                 * taken out.
+                 */
                 function clearContent() {
                     if (disposeContent) {
                         try {
                             disposeContent();
                         } catch (error) {
+                            AuiModal._report(error);
                         }
                         disposeContent = null;
                     }
+                    if (rendered) angular.element(element[0]).empty();
+                    rendered = false;
                     while (element[0].firstChild) {
                         element[0].removeChild(element[0].firstChild);
                     }
@@ -284,10 +318,13 @@ angular.module('aui')
                                 });
                             }
                         };
+                        rendered = true;
                         try {
                             const result = item.render(element[0], controls);
                             disposeContent = typeof result === 'function' ? result : null;
                         } catch (error) {
+                            AuiModal._report(error);
+                            angular.element(element[0]).empty();
                             element[0].textContent = texts.modal.contentFailed;
                         }
                         return;
@@ -317,6 +354,7 @@ angular.module('aui')
             $ctrl.handleCancel = function (item) { AuiModal._cancelCurrent(item); };
             $ctrl.handleClose = function (item) { item._promise.close(); };
             $ctrl.handleAfterClose = function (item) { AuiModal._onAfterClose(item); };
+            $ctrl.$onDestroy = function () { AuiModal._hostGone(); };
         }],
         template: `
             <aui-modal ng-repeat="item in ($ctrl.svc.state.current ? [$ctrl.svc.state.current] : []) track by item.id"

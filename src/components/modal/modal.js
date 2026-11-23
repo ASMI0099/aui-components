@@ -52,29 +52,76 @@ angular.module('aui')
         }
 
         /**
-         * The fallback's page behind it, for screen readers: a native modal dialog makes everything outside it inert;
-         * the fallback's box is only drawn over the page, so while one is open the body's other children are hidden
-         * from assistive technology (aria-hidden; the toasts' host stays readable: its notices show over the modals).
-         * Whatever aria-hidden the page had there is put back when the last fallback closes.
+         * The fallback's page behind it: a native modal dialog makes everything outside it inert; the fallback's box is
+         * only drawn over the page, so while one is open the body's other children are hidden from assistive
+         * technology (aria-hidden) and made inert where the browser knows inert (no pointer, no focus: a page control
+         * raised above the overlay took clicks). The toasts' host stays: its notices show over the modals.
+         * The page goes on meanwhile, and the fallback follows it: a child added to the body while it is open is hidden
+         * as well, and a value of aria-hidden the page sets on a hidden one (a panel shown or folded) is kept to be
+         * given back - the page's latest, not the one it had when the fallback opened - while the child stays hidden.
          */
         const hiddenBehind = [];
+        let behindObserver = null;
+        const canInert = typeof HTMLElement !== 'undefined' && 'inert' in HTMLElement.prototype;
+
+        function topOverlayEl() {
+            for (let i = stackArr.length - 1; i >= 0; i -= 1) {
+                if (stackArr[i].overlayEl) return stackArr[i].overlayEl;
+            }
+            return null;
+        }
+
+        function hideOne(el, topOverlay) {
+            if (el.nodeType !== 1 || el === topOverlay || /^(SCRIPT|STYLE|LINK|AUI-MESSAGE-HOST)$/.test(el.tagName)) return;
+            for (let i = 0; i < hiddenBehind.length; i += 1) {
+                if (hiddenBehind[i].el === el) return;
+            }
+            hiddenBehind.push({el: el, value: el.getAttribute('aria-hidden'), inert: canInert && !el.hasAttribute('inert')});
+            el.setAttribute('aria-hidden', 'true');
+            if (canInert && !el.hasAttribute('inert')) el.setAttribute('inert', '');
+            if (behindObserver) behindObserver.observe(el, {attributes: true, attributeFilter: ['aria-hidden']});
+        }
 
         function hideBehind() {
-            let topOverlay = null;
-            for (let i = stackArr.length - 1; i >= 0 && !topOverlay; i -= 1) topOverlay = stackArr[i].overlayEl || null;
+            const topOverlay = topOverlayEl();
             showBehind();
             if (!topOverlay || !document.body) return;
-            Array.prototype.forEach.call(document.body.children, function (el) {
-                if (el === topOverlay || /^(SCRIPT|STYLE|LINK|AUI-MESSAGE-HOST)$/.test(el.tagName)) return;
-                hiddenBehind.push({el: el, value: el.getAttribute('aria-hidden')});
-                el.setAttribute('aria-hidden', 'true');
-            });
+            if (typeof MutationObserver === 'function') {
+                behindObserver = new MutationObserver(function (records) {
+                    const top = topOverlayEl();
+                    records.forEach(function (record) {
+                        if (record.type === 'childList') {
+                            Array.prototype.forEach.call(record.addedNodes, function (node) {
+                                if (node.parentNode === document.body) hideOne(node, top);
+                            });
+                            return;
+                        }
+                        // the page's own aria-hidden: kept to give back; the child stays hidden while the fallback is open
+                        for (let i = 0; i < hiddenBehind.length; i += 1) {
+                            const hidden = hiddenBehind[i];
+                            if (hidden.el !== record.target) continue;
+                            hidden.value = hidden.el.getAttribute('aria-hidden');
+                            if (hidden.value !== 'true') hidden.el.setAttribute('aria-hidden', 'true');
+                        }
+                    });
+                    // this callback's own writes are not the page's
+                    behindObserver.takeRecords();
+                });
+                behindObserver.observe(document.body, {childList: true});
+            }
+            Array.prototype.forEach.call(document.body.children, function (el) { hideOne(el, topOverlay); });
+            if (behindObserver) behindObserver.takeRecords();
         }
 
         function showBehind() {
+            if (behindObserver) {
+                behindObserver.disconnect();
+                behindObserver = null;
+            }
             hiddenBehind.splice(0).forEach(function (hidden) {
                 if (hidden.value === null) hidden.el.removeAttribute('aria-hidden');
                 else hidden.el.setAttribute('aria-hidden', hidden.value);
+                if (hidden.inert) hidden.el.removeAttribute('inert');
             });
         }
 
@@ -146,6 +193,18 @@ angular.module('aui')
                     }
                 });
             },
+            /**
+             * topOverlay(leaving): the topmost open fallback's overlay, or null. Its focus is kept inside it, so the
+             * toasts' host goes into it (after the box): Tab reaches the notices shown over the box, as in a native
+             * dialog, where the host goes inside the dialog.
+             */
+            topOverlay: function (leaving) {
+                for (let i = stackArr.length - 1; i >= 0; i -= 1) {
+                    const el = stackArr[i].overlayEl;
+                    if (el && el !== leaving && el.parentNode) return el;
+                }
+                return null;
+            },
             topDialog: function (leaving) {
                 for (let i = stackArr.length - 1; i >= 0; i -= 1) {
                     const el = stackArr[i].modalEl;
@@ -171,12 +230,47 @@ angular.module('aui')
             return null;
         }
 
-        // the controls Tab reaches in a box, in order (shown, not taken out of the tab order)
-        function tabStops(root) {
-            return Array.prototype.filter.call(root.querySelectorAll(FOCUSABLE_SELECTOR), function (el) {
-                return el.offsetParent !== null && el.tabIndex >= 0;
-            });
+        /*
+         * The controls Tab reaches in a box, in the order the browser takes them: not disabled (also through a
+         * disabled fieldset), not inert, drawn and visible, not taken out of the tab order; of a group of radio
+         * buttons, the checked one; the ones with a positive tabindex first (in its order), then the others. The
+         * fallback goes round between the first and the last of them: a control the browser skips (one in a disabled
+         * fieldset, a hidden one) taken as the first or the last held the focus in place, or let it out of the box.
+         */
+        function tabbable(el) {
+            if (el.tabIndex < 0 || el.disabled) return false;
+            try {
+                if (el.matches(':disabled')) return false;
+            } catch (e) { /* no :disabled (a very old browser): its own disabled was read */ }
+            if (el.closest && el.closest('[inert]')) return false;
+            if (el.getClientRects().length === 0) return false;
+            return window.getComputedStyle(el).visibility === 'visible';
         }
+
+        function tabStops(root) {
+            const all = Array.prototype.filter.call(root.querySelectorAll(FOCUSABLE_SELECTOR), tabbable);
+            const groups = {};
+            const stops = all.filter(function (el) {
+                if (el.type !== 'radio' || !el.name) return true;
+                const key = (el.form ? 'f' : 'd') + ':' + el.name;
+                const group = groups[key] || (groups[key] = all.filter(function (other) {
+                    return other.type === 'radio' && other.name === el.name && other.form === el.form;
+                }));
+                const checked = group.filter(function (other) { return other.checked; })[0];
+                return checked ? el === checked : true;
+            });
+            const raised = stops.filter(function (el) { return el.tabIndex > 0; })
+                .sort(function (a, b) { return a.tabIndex - b.tabIndex; });
+            return raised.concat(stops.filter(function (el) { return el.tabIndex === 0; }));
+        }
+
+        // inside the top fallback, or in the toasts' host (its notices are above the box and can take the focus)
+        function focusAllowed(top, el) {
+            if (top.overlayEl.contains(el)) return true;
+            return !!(el && el.closest && el.closest('.aui-message-host, aui-message-host'));
+        }
+
+        let lastTabBack = false;   // the last Tab went backwards (Shift+Tab)
 
         let focusinHandler = null;
         let tabHandler = null;
@@ -190,10 +284,14 @@ angular.module('aui')
             if ((event.key !== 'Tab' && event.keyCode !== 9) || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
             const top = stack.top();
             if (!top || !top.overlayEl) return;
+            lastTabBack = !!event.shiftKey;
             const box = top.modalEl;
-            const stops = tabStops(box);
             const active = document.activeElement;
-            const inside = box.contains(active);
+            // in a toast over the box: the browser moves on from there (out of it, the focus comes back: focusin)
+            if (!top.overlayEl.contains(active) && focusAllowed(top, active)) return;
+            // the box's controls, and those of the toasts' host placed in its overlay after it
+            const stops = tabStops(top.overlayEl);
+            const inside = top.overlayEl.contains(active);
             let target = null;
             if (!stops.length) target = box;
             else if (event.shiftKey && (!inside || active === box || active === stops[0])) target = stops[stops.length - 1];
@@ -219,11 +317,14 @@ angular.module('aui')
                 } catch (e) {
                 }
                 if (!focusinHandler) {
+                    // a focus that got out of the box some other way comes back to it: to its last control after a
+                    // Shift+Tab, else to its first
                     focusinHandler = function (event) {
                         const top = stack.top();
                         if (!top || !top.overlayEl) return;
-                        if (top.overlayEl.contains(event.target)) return;
-                        const redirect = firstFocusable(top.modalEl) || top.modalEl;
+                        if (focusAllowed(top, event.target)) return;
+                        const stops = tabStops(top.modalEl);
+                        const redirect = (lastTabBack ? stops[stops.length - 1] : stops[0]) || top.modalEl;
                         try {
                             redirect.focus();
                         } catch (err) {
@@ -380,7 +481,8 @@ angular.module('aui')
             onRendered: '&?',            // once per opening, the body built: page code that sets it up (see _onFirstFrame)
             backgroundOpacity: '@?',     // "OPAQUE_LIKE": a translucent, blurred box; otherwise ("FULL") opaque
             ariaLabel: '@?',
-            ariaLabelledby: '@?'
+            ariaLabelledby: '@?',
+            ariaDescribedby: '@?'        // the dialog's description (the element read with its name), on the dialog itself
         },
         transclude: {
             header: '?header', content: '?content', footer: '?footer'
@@ -713,6 +815,7 @@ angular.module('aui')
                         return;
                     }
                     if (fbOverlayEl) {
+                        if (fbOverlayEl.parentNode) auiModalRegistry.layer.changed(fbOverlayEl);
                         fbOverlayEl.classList.remove('is-open');
                         fbOverlayEl.style.zIndex = '';
                         if (fbOverlayEl.parentNode) fbOverlayEl.parentNode.removeChild(fbOverlayEl);
@@ -786,7 +889,8 @@ angular.module('aui')
                     const result = $ctrl.onConfirm();
                     if (result === false) return;
 
-                    if (result && result.then instanceof Function) {
+                    // a promise (also one made in another window, an editor in a frame: its Function is that window's)
+                    if (result && typeof result.then === 'function') {
                         // the answer of this opening's confirm: one that comes after the modal was closed and opened
                         // again belongs to the opening before, and neither closes this one nor ends its loading. Through
                         // $q: a promise of the browser's own (an async function, fetch) settles outside AngularJS's
@@ -921,6 +1025,11 @@ angular.module('aui')
                     $ctrl.effectiveHeight = height || preset.height;
                     $ctrl.presetWidth = !width;
                     $ctrl.presetHeight = !height;
+                    // display-on-top: 16vh higher than centred (a native dialog: its bottom inset; the fallback: its
+                    // top), but never so far that the box leaves the window - a tall one (98vh) lost its heading above
+                    // the window, or its footer below it. The room left by its height, else the box's auto-size cap.
+                    const tall = $ctrl.autoSize ? '88vh' : $ctrl.effectiveHeight;
+                    $ctrl.topOffset = 'max(0px, min(16vh, calc(100vh - (' + tall + ') - 2em - 6px)))';
                 }
 
                 function _lengthOf(value, unit) {
@@ -1026,13 +1135,13 @@ angular.module('aui')
             // wrap to a second line where the box is too narrow for one. The Confirm button shows confirm-loading-text
             // while on-confirm's promise runs (the button's own loading-text: a label is hidden while it loads).
             const FOOTER = 'class="aui-modal__footer" style="display: flex;flex-direction: row;flex-wrap: wrap;align-items: center;' +
-                'justify-content: center;max-height: 100px;padding-bottom: 5px;gap: 10px;"';
+                'justify-content: center;padding-bottom: 5px;gap: 10px;"';
             // the body's place while defer-render waits for the first frame: aui-modal__content--pending
             const INNER = `
                         <div class="aui-modal__container" aui-modal-mount="$ctrl.contentMounted"
                              style="width: 100%;height: 100%;display: flex;flex-direction: column;">
                             <div class="aui-modal__header" ng-if="$ctrl.showHeader" ng-transclude="header"
-                                 style="display: flex;flex-direction: row;align-items: center;padding-bottom: 12px;max-height: 80px;"></div>
+                                 style="display: flex;flex-direction: row;align-items: center;padding-bottom: 12px;"></div>
                             <div class="aui-modal__content" aui-modal-mount="$ctrl.bodyMounted" ng-transclude="content"
                                  style="display: flex;flex-direction: row;flex: 1;overflow-y: auto;"></div>
                             <div class="aui-modal__content aui-modal__content--pending" aui-modal-mount="!$ctrl.bodyMounted" aria-busy="true"
@@ -1055,6 +1164,7 @@ angular.module('aui')
                             role="dialog" aria-modal="true"
                             ng-attr-aria-label="{{$ctrl.ariaLabel || (!$ctrl.ariaLabelledby ? $ctrl.t.dialog : undefined)}}"
                             ng-attr-aria-labelledby="{{$ctrl.ariaLabelledby || undefined}}"
+                            ng-attr-aria-describedby="{{$ctrl.ariaDescribedby || undefined}}"
                             ng-class="{
                                 'aui-modal--full-screen': $ctrl.size === 'fullScreen',
                                 'aui-modal--auto':        $ctrl.autoSize,
@@ -1067,7 +1177,7 @@ angular.module('aui')
                                 'width': $ctrl.effectiveWidth,
                                 'height': $ctrl.effectiveHeight,
                                 'border-radius': $ctrl.effectiveBorderRadius,
-                                'bottom': $ctrl.shouldDisplayOnTop ? '16vh' : undefined,
+                                'bottom': $ctrl.shouldDisplayOnTop ? $ctrl.topOffset : undefined,
                                 'background-color': $ctrl.background['background-color'],
                                 'backdrop-filter': $ctrl.background['backdrop-filter'],
                                 '-webkit-backdrop-filter': $ctrl.background['-webkit-backdrop-filter']
@@ -1080,6 +1190,7 @@ angular.module('aui')
                          role="dialog" aria-modal="true"
                          ng-attr-aria-label="{{$ctrl.ariaLabel || (!$ctrl.ariaLabelledby ? $ctrl.t.dialog : undefined)}}"
                          ng-attr-aria-labelledby="{{$ctrl.ariaLabelledby || undefined}}"
+                         ng-attr-aria-describedby="{{$ctrl.ariaDescribedby || undefined}}"
                          ng-class="{
                              'aui-modal--full-screen': $ctrl.size === 'fullScreen',
                              'aui-modal--display-top': $ctrl.shouldDisplayOnTop,
@@ -1092,6 +1203,7 @@ angular.module('aui')
                          ng-style="{
                              'width': $ctrl.effectiveWidth,
                              'height': $ctrl.effectiveHeight,
+                             'top': $ctrl.shouldDisplayOnTop ? $ctrl.topOffset : undefined,
                              'border-radius': $ctrl.effectiveBorderRadius,
                              'background-color': $ctrl.background['background-color'],
                              'backdrop-filter': $ctrl.background['backdrop-filter'],

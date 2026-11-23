@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: aui-modal and AuiModal, round checks</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="round.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="round.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="ModalRoundCtrl">
+<h1>aui-modal and AuiModal: saves from another window, a removed host, errors, slots, description, on-top</h1>
+<button type="button" id="outside">Outside</button>
+<iframe id="editor-frame" title="Editor" style="width: 10px; height: 10px; border: 0"></iframe>
+
+<aui-modal id="m-frame" is-open="open.frame" size="small" show-confirm-button="true" on-confirm="saveInFrame()">
+    <content><div style="padding: 8px;">A save from an editor in a frame</div></content>
+</aui-modal>
+
+<aui-modal id="m-slots" is-open="open.slots" size="small" show-confirm-button="false">
+    <header>
+        <div id="slot-header" style="display: block">
+            <div>Invoices of the week</div>
+            <h2 style="margin: 0">Approve the payment of thirty-six open invoices for the period</h2>
+            <p style="margin: 0">Each approved invoice is paid with the next run; the ones on hold stay for review.</p>
+        </div>
+    </header>
+    <content><div style="padding: 8px; height: 600px;">Body</div></content>
+    <footer>
+        <div id="slot-footer" style="display: block">
+            <p style="margin: 0">Payments go out with the next run at the end of the day.</p>
+            <p style="margin: 0">Invoices on hold need a reviewer's note before they can be approved.</p>
+            <p style="margin: 0">The settlement report lists every payment made in the run.</p>
+            <button type="button" id="slot-approve">Approve</button>
+        </div>
+    </footer>
+</aui-modal>
+
+<aui-modal id="m-desc" is-open="open.desc" size="small" aria-describedby="terms">
+    <content><div style="padding: 8px;"><p id="terms">Approval debits the invoice balance.</p></div></content>
+</aui-modal>
+
+<aui-modal id="m-top" is-open="open.top" size="medium" height="98vh" display-on-top="true">
+    <content><div style="padding: 8px;">Tall, on top</div></content>
+</aui-modal>
+</body>
+</html>

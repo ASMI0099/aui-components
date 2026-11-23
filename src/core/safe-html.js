@@ -28,6 +28,14 @@ angular.module('aui')
             source: true, video: true, audio: true, track: true, canvas: true, portal: true, head: true
         };
         const ATTRIBUTES = {class: true, title: true, colspan: true, rowspan: true};
+        // kept when their value has its own form only: a header cell's scope (a table read cell by cell), a part's
+        // language and direction, where an ordered list starts (the steps of a checklist continued)
+        const CHECKED = {
+            scope: /^(row|col|rowgroup|colgroup)$/i,
+            lang: /^[a-z]{1,8}(-[a-z0-9]{1,8})*$/i,
+            dir: /^(ltr|rtl|auto)$/i
+        };
+        const START = /^-?\d{1,9}$/;
         const STYLES = ['color', 'background-color', 'font-weight', 'font-style', 'text-decoration', 'text-align'];
         const SCHEMES = {'http:': true, 'https:': true, 'mailto:': true, 'tel:': true};
         const MAX_DEPTH = 32;
@@ -37,7 +45,9 @@ angular.module('aui')
             const text = String(value || '').trim();
             if (!text) return null;
             try {
-                const url = new URL(text, window.location.href);
+                // a relative address goes where the page's own links go: from the document's base (a <base href> of the
+                // application), not from the window's location
+                const url = new URL(text, document.baseURI || window.location.href);
                 return SCHEMES[url.protocol] ? url.href : null;
             } catch (e) {
                 return null;
@@ -58,6 +68,10 @@ angular.module('aui')
                 const name = attribute.name.toLowerCase();
                 if (ATTRIBUTES[name]) {
                     to.setAttribute(name, attribute.value);
+                } else if (CHECKED[name]) {
+                    if (CHECKED[name].test(attribute.value.trim())) to.setAttribute(name, attribute.value.trim());
+                } else if (tag === 'ol' && name === 'start') {
+                    if (START.test(attribute.value.trim())) to.setAttribute('start', attribute.value.trim());
                 } else if (name === 'style') {
                     const css = cleanStyle(from.style);
                     if (css) to.setAttribute('style', css);
