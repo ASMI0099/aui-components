@@ -11,7 +11,7 @@ usually does all of it. The shared engine is the `auiRemoteData` service ([src/c
 | `load-options` | function `fn($request)` | yes | yes | Loads the options. Tree: the whole tree (nested or flat) |
 | `page-size` | number | yes | – | Paged loading: the next page loads near the end of the list; search goes to the server |
 | `load-params` | object | yes | yes | What the data depends on, e.g. `{storeId: vm.form.storeId}`. Compared by value; a change means another data set |
-| `load-enabled` | boolean | yes | yes | `false`: nothing is loaded yet (e.g. no store chosen yet). Default `true` |
+| `load-enabled` | boolean | yes | yes | `false`: nothing is loaded yet (e.g. no store chosen yet). A dedicated `lookup-options` still looks up the shown value's label (a saved record shows its name). Default `true` |
 | `load-disabled-text` | text | yes | yes | While `load-enabled` is false, the panel shows this instead of the list ("No results found"), with an info icon and no search box, e.g. `load-disabled-text="Choose a store first"`. Several reasons: `{{ !vm.form.storeId ? 'Choose a store first' : 'Choose a type first' }}`. Not set: the empty text |
 | `preload` | boolean | yes | yes | Load as soon as `load-enabled` is true, not on the first open |
 | `cache-ttl` | ms | yes | yes | A loaded list is reused this long; after that it shows at once and refreshes in the background. Default 60000 |
@@ -109,4 +109,7 @@ vm.loadDepartments = function (req) {
 * Lookups: values that change in one digest go out together (chunks of `page-size`, or 100); a value is asked once
   per round. "Not found" is asked again only at the next open, when the value comes back, or when the params change.
   A lookup that has to wait (loading not enabled yet) shows the raw value; while it runs, a placeholder.
+* A label already found stays when `load-params` change, until the new data has the value (or `reset-on-params`
+  clears it): a saved record keeps showing its name while the field's dependency changes. A lookup still running when
+  the params change is asked again with the new ones; its late answer for the old ones is dropped.
 * Selected values not among the loaded rows are pinned on top of a remote list (no search typed).

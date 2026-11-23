@@ -76,7 +76,7 @@ angular.module('aui')
                        ng-style="$ctrl.wrapperStyle">
                         <!--aui-part:basic-->
                         <div class="aui-input-container" aui-if="$ctrl.inputStyleType === 'basic' " ng-form aui-input-box-form
-                             ng-class="{'aui-input-container--invalid': $ctrl.showInvalid()}">
+                             ng-class="{'aui-input-container--invalid': $ctrl.showInvalid(), 'aui-input-container--captioned': $ctrl.opt.showLabel && $ctrl.labelText && !$ctrl.placeholder}">
                             <span class="aui-input__affix aui-input__affix--prefix"
                                   aui-if="$ctrl.prefixIcon || $ctrl.prefixText || $ctrl.isSearch()"
                                   ng-mousedown="$ctrl.focusBox($event)"><span aui-if="$ctrl.isSearching()" class="aui-select__spinner aui-input__search-spinner" aria-hidden="true"></span><svg aui-if="$ctrl.isSearch() && !$ctrl.isSearching() && !$ctrl.prefixIcon" class="aui-input__search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><i aui-if="$ctrl.prefixIcon && !$ctrl.isSearching()" class="aui-input__affix-icon {{ $ctrl.prefixIcon }}" aria-hidden="true"></i><span aui-if="$ctrl.prefixText" class="aui-input__affix-text" id="{{::'prefix-' + $ctrl.compId}}">{{ $ctrl.prefixText }}</span></span>
@@ -101,7 +101,7 @@ angular.module('aui')
 
                                   ng-attr-pattern="{{$ctrl.pattern || undefined}}"
                                   >
-                            <label for="{{::'input-' + $ctrl.compId}}" class="aui-input-label">{{$ctrl.placeholder}}</label>
+                            <label for="{{::'input-' + $ctrl.compId}}" class="aui-input-label">{{($ctrl.opt.showLabel && $ctrl.labelText) || $ctrl.placeholder}}</label>
                             <span class="aui-input-highlight"></span>
                             <span class="aui-control-clear"
                                   aui-if="$ctrl.opt.clearable"
@@ -303,6 +303,8 @@ angular.module('aui')
 
             const STYLES = ['basic', 'form', 'cell'];
 
+            let readSize = null;   // the size readOptions last applied (a change refits an auto-height textarea)
+
             /**
              * The options, read as aui-select and aui-tree-select read theirs (kit.readFlag): a bare attribute
              * (`<aui-input show-label readonly>`) is on; an expression or 'true'/'false' counts as given. Read again on
@@ -339,6 +341,15 @@ angular.module('aui')
                 syncTrim();
                 syncStaticBoxAttrs();
                 refreshRootClass();
+                // a new size is a new text size: an auto-height textarea fits its lines again - in the next frame, before it
+                // is drawn: its size class (rootClass, an interpolation) reaches the element in a digest after this one,
+                // and a fit now measured the old text size
+                const size = $ctrl.field.size();
+                if (size !== readSize) {
+                    const resized = readSize !== null;
+                    readSize = size;
+                    if (resized && $ctrl.isTextarea()) requestAnimationFrame(() => fitTextarea());
+                }
                 recheckPrecision();
                 queueTakeOver();   // a limit or check may have changed (the box checks again in this digest)
             }
@@ -600,13 +611,12 @@ angular.module('aui')
                 readOptions();   // (the style too: basic unless form or cell)
                 kit.followNgFlags($attrs, readOptions);
                 // the page's aria-label / aria-labelledby / aria-describedby on the field go on the box (see boxLabel)
+                // (written on the element at all, ng-attr-* too: one that starts out undefined is followed as well)
                 ['ariaLabel', 'ariaLabelledby', 'ariaDescribedby'].forEach(name => {
-                    if ($attrs[name] !== undefined) $attrs.$observe(name, syncStaticBoxAttrs);
+                    if ($attrs.$attr[name]) $attrs.$observe(name, syncStaticBoxAttrs);
                 });
-
-                if (!$ctrl.name) {
-                    $ctrl.name = $ctrl.compId;
-                }
+                // no name of the page's: the box has none either, so that it adds nothing to the form's data (as a native
+                // input without a name); the label finds the box by its id
 
 
                 if ($ctrl.ngModelCtrl) {
@@ -640,6 +650,8 @@ angular.module('aui')
             let reportedText = null;   // the text on-change last told the page of (or the page's value shown)
             let takenOver = {};        // the box errors the host carries now, by name
             const combined = {};       // the host validators combined with the box's result, by name
+            let committed = null;      // a deferred field: the box's text at the host's last commit (see committedState)
+            let boxTold = false;       // the box's commit under way passed its value on to the host (_onChange)
 
             /*
              * The mouse wheel over a focused number box steps its value in Chromium, and the page or the list around it
@@ -780,10 +792,37 @@ angular.module('aui')
                 };
             };
             let stopWidthWatch = null;
+            let stopFontWatch = null;
             let stopAutofocusWatch = null;
 
             const onTextareaResize = () => {
                 if ($ctrl.opt.autoHeight && boxEl && boxEl.clientWidth > 0 && boxEl.clientWidth !== fittedWidth) fitTextarea();
+            };
+
+            /*
+             * The text's font, watched for auto-height: a theme that changes it (--aui-font-scale on :root, a web font
+             * that arrives) wraps the text into other lines while the box keeps its width and its height, so no size
+             * of the box changes. A probe next to the textarea, unseen and out of the flow, is 1ch wide in the text's
+             * font and size: its width follows the font, and the textarea fits its text again then.
+             */
+            const watchTextFont = (element) => {
+                if (typeof ResizeObserver !== 'function' || !element.parentNode) return null;
+                const probe = document.createElement('span');
+                probe.className = 'aui-input__font-probe';
+                probe.setAttribute('aria-hidden', 'true');
+                element.parentNode.appendChild(probe);
+                let width = -1;
+                const stop = watchSize(probe, () => {
+                    const now = probe.getBoundingClientRect().width;
+                    if (now === width) return;
+                    const first = width < 0;   // the observer's first report: the font the textarea was fitted with
+                    width = now;
+                    if (!first && now > 0) fitTextarea();
+                });
+                return () => {
+                    if (stop) stop();
+                    if (probe.parentNode) probe.parentNode.removeChild(probe);
+                };
             };
 
             /*
@@ -792,9 +831,27 @@ angular.module('aui')
              */
             function autofocusOnceShown(element) {
                 autofocused = true;
-                const shown = () => element.getClientRects().length > 0;
+                const laidOut = () => element.getClientRects().length > 0;
+                // laid out and seen: a box under visibility: hidden has its place (and its size) but cannot take the focus
+                const shown = () => laidOut() && (typeof element.checkVisibility === 'function'
+                    ? element.checkVisibility({visibilityProperty: true})
+                    : window.getComputedStyle(element).visibility !== 'hidden');
                 const focus = () => {
                     if (boxEl === element && !$ctrl.opt.disabled) element.focus();
+                };
+                const stop = () => {
+                    if (stopAutofocusWatch) stopAutofocusWatch();
+                    stopAutofocusWatch = null;
+                };
+                // hidden while it keeps its size (visibility): its showing changes no size - looked at in the page's
+                // digests until then (one field, once)
+                const untilSeen = () => {
+                    stop();
+                    stopAutofocusWatch = $scope.$watch(shown, now => {
+                        if (!now) return;
+                        stop();
+                        focus();
+                    });
                 };
                 $timeout(() => {
                     if (boxEl !== element) return;
@@ -802,10 +859,17 @@ angular.module('aui')
                         focus();
                         return;
                     }
+                    if (laidOut()) {
+                        untilSeen();
+                        return;
+                    }
                     stopAutofocusWatch = watchSize(element, () => {
-                        if (!shown()) return;
-                        stopAutofocusWatch();
-                        stopAutofocusWatch = null;
+                        if (!laidOut()) return;
+                        if (!shown()) {
+                            untilSeen();
+                            return;
+                        }
+                        stop();
                         focus();
                     });
                 }, 0, false);
@@ -909,13 +973,25 @@ angular.module('aui')
             function markCommits(boxModel) {
                 const commit = boxModel.$commitViewValue;
                 boxModel.$commitViewValue = function () {
+                    const textBefore = this.$$lastCommittedViewValue;
                     committing = true;
+                    boxTold = false;
                     try {
                         return commit.apply(this, arguments);
                     } finally {
                         committing = false;
+                        // A typed text whose value is the one before it (a text the box's checks refuse after another,
+                        // or after an empty field: undefined both) changes no value, and Angular calls no ng-change.
+                        // A deferred field is still told: its debounce starts for it as for any other text, so that
+                        // the text commits (the field then dirty, its error shown) as Angular's own field's does.
+                        if (!boxTold && !clearing && this.$$lastCommittedViewValue !== textBefore) tellHostTyped();
                     }
                 };
+            }
+
+            function tellHostTyped() {
+                const host = $ctrl.ngModelCtrl;
+                if (host && isDeferred()) host.$setViewValue(toHostView($ctrl.internalValue));
             }
 
             $ctrl.attachBox = (boxModel, element, attrs) => {
@@ -942,11 +1018,28 @@ angular.module('aui')
                     element.addEventListener('input', onBoxTyped);
                     element.addEventListener('compositionend', onBoxTyped);
                     if (element.parentNode) element.parentNode.addEventListener('input', onBoxInput, true);
-                    if ($ctrl.isTextarea()) stopWidthWatch = watchSize(element, onTextareaResize);
+                    if ($ctrl.isTextarea()) {
+                        stopWidthWatch = watchSize(element, onTextareaResize);
+                        stopFontWatch = watchTextFont(element);
+                    }
                     if ($ctrl.opt.autofocus && !autofocused) autofocusOnceShown(element);
+                    resetForm = element.form || null;
+                    if (resetForm) resetForm.addEventListener('reset', onFormReset);
                 }
                 syncNativeLimit();
             };
+
+            /*
+             * The form's native reset (a reset button, form.reset()) puts the box back to its first text behind Angular's
+             * back: the model keeps its value, and the box, its count and its clear button would say another. The box
+             * shows its model again once the reset is done; a page resets a field through its model.
+             */
+            let resetForm = null;
+            function onFormReset() {
+                setTimeout(() => {
+                    if (box && boxEl) box.$render();
+                }, 0);
+            }
             $ctrl.detachBox = (boxModel) => {
                 if (box !== boxModel) return;
                 if (boxEl) {
@@ -958,15 +1051,20 @@ angular.module('aui')
                     boxEl.removeEventListener('compositionend', onBoxTyped);
                     if (boxEl.parentNode) boxEl.parentNode.removeEventListener('input', onBoxInput, true);
                 }
+                if (resetForm) resetForm.removeEventListener('reset', onFormReset);
+                resetForm = null;
                 if (stopWidthWatch) stopWidthWatch();
+                if (stopFontWatch) stopFontWatch();
                 if (stopAutofocusWatch) stopAutofocusWatch();
                 stopWidthWatch = null;
+                stopFontWatch = null;
                 stopAutofocusWatch = null;
                 fittedWidth = -1;
                 typedText = null;
                 box = null;
                 boxEl = null;
                 boxAttrs = null;
+                committed = null;   // the committed text was this box's
                 queueTakeOver();   // its results go with it
             };
 
@@ -974,34 +1072,168 @@ angular.module('aui')
                 const host = $ctrl.ngModelCtrl;
                 const own = host.$validators[name];
                 if (!own || combined[name] === own) return;
+                // the box's error of that name (of the committed text while a typed text waits: see boxRefuses)
                 const both = function (modelValue, viewValue) {
-                    return own(modelValue, viewValue) && !(box && box.$error[name]);
+                    return own(modelValue, viewValue) && !boxRefuses(name);
                 };
                 host.$validators[name] = both;
                 combined[name] = both;
             }
 
+            // ng-model-options updateOn (blur...) or a debounce: the field's value waits for its commit
+            function isDeferred() {
+                const options = $ctrl.ngModelCtrl && $ctrl.ngModelCtrl.$options;
+                return !!options && (options.updateOnDefault === false || !!options.debounce);
+            }
+
+            const isNaNValue = (value) => typeof value === 'number' && isNaN(value);   // ngModel's "not set yet"
+
+            /*
+             * A typed text the field has not committed yet: with ng-model-options updateOn (blur...) or a debounce, the
+             * field's value and validity stay the committed value's until the commit, as Angular's own field keeps them
+             * (a Save button bound to form.$invalid does not change while a text is still being typed). The box's text
+             * is compared too: a text the box's checks refuse has no value (undefined), as an empty field has, and it
+             * still waits for its commit.
+             */
+            function draftPending() {
+                const host = $ctrl.ngModelCtrl;
+                if (!isDeferred()) return false;
+                const view = host.$viewValue;
+                if (isNaNValue(view) || isNaNValue(host.$$lastCommittedViewValue)) return false;
+                if (view !== host.$$lastCommittedViewValue) return true;
+                return !!box && !isNaNValue(box.$viewValue) && box.$viewValue !== committedState().text;
+            }
+
+            /*
+             * The committed text of a deferred field, as the box had it at the host's last commit: its text (as typed,
+             * which a refused text keeps while its value is undefined), its value as parsed, and the errors it had.
+             * A value from the page (or rolled back) is its own text: the box shows it so.
+             */
+            function committedState() {
+                if (committed) return committed;
+                const value = toBoxValue($ctrl.ngModelCtrl.$$lastCommittedViewValue);
+                return {value: value, text: formatForBox(value), errors: {}};
+            }
+
+            // a value as the box shows it (its formatters, as Angular runs them on a model value)
+            function formatForBox(value) {
+                if (!box) return value;
+                let text = value;
+                try {
+                    for (let i = box.$formatters.length - 1; i >= 0; i--) text = box.$formatters[i](text);
+                } catch (e) {
+                    return value;
+                }
+                return text;
+            }
+
+            /*
+             * The committed text against the box's rules as they are now. While a typed text waits, a rule that changes
+             * (value-max-length, pattern, min/max, precision) checks the committed value, as Angular's $validate checks a
+             * field's: the field's validity (and its model, see followCommittedValidity) are the committed value's. A
+             * parse error the text had stays with it.
+             */
+            function committedErrors() {
+                const errors = {};
+                if (!box) return errors;
+                const state = committedState();
+                Object.keys(state.errors).forEach(name => {
+                    if (!box.$validators[name]) errors[name] = true;
+                });
+                Object.keys(box.$validators).forEach(name => {
+                    // precision: its check alone (boxCheck also marks the box's own text for the browser)
+                    const validator = name === 'precision' ? precisionValidator : box.$validators[name];
+                    let valid;
+                    try {
+                        valid = !!validator(state.value, state.text);
+                    } catch (e) {
+                        valid = !state.errors[name];
+                    }
+                    if (!valid) errors[name] = true;
+                });
+                return errors;
+            }
+
+            // the box's error of that name is the field's: the box's text's, or the committed text's while a typed text waits
+            function boxRefuses(name) {
+                if (draftPending()) return !!committedErrors()[name];
+                return !!(box && box.$error[name]);
+            }
+
+            // a text the box's checks refuse is a text: required is met (see $postLink)
+            function textRefused() {
+                if (draftPending()) {
+                    const state = committedState();
+                    const text = state.text;
+                    return Object.keys(committedErrors()).length > 0 && text !== undefined && text !== null && String(text).length > 0;
+                }
+                return !!box && box.$invalid && $ctrl.hasValue();
+            }
+
+            /*
+             * The committed value's validity changed while a typed text waits (a rule changed): the model follows it as
+             * Angular's $validate has it - undefined once invalid, the committed value again once valid; not when the
+             * validity stays (a page's invalid value is left as it is), nor with allowInvalid.
+             */
+            function followCommittedValidity(validBefore) {
+                const host = $ctrl.ngModelCtrl;
+                if (host.$valid === validBefore || typeof host.$valid !== 'boolean') return;
+                if (host.$options && host.$options.allowInvalid) return;
+                const value = host.$valid ? committedModel() : undefined;
+                if (value === host.$modelValue) return;
+                host.$modelValue = value;
+                host.$$writeModelToScope();
+            }
+
+            /*
+             * The committed value as the model has it once valid: Angular's $$rawModelValue. A text refused at its
+             * commit gave the host no value (undefined): its parsed value from the box is taken through the host's
+             * parsers then, as its commit would have taken it.
+             */
+            function committedModel() {
+                const host = $ctrl.ngModelCtrl;
+                if (host.$$rawModelValue !== undefined || !committed || committed.value === undefined) return host.$$rawModelValue;
+                let value = toHostView(committed.value);
+                try {
+                    for (let i = 0; i < host.$parsers.length && value !== undefined; i++) value = host.$parsers[i](value);
+                } catch (e) {
+                    return undefined;
+                }
+                host.$$rawModelValue = value;
+                return value;
+            }
+
             function takeOverBoxState() {
                 const host = $ctrl.ngModelCtrl;
-                const errors = box ? box.$error : {};
+                // a typed text still waiting: the committed text's errors (checked with the rules as they are now)
+                const pending = draftPending();
+                const validBefore = host.$valid;
+                const errors = pending ? committedErrors() : (box ? box.$error : {});
+                // the values the validators check: the committed ones while a text waits, as Angular's $validate has them
+                const modelValue = pending ? host.$$rawModelValue : host.$modelValue;
+                const viewValue = pending ? host.$$lastCommittedViewValue : host.$viewValue;
                 const names = Object.keys(errors).concat(Object.keys(takenOver).filter(name => !errors[name]));
                 const now = {};
                 names.forEach(name => {
                     if (name === 'parse') return;   // the host's own parse error stays the host's
                     combineHostValidator(name);
                     const validator = host.$validators[name];
-                    host.$setValidity(name, validator ? !!validator(host.$modelValue, host.$viewValue) : !errors[name]);
+                    host.$setValidity(name, validator ? !!validator(modelValue, viewValue) : !errors[name]);
                     if (errors[name]) now[name] = true;
                 });
                 takenOver = now;
                 // required reads the box's text (see $postLink), which the box has just checked
                 const required = host.$validators.required;
-                if (required) host.$setValidity('required', !!required(host.$modelValue, host.$viewValue));
+                if (required) host.$setValidity('required', !!required(modelValue, viewValue));
+                if (pending) {
+                    followCommittedValidity(validBefore);
+                    return;   // dirty once the text commits (see $postLink)
+                }
                 // typed in, even if the value did not change (an invalid text stays an undefined value): the field is
-                // dirty - when the field takes its text as it is typed. With ng-model-options updateOn (blur...) it is
-                // dirty once it commits, as Angular's own field is (form.$rollbackViewValue() before then leaves the
-                // field and the form pristine).
-                if (box && box.$dirty && host.$pristine && !(host.$options && host.$options.updateOnDefault === false)) host.$setDirty();
+                // dirty - when the field takes its text as it is typed. With ng-model-options updateOn (blur...) or a
+                // debounce it is dirty once a changed text commits, as Angular's own field is (see $postLink;
+                // form.$rollbackViewValue() before then leaves the field and the form pristine).
+                if (box && box.$dirty && host.$pristine && !isDeferred()) host.$setDirty();
             }
 
             /*
@@ -1147,6 +1379,9 @@ angular.module('aui')
                 host.$render = () => {
                     typedText = null;   // the page's value: counted as it is
                     cancelPendingSearch();   // the text typed is replaced: its search does not come
+                    // the committed value shown (the page's value, a rollback): the box's text is its own again (a
+                    // clear of a deferred field shows a text still waiting: the committed text stays as it was)
+                    if (host.$viewValue === host.$$lastCommittedViewValue) committed = null;
                     $ctrl.internalValue = toBoxValue(host.$viewValue);
                     reportedText = $ctrl.internalValue;
                 };
@@ -1158,7 +1393,7 @@ angular.module('aui')
                 const required = host.$validators.required;
                 if (typeof required === 'function') {
                     host.$validators.required = (modelValue, viewValue) => required(modelValue, viewValue) ||
-                        (modelValue === undefined && !!box && box.$invalid && $ctrl.hasValue());
+                        (modelValue === undefined && textRefused());
                 }
 
                 // A number box's value is a number, which has no length: AngularJS's own length checks of a maxlength /
@@ -1171,6 +1406,22 @@ angular.module('aui')
                     host.$validators[name] = (modelValue, viewValue) =>
                         own(modelValue, typeof viewValue === 'number' ? String(viewValue) : viewValue);
                 });
+
+                // A typed text that waited for its commit (updateOn, a debounce) commits: its checks are the field's now
+                // (draftPending held them back meanwhile), and its text is the committed one. Angular commits nothing
+                // when the value is the committed one: a refused text after an empty field (undefined both) is still
+                // an edit, and the field is dirty as Angular's own field is once its text commits.
+                if (isDeferred()) {
+                    const commitViewValue = host.$commitViewValue;
+                    host.$commitViewValue = function () {
+                        const typed = !!box && !isNaNValue(box.$viewValue) && box.$viewValue !== committedState().text;
+                        const result = commitViewValue.apply(host, arguments);
+                        committed = box ? {value: box.$$rawModelValue, text: box.$viewValue, errors: angular.extend({}, box.$error)} : null;
+                        if (typed && host.$pristine) host.$setDirty();
+                        takeOverBoxState();
+                        return result;
+                    };
+                }
 
                 // The page form resets its fields through the host (form.$setPristine(), form.$setUntouched()): the box,
                 // outside the page form, is reset with it (its ng-dirty / ng-touched classes go as well).
@@ -1252,6 +1503,7 @@ angular.module('aui')
                     takeRecheckedValue();
                     return;
                 }
+                boxTold = true;
                 flushFocus();   // an on-focus still waiting came first
                 $ctrl.ngModelCtrl.$setViewValue(toHostView($ctrl.internalValue));
                 reportText('input');
@@ -1265,6 +1517,16 @@ angular.module('aui')
              */
             function takeRecheckedValue() {
                 const host = $ctrl.ngModelCtrl;
+                // A typed text still waiting for its commit (updateOn blur, a debounce) is not the field's value yet:
+                // what it commits is its text as the rule now has it (a text the rule refuses now: undefined; one it
+                // allows now: its value), as Angular's own field commits its text with the rules of the moment. The
+                // commit itself is left as it was (its debounce not started again). The committed value is checked
+                // with the rule meanwhile (takeOverBoxState); form.$rollbackViewValue() still finds it.
+                if (draftPending()) {
+                    host.$viewValue = toHostView($ctrl.internalValue);
+                    queueTakeOver();
+                    return;
+                }
                 const setDirty = host.$setDirty;
                 host.$setDirty = angular.noop;
                 try {
@@ -1385,6 +1647,8 @@ angular.module('aui')
                 cancelPendingSearch();
                 searchTimer = $timeout(() => {
                     searchTimer = null;
+                    // disabled meanwhile (by its own option, or a disabled fieldset around it): no search from it
+                    if (boxLocked()) return;
                     fireSearch(searchText());
                 }, delay);
             };
@@ -1422,7 +1686,7 @@ angular.module('aui')
              * as they step the number (past the limit, too).
              */
             $ctrl._interceptKey = (event) => {
-                if ($ctrl.inputType !== 'number' || !$ctrl.valueMaxLength) return;
+                if ($ctrl.inputType !== 'number' || !countLimit()) return;   // 0 or unset: no limit (countLimit)
                 if (isComposing(event)) return;
 
                 if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -1443,7 +1707,7 @@ angular.module('aui')
 
             // value-max-length on a number box: a paste that is no number is not taken (its length: onBoxInput)
             $ctrl._interceptPaste = (event) => {
-                if ($ctrl.inputType !== 'number' || !$ctrl.valueMaxLength) return;
+                if ($ctrl.inputType !== 'number' || !countLimit()) return;   // 0 or unset: no limit (countLimit)
                 const clipboardData = (event.originalEvent && event.originalEvent.clipboardData) || event.clipboardData || window.clipboardData;
                 if (!clipboardData) return;
                 const pasteContent = clipboardData.getData('text').replace(/\s+/g, '');

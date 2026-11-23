@@ -236,7 +236,6 @@
     -webkit-box-shadow: 0 0 0 1000px var(--aui-control-background-color) inset !important;
     -webkit-text-fill-color: var(--aui-control-value-color) !important;
     caret-color: var(--aui-control-accent-color);
-    transition: background-color 5000s ease-in-out 0s;
 }
 
 
@@ -252,11 +251,6 @@
    panel engine), so the panel stays on the screen. Browsers without min() keep the 300px above. */
 .aui-select__panel .aui-select__options {
     max-height: min(300px, var(--aui-panel-list-max, 300px));
-}
-
-.aui-select__options::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
 }
 
 .aui-select__options::-webkit-scrollbar-track {
@@ -714,10 +708,11 @@
     border-top-color: var(--aui-control-accent-color);
     border-right-color: var(--aui-control-accent-color);
     will-change: transform;
-    animation: spin 0.7s linear infinite;
+    animation: aui-select-spin 0.7s linear infinite;
 }
 
-@keyframes spin {
+/* a name of its own: a page's own "spin" keyframes (a common name) replaced the turn with its own motion */
+@keyframes aui-select-spin {
     to {
         transform: rotate(360deg);
     }
@@ -797,6 +792,7 @@
 .aui-select__options--stale .aui-select__option {
     opacity: 0.55;
     transition: opacity 0.15s ease;
+    cursor: progress;   /* not pickable until the new results are in */
 }
 
 /* New results or a background refresh on the way: a thin moving line at the top of the panel */
@@ -847,5 +843,18 @@
     .aui-select__pending,
     .aui-select__progress::after {
         animation: none;
+    }
+}
+
+/* High contrast (forced colours): the system replaces backgrounds, and these drawings are masks over a background
+   colour - the chevron, the search and notice icons and a tag's remove mark vanished. They are drawn in the system's
+   text colour there. */
+@media (forced-colors: active) {
+    .aui-select__chevron,
+    .aui-select__search-icon,
+    .aui-select__notice-icon,
+    .aui-select__tag-remove::before {
+        forced-color-adjust: none;
+        background-color: CanvasText !important;
     }
 }

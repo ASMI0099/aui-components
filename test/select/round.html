@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-select: lookups, forms, locks, picks</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(3, 300px); gap: 16px 24px; }
+        .cell label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
+        fieldset { border: 0; margin: 0; padding: 0; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="round.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="round.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="RoundCtrl">
+<button type="button" id="outside">Outside</button>
+<div class="grid">
+    <div class="cell" id="g-north"><label>group g1, store N</label>
+        <aui-select ng-model="m.gn" lookup-options="ask($request)" lookup-group="g1" load-params="{f: 'g', store: 'N'}"></aui-select></div>
+    <div class="cell" id="g-south"><label>group g1, store S</label>
+        <aui-select ng-model="m.gs" lookup-options="ask($request)" lookup-group="g1" load-params="{f: 'g', store: 'S'}"></aui-select></div>
+    <div class="cell" id="sw"><label>params change while looking up</label>
+        <aui-select ng-model="m.sw" lookup-options="ask($request)" load-params="{f: 'sw', store: state.swStore}"></aui-select></div>
+    <div class="cell" id="race"><label>9, 10, 9</label>
+        <aui-select ng-model="m.race" lookup-options="ask($request)" load-params="{f: 'race'}"></aui-select></div>
+    <div class="cell" id="st"><label>server search</label>
+        <aui-select ng-model="m.st" load-options="ask($request)" load-params="{f: 'st'}" page-size="20" searchable="true"
+                    search-delay="40"></aui-select></div>
+    <div class="cell" id="plain"><label>plain values</label>
+        <aui-select ng-model="m.plain" options="['Red', 'Green', 'Blue']"></aui-select></div>
+    <div class="cell" id="vo"><label>value-options at mount</label>
+        <aui-select ng-model="m.vo" options="[]" value-options="[{id: 51, label: 'Known', unit: 'kg'}]"
+                    selected-items="state.voItems"></aui-select></div>
+    <div class="cell" id="lock"><label>locked after the pick</label>
+        <aui-select ng-model="m.lock" multiple options="state.lockOpts" disabled-field="disabled" clearable></aui-select></div>
+    <div class="cell" id="auto1"><label>auto pick, opt-out</label>
+        <aui-select ng-if="state.showAuto1" ng-model="m.auto1" required auto-select-on-single-required="state.autoOn"
+                    options="[{id: 1, label: 'Only'}]"></aui-select></div>
+    <div class="cell" id="auto2"><label>auto pick, required later</label>
+        <aui-select ng-if="state.showAuto2" ng-model="m.auto2" auto-select-on-single-required="true" ng-required="state.req2"
+                    options="[{id: 1, label: 'Only'}]"></aui-select></div>
+    <div class="cell" id="blur"><label>updateOn blur</label>
+        <aui-select ng-model="m.blur" options="letters" ng-model-options="{updateOn: 'blur'}"></aui-select></div>
+    <div class="cell" id="deb"><label>debounce 180</label>
+        <aui-select ng-model="m.deb" options="letters" ng-model-options="{debounce: 180}" on-change="changed($value, $oldValue)"></aui-select></div>
+    <div class="cell" id="nul"><label>options become null</label>
+        <aui-select ng-model="m.nul" options="state.nullOpts"></aui-select></div>
+    <div class="cell" id="rl"><label>reload</label>
+        <aui-select ng-model="m.rl" lookup-options="ask($request)" load-params="{f: 'rl'}" api="api"></aui-select></div>
+    <div class="cell" id="mtc" style="width: 210px"><label>max-tag-count 2, then responsive</label>
+        <aui-select ng-model="m.mtc" multiple options="tagOpts" max-tag-count="state.mtc"></aui-select></div>
+    <div class="cell" id="srch"><label>searchable bound</label>
+        <aui-select ng-model="m.srch" options="letters" searchable="state.srch"></aui-select></div>
+    <div class="cell" id="lf"><label>label-field bound</label>
+        <aui-select ng-model="m.lf" options="lfOpts" label-field="{{ state.lf }}"></aui-select></div>
+    <div class="cell" id="virt"><label>120 options (scroll window)</label>
+        <aui-select ng-model="m.virt" options="manyOpts"></aui-select></div>
+    <div class="cell" id="fail"><label>the list's load fails</label>
+        <aui-select ng-model="m.fail" load-options="ask($request)" load-params="{f: 'fail'}" searchable="true"></aui-select></div>
+    <div class="cell" id="ax"><label>the page's aria attributes</label>
+        <span id="ax-help">Pick the shelf the goods go to</span> <span id="ax-name">Shelf</span>
+        <aui-select ng-model="m.ax" options="letters" aria-label="External inventory label" aria-describedby="ax-help"></aui-select>
+        <aui-select ng-model="m.ax2" options="letters" aria-labelledby="ax-name" show-errors required></aui-select></div>
+</div>
+<form id="sf" name="sf" onsubmit="event.preventDefault()">
+    <div class="grid">
+        <div class="cell" id="fr"><label>required, empty</label><aui-select name="fr" ng-model="m.fr" required options="letters"></aui-select></div>
+        <div class="cell" id="fd"><label>disabled, C</label><aui-select name="pick" ng-model="m.fd" disabled options="letters"></aui-select></div>
+        <div class="cell" id="fro"><label>readonly, required, empty</label>
+            <aui-select name="fro" ng-model="m.fro" readonly required options="letters"></aui-select></div>
+        <fieldset class="cell" id="fs" ng-disabled="state.fsOff"><label>in a fieldset</label>
+            <aui-select name="fs" ng-model="m.fs" options="letters"></aui-select></fieldset>
+        <div class="cell" id="frs"><label>reset</label><aui-select name="rs" ng-model="m.frs" options="letters"></aui-select></div>
+    </div>
+</form>
+<div style="height: 600px"></div>
+</body>
+</html>

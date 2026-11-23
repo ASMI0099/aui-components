@@ -83,6 +83,18 @@ angular.module('aui')
                 });
             });
 
+            // Disabled is the field's own option, or a disabled <fieldset> around it (a native control there is disabled:
+            // so is the field - nothing opens, picks or clears it, it looks disabled and takes no focus). The fieldset's
+            // state is read from the hidden form input, which the browser disables with it (see $postLink); the input
+            // itself follows the field's own option only.
+            let fieldsetDisabled = false;
+            $ctrl.ownDisabled = () => kit.readFlag($attrs, 'disabled', $ctrl.disabledFlag, false);
+            Object.defineProperty($ctrl, 'disabled', {
+                configurable: true,
+                enumerable: true,
+                get: () => $ctrl.ownDisabled() || fieldsetDisabled
+            });
+
             /** Red as the tree and aui-input are: the value is invalid and the field has been touched (left once). */
             $ctrl.showInvalid = function () {
                 return !!($ctrl.ngModelCtrl && $ctrl.ngModelCtrl.$invalid && $ctrl.ngModelCtrl.$touched);
@@ -123,6 +135,7 @@ angular.module('aui')
             let list = null;
             let lookup = null;
             let paramsId = null;                 // params key of the current list; null while loading is not enabled
+            let lookupParams = null;             // the params the lookups asked with (a change asks the running ones again)
             const picked = new Map();            // key -> copy of an option the user picked (kept while selected)
             let valueOptionsByKey = new Map();   // value-options by key
             let pendingKeys = new Set();         // selected values whose label is being looked up
@@ -303,31 +316,64 @@ angular.module('aui')
                 return null;
             };
 
+            /**
+             * The static options by key - the exact key first, then its text - kept while the options are the same list:
+             * built when the list changes (the options watch drops it), not on every render of the selection, which read
+             * every option's key several times (a closed field of 10,000 options: 60,000 reads at mount). An option edited
+             * in place is the same object here, so its flags are read as they are now.
+             */
+            /**
+             * The static options as the field uses them: an option that is a plain value ('Red', 7) becomes
+             * {value-field: it, label-field: its text} (the docs allow plain values); a list of objects is used as it is.
+             * Built once per list (the options watch drops it).
+             */
+            // (dropped with a marker of its own: null is a list the page can give, so it cannot mean "not built")
+            const NOT_BUILT = {};
+            let optionListOf = NOT_BUILT;
+            let optionListNow = null;
+            const optionList = function () {
+                const options = Array.isArray($ctrl.options) ? $ctrl.options : null;
+                if (options !== optionListOf) {
+                    optionListOf = options;
+                    const plain = !!options && options.some(option => option === null || typeof option !== 'object');
+                    optionListNow = !plain ? options : options.map(option => {
+                        if (option !== null && typeof option === 'object') return option;
+                        const item = {};
+                        item[$ctrl.valueField] = option;
+                        item[$ctrl.labelField] = option === null || option === undefined ? '' : String(option);
+                        return item;
+                    });
+                }
+                return optionListNow;
+            };
+
+            let staticIndexOf = NOT_BUILT;
+            let staticIndex = {byKey: new Map(), byText: new Map()};
+            const staticOptions = function () {
+                const options = dataMode() === 'static' ? optionList() : null;
+                if (options !== staticIndexOf) {
+                    staticIndexOf = options;
+                    staticIndex = {byKey: new Map(), byText: new Map()};
+                    (options || []).forEach(option => {
+                        if (!hasOptionKey(option)) return;
+                        const key = option[$ctrl.valueField];
+                        if (!staticIndex.byKey.has(key)) staticIndex.byKey.set(key, option);
+                        if (!staticIndex.byText.has(String(key))) staticIndex.byText.set(String(key), option);
+                    });
+                }
+                return staticIndex;
+            };
+            const staticOption = function (value) {
+                const index = staticOptions();
+                return index.byKey.has(value) ? index.byKey.get(value) : (index.byText.get(String(value)) || null);
+            };
+
             const resolveSelectionItems = function (values) {
-                const options = (dataMode() === 'static' && Array.isArray($ctrl.options) && $ctrl.options.length > 0) ? $ctrl.options : [];
-                const byKey = new Map();
-                const byStringKey = new Map();
-
-                options.forEach(option => {
-                    if (hasOptionKey(option)) {
-                        const k = option[$ctrl.valueField];
-                        if (!byKey.has(k)) {
-                            byKey.set(k, option);
-                        }
-                        const sk = String(k);
-                        if (!byStringKey.has(sk)) {
-                            byStringKey.set(sk, option);
-                        }
-                    }
-                });
-
-                return (Array.isArray(values) && values.length > 0 ? values : []).filter(isSelectionKey).map(value => {
-                    if (byKey.has(value)) {
-                        return angular.copy(byKey.get(value));
-                    }
-                    if (byStringKey.has(String(value))) {
-                        return angular.copy(byStringKey.get(String(value)));
-                    }
+                const wanted = (Array.isArray(values) ? values : []).filter(isSelectionKey);
+                if (wanted.length === 0) return [];
+                return wanted.map(value => {
+                    const own = staticOption(value);
+                    if (own) return angular.copy(own);
                     const known = knownItem(value);
                     if (known) return angular.copy(known);
                     // No matching option: preserve the value in a local display object
@@ -357,13 +403,8 @@ angular.module('aui')
                 });
                 if (lookup) lookup.retain(keys);
                 const unresolved = new Map();
-                const staticKeys = new Set();
-                if (dataMode() === 'static' && Array.isArray($ctrl.options)) {
-                    $ctrl.options.forEach(option => {
-                        const key = keyOf(option);
-                        if (key !== null) staticKeys.add(key);
-                    });
-                }
+                // the static options' keys from their index (built once per list, not on every render)
+                const staticKeys = staticOptions().byText;
                 values.forEach(value => {
                     const key = String(value);
                     if (!staticKeys.has(key) && !knownItem(value) && !hasSelectedLabel(key)) unresolved.set(key, value);
@@ -461,7 +502,10 @@ angular.module('aui')
             $ctrl.hiddenTagTitle = function () {
                 const items = $ctrl.selectedItems;
                 const limit = $ctrl.visibleTagLimit();
-                if (!Array.isArray(items) || items.length <= limit) return '';
+                if (!Array.isArray(items) || items.length <= limit) {
+                    hiddenTitleCache = null;   // nothing hidden now: the selection it was built for is let go
+                    return '';
+                }
                 if (!hiddenTitleCache || hiddenTitleCache.items !== items || hiddenTitleCache.length !== items.length
                     || hiddenTitleCache.limit !== limit) {
                     hiddenTitleCache = {
@@ -545,11 +589,36 @@ angular.module('aui')
                     $ctrl.displayText = '';
                 }
 
+                // searchable written with an expression: its change shows or hides the search box at once (it was read again
+                // only when the options changed)
+                own.$watch(() => $ctrl.searchable, (now, before) => {
+                    if (now !== before) $ctrl.determineSearchVisibility();
+                });
+
+                // label-field / value-field written with {{ }}: a change reads the options anew - the shown value, its
+                // record and the rows (the rows changed and the field kept the label of the field before)
+                own.$watch(() => $ctrl.labelField + '' + $ctrl.valueField, (now, before) => {
+                    if (now === before) return;
+                    staticIndexOf = NOT_BUILT;
+                    optionListOf = NOT_BUILT;
+                    $ctrl.refreshViewValueFromModel();
+                    $ctrl.updateFilteredOptions();
+                });
+
                 // Watch for options changes
                 own.$watchCollection(() => $ctrl.options, (newVal) => {
+                    staticIndexOf = NOT_BUILT;   // the list changed (replaced, or an option of it): built again
+                    optionListOf = NOT_BUILT;
                     if (dataMode() !== 'static') {
                         if (Array.isArray(newVal)) warnOnce('options and load-options are both set; load-options is used');
                         return;
+                    }
+                    // no list (null while the page's data reloads): no options either - the rows of the list before go,
+                    // not left there to pick
+                    if (!Array.isArray(newVal)) {
+                        $ctrl.refreshViewValueFromModel();
+                        $ctrl.updateFilteredOptions();
+                        $ctrl.activeIndex = -1;
                     }
                     if (newVal && Array.isArray(newVal)) {
                         $ctrl.refreshViewValueFromModel();
@@ -593,7 +662,9 @@ angular.module('aui')
                         const key = keyOf(option);
                         if (key !== null && !valueOptionsByKey.has(key)) valueOptionsByKey.set(key, option);
                     });
-                    if (options !== previous) $ctrl.refreshViewValueFromModel();
+                    // the first run too (Angular passes the same value as both then): known records given with the field
+                    // shape its selection at once - its label and the whole record in selected-items
+                    $ctrl.refreshViewValueFromModel();
                 }, true);
 
                 // Disabled or readonly while open: close, as aui-tree-select does.
@@ -664,16 +735,26 @@ angular.module('aui')
                     // Through load-options it waits until loading is enabled and for a list that is loading (it may
                     // have the value); a dedicated lookup needs neither.
                     blocked: () => typeof $ctrl.lookupOptions !== 'function' && (paramsId === null || (!!list && list.busy())),
-                    group: () => ($ctrl.lookupGroup
-                        ? $ctrl.lookupGroup + '\n' + (typeof $ctrl.lookupOptions === 'function' ? '' : String(paramsId))
-                        : ''),
+                    // same group and same params (a dedicated lookup too: it gets the params, so fields with other
+                    // params ask another data set - one request for both showed one set's labels in both)
+                    group: () => ($ctrl.lookupGroup ? $ctrl.lookupGroup + '\n' + remote.paramsKey($ctrl.loadParams) : ''),
                     onUpdate: () => {
                         $ctrl.refreshViewValueFromModel();
                         if ($ctrl.isOpen) rebuildRows();
                     },
                     warn: warnOnce
                 });
-                if (!remoteList) return;
+                if (!remoteList) {
+                    // a dedicated lookup without load-options: its params changing asks a running lookup again
+                    if (lookup) {
+                        own.$watch(() => remote.paramsKey($ctrl.loadParams), (params) => {
+                            if (params === lookupParams) return;
+                            if (lookupParams !== null) lookup.askAgain();
+                            lookupParams = params;
+                        });
+                    }
+                    return;
+                }
 
                 // load-params / load-enabled: compared by value, so a literal written in the template is fine.
                 own.$watch(() => (kit.readFlag($attrs, 'loadEnabled', $ctrl.loadEnabled, true) ? remote.paramsKey($ctrl.loadParams) : null),
@@ -696,6 +777,12 @@ angular.module('aui')
                 list.configure(id, id === null ? null : $ctrl.loadParams);
                 if (lookup) {
                     if (id !== previous) lookup.newRound();
+                    // the params themselves changed (not only load-enabled): a lookup still running asks again
+                    const params = remote.paramsKey($ctrl.loadParams);
+                    if (params !== lookupParams) {
+                        if (lookupParams !== null) lookup.askAgain();
+                        lookupParams = params;
+                    }
                     lookup.kick();
                 }
                 shownSession = null;
@@ -809,11 +896,19 @@ angular.module('aui')
                 if (list.retry()) rebuildRows();
             };
 
+            // A load that failed and shows its Retry: the list's first page, or its next page while no row is
+            // highlighted (Enter then picks nothing: see handleKeydown)
+            const retryWaits = function () {
+                if (!list || !$ctrl.view) return false;
+                if ($ctrl.view.status === 'error') return true;
+                return $ctrl.view.more === 'error' && (!$ctrl.keyboardMode || $ctrl.activeIndex < 0);
+            };
+
             /** The only option, when the whole list for the current params is known to have exactly one. */
             const singleOption = function () {
                 if (dataMode() === 'static') {
-                    return Array.isArray($ctrl.options) && $ctrl.options.length === 1 && typeof $ctrl.options[0] === 'object'
-                        ? $ctrl.options[0] : null;
+                    const options = optionList();
+                    return options && options.length === 1 ? options[0] : null;
                 }
                 if (!list || paramsId === null) return null;
                 const session = list.plain();
@@ -866,6 +961,7 @@ angular.module('aui')
 
                     const items = resolveSelectionItems(values);
                     $ctrl.selectedItems = items;
+                    hiddenTitleCache = null;   // the +N tooltip of the selection before is let go with it
                     $ctrl.selectedKeysSet = new Set();
                     items.forEach(item => {
                         if (hasOptionKey(item)) {
@@ -908,32 +1004,78 @@ angular.module('aui')
                 }
             };
 
-            // Pending auto-select timers, cancelled on destroy so none can run against a removed select.
-            const pendingAutoSelects = new Set();
+            /**
+             * auto-select-on-single-required: a required, empty field with one option picks it a moment later. One
+             * pending pick at most (a list replaced on every digest used to stack a timer each time); everything is
+             * checked again when it runs - the opt-in too (turned off meanwhile, nothing is picked), required, the
+             * field's locks and the value. It is asked for when the options change and when the field becomes required
+             * with the opt-in on (watched in $onInit); cancelled when the opt-in goes off and on destroy.
+             */
+            let autoSelectTimer = null;
+
+            const cancelAutoSelect = () => {
+                if (autoSelectTimer) $timeout.cancel(autoSelectTimer);
+                autoSelectTimer = null;
+            };
 
             $ctrl.autoSelectHandler = function () {
-                if ($ctrl.autoSelectOnSingleRequired) {
-                    const pendingAutoSelect = $timeout(() => {
-                        pendingAutoSelects.delete(pendingAutoSelect);
-                        if ($ctrl.required && $ctrl.ngModelCtrl) {
-                            const only = singleOption();
-                            if (only) {
-                                if ($ctrl.ngModelCtrl.$isEmpty($ctrl.ngModelCtrl.$viewValue) && $ctrl.ngModelCtrl.$isEmpty($ctrl.ngModelCtrl.$modelValue)) {
-                                    const _defaultSelected = angular.copy(only);
-                                    $ctrl.selectOption(_defaultSelected, null, 'programmatic');
-                                }
-                            }
-                        }
-                    }, 1000);
-                    pendingAutoSelects.add(pendingAutoSelect);
-                }
-            }
+                if (!$ctrl.autoSelectOnSingleRequired || autoSelectTimer) return;
+                autoSelectTimer = $timeout(() => {
+                    autoSelectTimer = null;
+                    const model = $ctrl.ngModelCtrl;
+                    if (destroyed || !$ctrl.autoSelectOnSingleRequired || !$ctrl.required || !model) return;
+                    if ($ctrl.disabled || $ctrl.isReadonly()) return;
+                    const only = singleOption();
+                    if (only && model.$isEmpty(model.$viewValue) && model.$isEmpty(model.$modelValue)) {
+                        $ctrl.selectOption(angular.copy(only), null, 'programmatic');
+                    }
+                }, 1000);
+            };
+
+            // the opt-in on and the field required (also when it becomes required later): a pick is asked for; the
+            // opt-in off: a pick still waiting is dropped
+            own.$watch(() => !!($ctrl.autoSelectOnSingleRequired && $ctrl.required), (on) => {
+                if (on) $ctrl.autoSelectHandler();
+                else if (!$ctrl.autoSelectOnSingleRequired) cancelAutoSelect();
+            });
 
             // Post-link to get DOM references
+            /**
+             * The hidden form input (native required and the form's data) and the page's form:
+             * - the browser's own check of a form (a native submit) focuses its first invalid control: here the hidden
+             *   input, which no one sees - the field takes the focus instead, and shows that it is invalid (touched);
+             * - a disabled <fieldset> around the field disables the input: the field is disabled with it (fieldsetDisabled);
+             * - the form's native reset puts the input back to its first value behind Angular's back: it takes the field's
+             *   value again (a page resets a field through its model).
+             */
+            function attachHiddenInput() {
+                const input = $element[0].querySelector('.aui-select > input');
+                if (!input) return;
+                hiddenInputElement = input;
+                input.addEventListener('invalid', () => {
+                    if (destroyed || !$ctrl.ngModelCtrl || $ctrl.ngModelCtrl.$touched) return;
+                    settle(false, markTouched);
+                });
+                input.addEventListener('focus', () => {
+                    if (!destroyed && triggerElement && !$ctrl.disabled) triggerElement.focus();
+                });
+                if (input.form) {
+                    resetForm = input.form;
+                    resetForm.addEventListener('reset', onFormReset);
+                }
+                own.$watch(() => input.matches(':disabled') && !$ctrl.ownDisabled(), (now) => { fieldsetDisabled = now; });
+            }
+            let resetForm = null;
+            function onFormReset() {
+                setTimeout(() => { if (!destroyed) syncHiddenValidationInput(); }, 0);
+            }
+
             $ctrl.$postLink = function () {
+                attachHiddenInput();
+                // on-change carries the committed value (a deferred model reports once it commits)
+                $ctrl.checkAndCallOnChangeFunc = kit.changeAfterCommit($ctrl.ngModelCtrl, $ctrl.checkAndCallOnChangeFunc);
                 triggerElement = $element[0].querySelector('.aui-select__trigger');
                 panelElement = $element[0].querySelector('.aui-select__panel');
-                searchElement = $element[0].querySelector('.aui-select__search-input');
                 if (triggerElement && panelElement) {
                     panelCtl = dropdownPanel.create({
                         trigger: triggerElement,
@@ -947,9 +1089,11 @@ angular.module('aui')
                         // options shown on open are the most there will be (a search only narrows them).
                         growable: () => dataMode() !== 'static',
                         onShown: onPanelShown,
-                        onClosed: onPanelClosed
+                        onClosed: onPanelClosed,
+                        onListLimited: onListLimited
                     });
                     panelElement.addEventListener('mousemove', onPanelMouse, {passive: true});
+                    LIST_MOVES.forEach(name => panelElement.addEventListener(name, onListMoved, {passive: true}));
                     panelElement.addEventListener('mousedown', onPanelMousedownEvent);
                     panelElement.addEventListener('click', onPanelClick);
                     stopQuietFocus = kit.quietPointerFocus(triggerElement, 'aui-select__trigger--pointer-focus');
@@ -988,6 +1132,8 @@ angular.module('aui')
                 });
                 stopFocusLeave = kit.onFocusLeave($element[0], (next) => {
                     if (destroyed) return;
+                    // a value that waits for the blur (ng-model-options updateOn: 'blur') commits now
+                    kit.commitOnLeave($ctrl.ngModelCtrl);
                     // Focus moved to another control (Tab, or a click on it): close, touched with it. A press on the
                     // page itself is handled by the outside-press listener. Closed: touched alone (the field's look at
                     // once, the page's bindings of it once the field's ring has faded out).
@@ -1029,6 +1175,19 @@ angular.module('aui')
                 resetSearch();
                 tipRowEl = null;
                 localDigest();
+            };
+
+            /*
+             * The list fitted to a shorter height after it was shown (a short viewport, a high zoom: the first placement
+             * of an opening cannot measure it): the active (selected) option comes into view again - until the user
+             * moves the list (a wheel, a touch, a press in the panel), whose place is then the user's.
+             */
+            const LIST_MOVES = ['wheel', 'touchmove', 'pointerdown'];
+            let listMoved = false;
+            const onListMoved = () => { listMoved = true; };
+            const onListLimited = function () {
+                if (!$ctrl.isOpen || !panelElement || listMoved || $ctrl.activeIndex < 0) return;
+                revealActive('center-if-hidden');
             };
 
             /** Called by the panel engine once the panel is shown: bring the active (selected) option into view. */
@@ -1147,7 +1306,6 @@ angular.module('aui')
                     // An option of a remote list may be gone after the next search: keep it while it is selected.
                     if (dataMode() !== 'static') picked.set(keyOf(targetOption), angular.copy(targetOption));
                 }
-                if (!targetOption) return;
 
                 let selectedItems = [];
                 const ngModelCtrl = $ctrl.ngModelCtrl;
@@ -1226,7 +1384,11 @@ angular.module('aui')
              */
             $ctrl.isOptionDisabled = function (option) {
                 if (!hasOptionKey(option)) return false;
-                if ($ctrl.disabledField && option[$ctrl.disabledField] === true) return true;
+                // the option as it is now: a selected value's own copy is from the moment it was picked, and an option
+                // locked since (disabled-field set, or replaced by a locked one) must stay through Clear
+                const key = option[$ctrl.valueField];
+                const current = staticOption(key) || (dataMode() !== 'static' && list ? list.find(String(key)) : null) || option;
+                if ($ctrl.disabledField && current[$ctrl.disabledField] === true) return true;
                 return $ctrl.disabledOptionsKeySet.has(option[$ctrl.valueField]) || $ctrl.disabledOptionsKeySet.has(String(option[$ctrl.valueField]));
             };
 
@@ -1335,7 +1497,9 @@ angular.module('aui')
              * Open dropdown
              */
             $ctrl.openDropdown = function () {
-                if ($ctrl.isOpen || $ctrl.disabled || $ctrl.isReadonly()) return;
+                // every way of opening (a press, a key, api.open()): not while busy (loading), as a press is refused, and
+                // never once destroyed (an api.open() still queued when the field went)
+                if (destroyed || $ctrl.isOpen || $ctrl.disabled || $ctrl.loading || $ctrl.isReadonly()) return;
 
                 // A close that is still fading out has not reset the search yet: do it now.
                 if (closeFinishing) {
@@ -1348,6 +1512,7 @@ angular.module('aui')
                 $ctrl.keyboardMode = false;
                 lastPointer = null;
                 interacted = false;
+                listMoved = false;
                 autoFill = 0;
                 shownSession = null;
                 // What asks the page goes through pageAsk.ask: right after the panel's first frame when the user opens
@@ -1469,7 +1634,8 @@ angular.module('aui')
                 const view = {status: '', more: '', stale: false, refreshing: false, timeout: false, minLength: 0, setSize: null, searching: false};
                 let base = [];
                 if (mode === 'static') {
-                    base = (Array.isArray($ctrl.options) ? $ctrl.selectFilter($ctrl.options, $ctrl.searchQuery, $ctrl.labelField) : []) || [];
+                    const options = optionList();
+                    base = (options ? $ctrl.selectFilter(options, $ctrl.searchQuery, $ctrl.labelField) : []) || [];
                 } else if (paramsId === null || !list) {
                     view.status = 'off';
                 } else if (mode === 'all') {
@@ -1670,14 +1836,45 @@ angular.module('aui')
 
             // --- Keyboard and active option (the same model as aui-tree-select) ---
 
-            const optionId = (i) => 'aui-select-options-' + $scope.$id + '-o' + i;
+            // the list's id and its rows': the controller's own (an id written as {{ ::$id }} was the scope's where it
+            // stood - the search box, inside a part of its own, pointed at a list that does not exist)
+            $ctrl.listId = 'aui-select-options-' + $scope.$id;
+            const optionId = (i) => $ctrl.listId + '-o' + i;
             $ctrl.optionId = optionId;
             $ctrl.activeIndex = -1;
             $ctrl.keyboardMode = false;
 
+            /*
+             * The page's aria-label, aria-labelledby and aria-describedby on the field go on its trigger, the element that has
+             * the focus (as aui-input gives them to its box): a field named or described by the page is so to screen readers.
+             * aria-label goes before label-text and the placeholder; aria-labelledby goes before both (as in the browser's
+             * naming); aria-describedby joins the message line's id.
+             */
+            $ctrl.triggerLabel = function () {
+                return $attrs.ariaLabel || $ctrl.labelText || $ctrl.placeholder || $ctrl.t.placeholder;
+            };
+            $ctrl.triggerLabelledBy = function () {
+                return $attrs.ariaLabelledby ? String($attrs.ariaLabelledby).trim() || undefined : undefined;
+            };
+            $ctrl.triggerDescribedBy = function () {
+                const ids = [];
+                const message = $ctrl.field.messageId();
+                if (message) ids.push(message);
+                if ($attrs.ariaDescribedby) ids.push(String($attrs.ariaDescribedby).trim());
+                return ids.join(' ').trim() || undefined;
+            };
+
+            /**
+             * aria-activedescendant: the active row's id while that row is in the page - the list shown (not loading),
+             * the row inside the scroll window. Scrolled out of the window (the list scrolled by hand) or hidden by a
+             * load, the row is not there, and an id that leads nowhere is no active row: none is named until the row
+             * is in the page again (the next arrow key brings it).
+             */
             $ctrl.activeOptionId = function () {
-                return $ctrl.isOpen && $ctrl.activeIndex >= 0 && $ctrl.activeIndex < $ctrl.filteredOptions.length
-                    ? optionId($ctrl.activeIndex) : '';
+                const i = $ctrl.activeIndex;
+                if (!$ctrl.isOpen || $ctrl.loading || !$ctrl.panelReady || i < 0 || i >= $ctrl.filteredOptions.length) return '';
+                if (virtual && (i < windowStart || i >= windowEnd)) return '';
+                return optionId(i);
             };
 
             const optionsList = () => (panelElement ? panelElement.querySelector('ul.aui-select__options') : null);
@@ -1740,6 +1937,9 @@ angular.module('aui')
             };
 
             $ctrl.onOptionClick = function (option, i, $event) {
+                // the dimmed rows of the previous query (the new one still loading, or still waiting for its pause)
+                // answer another text: a press there picks nothing, as Enter does
+                if ($ctrl.view.stale || searchTimer) return;
                 $ctrl.activeIndex = i;
                 $ctrl.selectOption(option, $event, 'userInteracted');
             };
@@ -1874,6 +2074,12 @@ angular.module('aui')
                 if (!li || !panelElement || !panelElement.contains(li)) return;
                 const row = li.__auiSelectRow;
                 if (!row) return;
+                // the dimmed rows of the previous query (the new one still loading, or waiting for its pause) answer
+                // another text: a press there picks nothing, as Enter does
+                if ($ctrl.view.stale || searchTimer) {
+                    event.stopPropagation();
+                    return;
+                }
                 // One value (single mode): the panel closes and the value is set now, the page's digest follows after
                 // the close's first frame (closeFromInput). Several values: the panel stays, the value is set now and
                 // the page's digest follows once the picking pauses (pickInPlace).
@@ -1986,6 +2192,12 @@ angular.module('aui')
                     case 'Enter':
                         // Never submit a surrounding form from inside the dropdown.
                         $event.preventDefault();
+                        // A failed load: Enter tries again, as its Retry link does (the keyboard's way to it: the
+                        // focus stays in the field) - the first page, or the next one while no row is highlighted.
+                        if (retryWaits()) {
+                            if (!kit.isRepeat($event)) $ctrl.retryLoad(null);
+                            return;
+                        }
                         pickActive($event, active);
                         return;
                     case ' ':
@@ -2028,7 +2240,8 @@ angular.module('aui')
                                 if ($ctrl.isOpen || readPreload()) list.reload();
                                 else list.drop();
                             }
-                            if (lookup) lookup.newRound();
+                            // "look up again": the labels found before as well (a record renamed on the server)
+                            if (lookup) lookup.forget();
                             $ctrl.refreshViewValueFromModel();
                             if ($ctrl.isOpen) rebuildRows();
                         });
@@ -2060,8 +2273,7 @@ angular.module('aui')
                 pageAsk.cancel();
                 pageDigest.forget();
                 cancelSearchFocus();
-                pendingAutoSelects.forEach(pendingAutoSelect => $timeout.cancel(pendingAutoSelect));
-                pendingAutoSelects.clear();
+                cancelAutoSelect();
                 if (searchTimer) {
                     $timeout.cancel(searchTimer);
                     searchTimer = null;
@@ -2109,6 +2321,7 @@ angular.module('aui')
                     panelElement.removeEventListener('click', onPanelClick);
                     panelElement.removeEventListener('scroll', onPanelScroll, true);
                     panelElement.removeEventListener('mouseover', onPanelOver);
+                    LIST_MOVES.forEach(name => panelElement.removeEventListener(name, onListMoved, {passive: true}));
                 }
                 if (stopTriggerPress) {
                     stopTriggerPress();
@@ -2132,9 +2345,16 @@ angular.module('aui')
                 $ctrl.viewRows = [];
                 $ctrl.options = null;
                 $ctrl.valueOptions = null;
+                // the option list's caches go with it (they hold the list, or an index of all its options)
+                staticIndexOf = NOT_BUILT;
+                optionListOf = NOT_BUILT;
+                optionListNow = null;
+                staticIndex = {byKey: new Map(), byText: new Map()};
                 picked.clear();
                 valueOptionsByKey = new Map();
                 shownSession = null;
+                if (resetForm) resetForm.removeEventListener('reset', onFormReset);
+                resetForm = null;
                 triggerElement = panelElement = searchElement = hiddenInputElement = tipRowEl = null;
             };
 
@@ -2186,6 +2406,8 @@ angular.module('aui')
                             type="text"
                             name="{{ $ctrl.name }}"
                             ng-required="$ctrl.required"
+                            ng-disabled="$ctrl.ownDisabled()"
+                            ng-readonly="$ctrl.isReadonly()"
                             class="aui-select__hidden-input"
                             tabindex="-1"
                             aria-hidden="true"
@@ -2205,18 +2427,19 @@ angular.module('aui')
                                         'aui-select__trigger--clearable': $ctrl.clearable && $ctrl.hasClearable() && !$ctrl.disabled && !$ctrl.loading && !$ctrl.isReadonly(),
                                         'aui-select__trigger--busy': $ctrl.loading,
                                         'aui-select__trigger--invalid': $ctrl.showInvalid()}"
-                             tabindex="{{ $ctrl.disabled ? -1 : 0 }}"
+                             ng-attr-tabindex="{{ $ctrl.disabled ? undefined : 0 }}"
                              role="combobox"
                              aria-expanded="{{$ctrl.isOpen}}"
                              aria-haspopup="listbox"
-                             aria-label="{{ $ctrl.labelText || $ctrl.placeholder || $ctrl.t.placeholder }}"
+                             aria-label="{{ $ctrl.triggerLabel() }}"
+                             ng-attr-aria-labelledby="{{ $ctrl.triggerLabelledBy() }}"
                              aria-required="{{ $ctrl.required }}"
                              aria-disabled="{{ !!$ctrl.disabled }}"
                              aria-readonly="{{ $ctrl.isReadonly() }}"
                              aria-invalid="{{ $ctrl.showInvalid() }}"
                              aria-busy="{{ !!($ctrl.labelsPending || $ctrl.loading) }}"
-                             aria-controls="aui-select-options-{{ ::$id }}"
-                             ng-attr-aria-describedby="{{ $ctrl.field.messageId() }}"
+                             aria-controls="{{ ::$ctrl.listId }}"
+                             ng-attr-aria-describedby="{{ $ctrl.triggerDescribedBy() }}"
                              ng-attr-aria-activedescendant="{{ $ctrl.activeOptionId() || undefined }}">
 
                             <div class="aui-control-label"
@@ -2283,7 +2506,7 @@ angular.module('aui')
 
                         <!-- Dropdown Panel -->
                         <div class="aui-select__panel"
-                             id="aui-select-options-{{ ::$id }}"
+                             id="{{ ::$ctrl.listId }}"
                              ng-class="{'aui-select__panel--multiple': $ctrl.multiple, 'aui-select__panel--keyboard': $ctrl.keyboardMode}"
                              ng-style="$ctrl.panelStyle"
                              aria-multiselectable="{{ !!$ctrl.multiple }}"
@@ -2306,7 +2529,7 @@ angular.module('aui')
                                        aui-search-input-stop-click
                                        placeholder="{{ $ctrl.searchPlaceholder !== undefined ? $ctrl.searchPlaceholder : $ctrl.t.search }}"
                                        aria-label="{{ ::$ctrl.t.searchLabel }}"
-                                       aria-controls="aui-select-options-{{ ::$id }}"
+                                       aria-controls="{{ ::$ctrl.listId }}"
                                        aria-autocomplete="list"
                                        ng-attr-aria-activedescendant="{{ $ctrl.activeOptionId() || undefined }}"
                                        autocomplete="off"
@@ -2320,7 +2543,7 @@ angular.module('aui')
                             </div>
 
                             <!-- Options list: in the page only while the panel is shown -->
-                            <ul class="aui-select__options aui-scroll" aui-if="$ctrl.panelReady && !$ctrl.loading"
+                            <ul role="none" class="aui-select__options aui-scroll" aui-if="$ctrl.panelReady && !$ctrl.loading"
                                 ng-class="{'aui-select__options--stale': $ctrl.view.stale}"
                                 aria-busy="{{ !!($ctrl.view.status === 'loading' || $ctrl.view.more === 'loading' || $ctrl.view.stale) }}">
                                 <li class="aui-select__spacer" role="none"
@@ -2348,20 +2571,22 @@ angular.module('aui')
                                 <li class="aui-select__status" role="status" aui-if="$ctrl.view.more === 'loading'">
                                     <span class="aui-select__spinner" aria-hidden="true"></span><span>{{ ::$ctrl.t.loadingMore }}</span>
                                 </li>
-                                <li class="aui-select__status aui-select__status--retry" role="none"
+                                <!-- A failed load, the list empty, too short a search: said to screen readers as they come
+                                     (a status, as the notice), the focus left in the field; Enter there retries -->
+                                <li class="aui-select__status aui-select__status--retry" role="status"
                                     aui-if="$ctrl.view.more === 'error'"
                                     ng-click="$ctrl.retryLoad($event)">{{ ::$ctrl.t.moreFailed }} <span class="aui-select__retry-link">{{ ::$ctrl.t.retry }}</span></li>
-                                <li class="aui-select__no-results aui-select__status--retry" role="none"
+                                <li class="aui-select__no-results aui-select__status--retry" role="status"
                                     aui-if="$ctrl.view.status === 'error'"
                                     ng-click="$ctrl.retryLoad($event)">{{ $ctrl.view.timeout ? $ctrl.t.timeout : $ctrl.t.failed }} <span class="aui-select__retry-link">{{ ::$ctrl.t.retry }}</span></li>
-                                <li class="aui-select__no-results" role="none"
+                                <li class="aui-select__no-results" role="status"
                                     aui-if="$ctrl.view.status === 'min-length'">{{ $ctrl.t.minLength.replace('{n}', $ctrl.view.minLength) }}</li>
                                 <!-- Loading is off (load-enabled false): what to do first -->
                                 <li class="aui-select__notice" role="status" aui-if="$ctrl.loadNotice()">
                                     <span class="aui-select__notice-icon" aria-hidden="true"></span><span class="aui-select__notice-text">{{ $ctrl.loadNotice() }}</span>
                                 </li>
                                 <!-- No results -->
-                                <li class="aui-select__no-results" role="none"
+                                <li class="aui-select__no-results" role="status"
                                     aui-if="$ctrl.view.status === 'empty' || ($ctrl.view.status === 'off' && !$ctrl.loadNotice())">
                                     {{ $ctrl.emptyText || $ctrl.t.empty }}
                                 </li>

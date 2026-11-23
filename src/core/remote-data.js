@@ -603,11 +603,15 @@ angular.module('aui')
             };
             const tickets = new Set();   // this component's own lookups, stopped when it is destroyed
             let touched = false;
+            // Each asking of a value has its number (entry.ask): an answer counts only for the asking it belongs to. An
+            // earlier one that comes late (the value picked again since, or asked again for new params) is dropped.
+            let asks = 0;
 
-            function deliver(key, result) {
+            function deliver(key, result, ask) {
                 if (destroyed) return;
                 const entry = entries.get(key);
                 if (!entry || entry.state !== 'pending') return;   // no longer selected
+                if (entry.ask !== ask) return;                      // the answer of an earlier asking
                 if (result === 'failed') {
                     entry.state = 'failed';
                 } else if (result) {
@@ -630,15 +634,18 @@ angular.module('aui')
                 scheduled = false;
                 if (destroyed || cfg.blocked()) return;
                 const batch = new Map();
+                const asked = new Map();   // key -> the number of this asking
                 entries.forEach(function (entry, key) {
                     if (entry.state !== 'queued') return;
                     entry.state = 'pending';
+                    entry.ask = ++asks;
                     batch.set(key, entry.value);
+                    asked.set(key, entry.ask);
                 });
                 if (batch.size === 0) return;
                 const groupKey = cfg.group();
                 if (!groupKey) {
-                    runChunks(runner, batch, function (key, result) { deliver(key, result); }, tickets).then(notify);
+                    runChunks(runner, batch, function (key, result) { deliver(key, result, asked.get(key)); }, tickets).then(notify);
                     return;
                 }
                 let group = groups.get(groupKey);
@@ -648,8 +655,8 @@ angular.module('aui')
                 }
                 batch.forEach(function (value, key) {
                     group.values.set(key, value);
-                    if (!group.members.has(key)) group.members.set(key, new Set());
-                    group.members.get(key).add(api);
+                    if (!group.members.has(key)) group.members.set(key, new Map());   // member -> its asking's number
+                    group.members.get(key).set(api, asked.get(key));
                 });
                 if (!group.scheduled) {
                     group.scheduled = true;
@@ -661,15 +668,15 @@ angular.module('aui')
                         // They run with the function of a member that is still alive.
                         let live = null;
                         group.members.forEach(function (members) {
-                            members.forEach(function (member) {
+                            members.forEach(function (ask, member) {
                                 if (!live && member.alive()) live = member.runner;
                             });
                         });
                         if (!live) return;
                         const listeners = new Set();
                         runChunks(live, group.values, function (key, result) {
-                            (group.members.get(key) || []).forEach(function (member) {
-                                member.receive(key, result);
+                            (group.members.get(key) || new Map()).forEach(function (ask, member) {
+                                member.receive(key, result, ask);
                                 listeners.add(member);
                             });
                         }, new Set()).then(function () {
@@ -715,6 +722,24 @@ angular.module('aui')
                     entries.forEach(function (entry, key) {
                         if (entry.state === 'missing' || entry.state === 'failed') entries.delete(key);
                     });
+                },
+                /**
+                 * The params changed: a value still being asked is asked again with the new ones (the answer for the old
+                 * data set is dropped when it comes). A value found before keeps its record until new data replaces it.
+                 */
+                askAgain: function () {
+                    let queued = false;
+                    entries.forEach(function (entry) {
+                        if (entry.state !== 'pending' && entry.state !== 'queued') return;
+                        entry.state = 'queued';
+                        entry.ask = 0;
+                        queued = true;
+                    });
+                    if (queued) schedule();
+                },
+                /** reload(): everything is asked again, found values too (their answers before are dropped). */
+                forget: function () {
+                    entries.clear();
                 },
                 /** Run what waited for blocked() to become false. */
                 kick: function () {

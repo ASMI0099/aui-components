@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-input: deferred commits next to Angular's own input</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px 18px; }
+        .cell { background: #fff; padding: 10px 12px; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+        .cell > label { display: block; font-size: 12px; color: #555; margin-bottom: 6px; }
+        .cell input.native { display: block; margin-top: 6px; width: 100%; box-sizing: border-box; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="input-deferred.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="input-deferred.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="DeferredCtrl">
+<h1>aui-input: deferred commits next to Angular's own input</h1>
+<button type="button" id="outside">Outside</button>
+<form name="f" novalidate>
+    <div class="grid">
+        <div class="cell" id="tight"><label>updateOn blur, length 8 then 2 while a text waits</label>
+            <aui-input name="atight" ng-model="a.tight" ng-model-options="{updateOn: 'blur'}" value-max-length="{{ rule.tight }}"
+                       ng-change="changed('a', a.tight)" input-style-type="form"></aui-input>
+            <input class="native" name="ntight" ng-model="n.tight" ng-model-options="{updateOn: 'blur'}" ng-maxlength="rule.tight"
+                   ng-change="changed('n', n.tight)"></div>
+        <div class="cell" id="relax"><label>updateOn blur, length 2 then 8 while a text waits</label>
+            <aui-input name="arelax" ng-model="a.relax" ng-model-options="{updateOn: 'blur'}" value-max-length="{{ rule.relax }}"
+                       input-style-type="form"></aui-input>
+            <input class="native" name="nrelax" ng-model="n.relax" ng-model-options="{updateOn: 'blur'}" ng-maxlength="rule.relax"></div>
+        <div class="cell" id="num"><label>updateOn blur, number, max 40 then 10 while a number waits</label>
+            <aui-input name="anum" ng-model="a.num" ng-model-options="{updateOn: 'blur'}" input-type="number" max="{{ rule.num }}"
+                       input-style-type="form"></aui-input>
+            <input class="native" type="number" name="nnum" ng-model="n.num" ng-model-options="{updateOn: 'blur'}" max="{{ rule.num }}"></div>
+        <div class="cell" id="keep"><label>updateOn blur, committed LONG, length 8 then 2 while a valid text waits</label>
+            <aui-input name="akeep" ng-model="a.keep" ng-model-options="{updateOn: 'blur'}" value-max-length="{{ rule.keep }}"
+                       input-style-type="form"></aui-input>
+            <input class="native" name="nkeep" ng-model="n.keep" ng-model-options="{updateOn: 'blur'}" ng-maxlength="rule.keep"></div>
+        <div class="cell" id="back"><label>updateOn blur, committed LONG, length 8 then 2, rolled back</label>
+            <aui-input name="aback" ng-model="a.back" ng-model-options="{updateOn: 'blur'}" value-max-length="{{ rule.back }}"
+                       input-style-type="form"></aui-input>
+            <input class="native" name="nback" ng-model="n.back" ng-model-options="{updateOn: 'blur'}" ng-maxlength="rule.back"></div>
+        <div class="cell" id="num-keep"><label>updateOn blur, committed 25, max 40 then 10 while 5 waits</label>
+            <aui-input name="anumKeep" ng-model="a.numKeep" ng-model-options="{updateOn: 'blur'}" input-type="number" max="{{ rule.numKeep }}"
+                       input-style-type="form"></aui-input>
+            <input class="native" type="number" name="nnumKeep" ng-model="n.numKeep" ng-model-options="{updateOn: 'blur'}" max="{{ rule.numKeep }}"></div>
+        <div class="cell" id="undef"><label>updateOn blur, no model yet, required, pattern</label>
+            <aui-input name="aundef" ng-model="a.undef" ng-model-options="{updateOn: 'blur'}" required pattern="[A-Z]+"
+                       input-style-type="form"></aui-input>
+            <input class="native" name="nundef" ng-model="n.undef" ng-model-options="{updateOn: 'blur'}" required pattern="[A-Z]+"></div>
+        <div class="cell" id="deb"><label>debounce 120, no model yet, required, pattern</label>
+            <aui-input name="adeb" ng-model="a.deb" ng-model-options="{debounce: 120}" required pattern="[A-Z]+"
+                       input-style-type="form"></aui-input>
+            <input class="native" name="ndeb" ng-model="n.deb" ng-model-options="{debounce: 120}" required pattern="[A-Z]+"></div>
+        <div class="cell" id="deb-relax"><label>debounce 120, length 2 then 8 while a text waits</label>
+            <aui-input name="adebRelax" ng-model="a.debRelax" ng-model-options="{debounce: 120}" value-max-length="{{ rule.debRelax }}"
+                       input-style-type="form"></aui-input>
+            <input class="native" name="ndebRelax" ng-model="n.debRelax" ng-model-options="{debounce: 120}" ng-maxlength="rule.debRelax"></div>
+        <div class="cell" id="same"><label>updateOn blur, typed and typed back</label>
+            <aui-input name="asame" ng-model="a.same" ng-model-options="{updateOn: 'blur'}" input-style-type="form"></aui-input>
+            <input class="native" name="nsame" ng-model="n.same" ng-model-options="{updateOn: 'blur'}"></div>
+        <div class="cell" id="clear-keep"><label>updateOn blur, committed LONG, cleared, length 8 then 2</label>
+            <aui-input name="aclearKeep" ng-model="a.clearKeep" ng-model-options="{updateOn: 'blur'}" clearable
+                       value-max-length="{{ rule.clearKeep }}" input-style-type="form"></aui-input>
+            <input class="native" name="nclearKeep" ng-model="n.clearKeep" ng-model-options="{updateOn: 'blur'}" ng-maxlength="rule.clearKeep"></div>
+    </div>
+</form>
+<form name="s" id="submit-form" novalidate ng-submit="submitted(s)">
+    <div class="cell" id="submit"><label>updateOn blur, length 2 then 8, then submitted</label>
+        <aui-input name="asubmit" ng-model="a.submit" ng-model-options="{updateOn: 'blur'}" value-max-length="{{ rule.submit }}"
+                   input-style-type="form"></aui-input>
+        <button type="submit" id="save">Save</button></div>
+</form>
+</body>
+</html>

@@ -75,6 +75,12 @@
         <aui-button id="b-retry" icon="upload" on-click="saveMaybe()" done-text="Saved" done-duration="3000">Save</aui-button>
         <aui-button id="b-race" variant="outline" copy-text="{{ raceText }}" on-copy="raced($success, $text)" done-duration="3000">Copy</aui-button>
         <aui-button id="b-dyn" icon="settings" variant="ghost">{{ dynLabel }}</aui-button>
+        <aui-button id="b-styled" icon="settings" variant="ghost"><span class="label-accent">{{ styledLabel }}</span></aui-button>
+        <aui-button id="b-hidden" icon="settings" variant="ghost"><span ng-show="state.showHidden">Hidden text</span></aui-button>
+        <aui-button id="b-late" variant="outline" ng-attr-aria-pressed="{{ state.latePressed }}" ng-attr-tabindex="{{ state.lateTab }}">Late</aui-button>
+        <span id="b-ext-label">Remove invoice 31</span>
+        <aui-button id="b-labelled" icon="delete" variant="ghost" aria-labelledby="b-ext-label"></aui-button>
+        <div id="b-load-box" style="width: 360px"><aui-button id="b-load-block" block loading="state.blockLoading" loading-text="Saving">Save the record</aui-button></div>
         <aui-button id="b-titled" icon="delete" variant="ghost" title="Remove this item"></aui-button>
         <aui-button id="b-sqlink" variant="link" shape="square" icon="settings"></aui-button>
         <aui-button id="b-copy-width" variant="outline" copy-text="width" done-duration="600">Copy</aui-button>

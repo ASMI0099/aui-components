@@ -24,7 +24,7 @@
             if (s === 'expand') apply(() => window.benchScope.api.expandAll());
             if (s === 'search') {
                 const input = document.querySelector('.aui-select__search-input');
-                input.value = 'Store 1-2-3'; input.dispatchEvent(new Event('input'));
+                input.value = 'Item 1-2-3'; input.dispatchEvent(new Event('input'));
                 await sleep(400);
                 input.value = ''; input.dispatchEvent(new Event('input'));
             }
@@ -36,7 +36,8 @@
         await frames(2);
         apply(() => { window.benchScope.data = []; window.benchScope.m.v = null; });
         await sleep(500);
-        window.__bench = {done: true, kind: kind, steps: steps};
+        // the steps' Angular errors (an api method missing, a failing handler) make the run fail (scripts/perf.js)
+        window.__bench = {done: true, kind: kind, steps: steps, errors: (window.__ngErrors || []).slice()};
     }
     window.addEventListener('load', () => { run().catch(e => { window.__bench = {error: String(e && e.stack || e)}; }); });
 })();

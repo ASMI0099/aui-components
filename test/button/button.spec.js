@@ -669,5 +669,103 @@
                 roomHeld: r.width >= room};
         });
 
+
+    T('B41 copy-text: an older copy refused after a newer one started is not written the older way (the newer text stays on the clipboard); on-copy reports it failed',
+        {fallbackTexts: [], races: [[true, 'B'], [false, 'A']]},
+        async () => {
+            const clip = navigator.clipboard;
+            const exec = document.execCommand;
+            const pending = [];
+            const fallbackTexts = [];
+            clip.writeText = text => new Promise((resolve, reject) => pending.push({text, resolve, reject}));
+            document.execCommand = function () {
+                fallbackTexts.push(String(window.getSelection ? window.getSelection() : ''));
+                return true;
+            };
+            try {
+                scope().races.length = 0;
+                apply(s => { s.raceText = 'A'; });
+                click(btn('b-race'));
+                apply(s => { s.raceText = 'B'; });
+                click(btn('b-race'));
+                pending[1].resolve();
+                await sleep(50);
+                pending[0].reject(new Error('refused'));
+                await sleep(100);
+                return {fallbackTexts, races: scope().races.slice()};
+            } finally {
+                delete clip.writeText;
+                document.execCommand = exec;
+            }
+        });
+
+    T('B42 copy-text: a success, then a failure 25 ms later: the status reads the failure only (never "Copied" once the failure shows)',
+        {texts: ['Copy failed']},
+        async () => {
+            const clip = navigator.clipboard;
+            const exec = document.execCommand;
+            let calls = 0;
+            clip.writeText = () => (++calls === 1 ? Promise.resolve() : Promise.reject(new Error('refused')));
+            document.execCommand = () => false;
+            const texts = [];
+            const watch = new MutationObserver(() => {
+                const status = host('b-race').querySelector('.aui-button__status');
+                const text = status ? status.textContent : '';
+                if (text && texts[texts.length - 1] !== text) texts.push(text);
+            });
+            watch.observe(host('b-race'), {childList: true, characterData: true, subtree: true});
+            try {
+                click(btn('b-race'));
+                await sleep(25);
+                click(btn('b-race'));
+                await sleep(300);
+                return {texts};
+            } finally {
+                watch.disconnect();
+                delete clip.writeText;
+                document.execCommand = exec;
+            }
+        });
+
+    T('B43 an icon with a label that shows nothing (an empty styled <span>, a text hidden by ng-show) is an icon alone, named by its icon; the text shown, a text button',
+        {styled: {iconOnly: true, name: 'Settings'}, hidden: {iconOnly: true, name: 'Settings'}, shown: false},
+        async () => {
+            const state = id => ({iconOnly: btn(id).classList.contains('aui-button--icon-only'), name: btn(id).getAttribute('aria-label')});
+            await sleep(30);
+            const styled = state('b-styled');
+            const hidden = state('b-hidden');
+            apply(s => { s.state.showHidden = true; });
+            await AuiTest.until(() => !btn('b-hidden').classList.contains('aui-button--icon-only'), 1000);
+            const shown = btn('b-hidden').classList.contains('aui-button--icon-only');
+            apply(s => { s.state.showHidden = false; });
+            return {styled, hidden, shown};
+        });
+
+    T('B44 ng-attr-aria-pressed and ng-attr-tabindex that start out unset: once set, on the native button (not on the element)',
+        {pressed: 'true', tab: '-1', hostPressed: null, hostTab: null},
+        async () => {
+            apply(s => { s.state.latePressed = 'true'; s.state.lateTab = '-1'; });
+            await sleep(20);
+            return {pressed: btn('b-late').getAttribute('aria-pressed'), tab: btn('b-late').getAttribute('tabindex'),
+                hostPressed: host('b-late').getAttribute('aria-pressed'), hostTab: host('b-late').getAttribute('tabindex')};
+        });
+
+    T('B45 aria-labelledby: on the native button, where it names the button by the page\'s text (not on the element)',
+        {labelledby: 'b-ext-label', hostLabelledby: null},
+        async () => ({labelledby: btn('b-labelled').getAttribute('aria-labelledby'), hostLabelledby: host('b-labelled').getAttribute('aria-labelledby')}));
+
+    T('B46 a block button showing its loading text holds its width only within its place: the place narrows, the button narrows with it',
+        {fits: true},
+        async () => {
+            apply(s => { s.state.blockLoading = true; });
+            await sleep(50);
+            document.getElementById('b-load-box').style.width = '140px';
+            await sleep(50);
+            const fits = btn('b-load-block').getBoundingClientRect().width <= 140.5;
+            apply(s => { s.state.blockLoading = false; });
+            document.getElementById('b-load-box').style.width = '360px';
+            return {fits};
+        });
+
     AuiTest.run('aui-* family: aui-button', tests);
 })();

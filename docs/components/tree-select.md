@@ -37,7 +37,7 @@ Only the rows in view are drawn, so large trees open and search quickly.
 | `check-strictly` | With `multiple`: parents and children are checked independently. |
 | `value-strategy` | With linked checking, what the model holds: `all` (default), `parent` (a fully checked branch as its parent only) or `child` (the leaves only). |
 | `leaf-only` | One value: only leaves can be picked. |
-| `show-path` | The picked node shown as its whole path ("A / B / C"); `path-separator` changes " / ". |
+| `show-path` | The picked node shown as its whole path ("A / B / C"); `path-separator` changes " / " (read when a path is made: set it once; a path already looked up keeps its separator). |
 | `show-line` | Guide lines between the levels. |
 | `max-tag-count`, `clearable`, `placeholder`, `searchable`, `search-placeholder`, `empty-text`, `panel-min-width`, `selected-labels` | As in [aui-select](select.md). |
 
@@ -50,7 +50,7 @@ Only the rows in view are drawn, so large trees open and search quickly.
 | `filter-method` | A search of your own in the browser: `fn($node, $query, $label)` returns true for a match. |
 | `search-delay` | Server search: the pause after typing (300 ms). |
 | `load-options`, `load-params`, `load-enabled`, `load-disabled-text`, `reset-on-params`, `cache-ttl`, `load-timeout`, `preload`, `value-options`, `lookup-enabled`, `lookup-options`, `lookup-group` | As in [aui-select](select.md): the whole tree loaded for the current `load-params`. |
-| `reveal-selected` | One value, data loaded level by level: on open, the branches down to the picked node are loaded and opened. |
+| `reveal-selected` | One value, data loaded level by level: on open, the branches down to the picked node are loaded and opened (children in pages too: the next pages of a branch load until the node is found, up to 20). A value set meanwhile ends the reveal. |
 
 A lookup may answer nodes, nested trees, or root-to-node chains (`[[root, ..., node], ...]`); chains also give the
 path and the ancestors. See [options from a server](../remote-data.md).

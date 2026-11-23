@@ -394,7 +394,7 @@
                 let rules;
                 try { rules = sheet.cssRules; } catch (e) { continue; }
                 for (const r of rules) {
-                    if (r.selectorText && r.selectorText.indexOf('.aui-input--cell') >= 0 && r.selectorText.indexOf(':hover') >= 0 &&
+                    if (r.selectorText && r.selectorText.indexOf('.aui-input--cell') >= 0 && r.selectorText.indexOf(':hover') >= 0 && r.selectorText.indexOf(':has(') < 0 &&
                         r.style.getPropertyValue('border-color')) declared = r.style.getPropertyValue('border-color');
                 }
             }
@@ -405,6 +405,163 @@
             const hover = getComputedStyle(probe).color;
             probe.remove();
             return {rest: getComputedStyle(trigger).borderTopColor, hover};
+        });
+
+
+    T('E34 updateOn blur: a rule that changes while a typed text waits does not commit it: the model, pristine state and rollback keep the value from before',
+        {model: 'AA', pristine: true, formUnchanged: true, afterRollback: 'AA', box: 'AA'},
+        async () => {
+            const input = box('draft-limit');
+            const formBefore = form().$pristine;
+            input.focus();
+            edit(input, 'ABC');
+            await sleep(20);
+            apply(s => { s.state.dlLimit = 2; });
+            apply(s => { s.state.dlLimit = 8; });
+            const model = scope().m.dl, pristine = form().draftLimit.$pristine, formUnchanged = form().$pristine === formBefore;
+            apply(() => { form().$rollbackViewValue(); });
+            await sleep(20);
+            const afterRollback = scope().m.dl, shown = input.value;
+            input.blur();
+            return {model, pristine, formUnchanged, afterRollback, box: shown};
+        });
+
+    T('E35 updateOn blur: a typed invalid text changes the field\'s validity only when it commits (then its own error alone)',
+        {before: [], model: 'GOOD', after: ['pattern']},
+        async () => {
+            const input = box('draft-pattern');
+            input.focus();
+            edit(input, 'bad');
+            await sleep(30);
+            const before = errors(form().draftPattern), model = scope().m.dp;
+            input.blur();
+            await sleep(30);
+            return {before, model, after: errors(form().draftPattern)};
+        });
+
+    T('E36 inside a disabled <fieldset>: the field looks disabled (its surface, its border, no focus skin), invalid or not',
+        {background: 'rgb(248, 250, 252)', border: 'rgb(219, 227, 236)', skin: 'none'},
+        async () => {
+            const input = box('fs-look');
+            input.focus();
+            input.blur();
+            apply(s => { s.state.fsLook = true; });
+            await sleep(30);
+            const trigger = host('fs-look').querySelector('.aui-input__form-trigger');
+            const r = {background: getComputedStyle(trigger).backgroundColor, border: getComputedStyle(trigger).borderTopColor,
+                skin: getComputedStyle(trigger, '::after').display};
+            apply(s => { s.state.fsLook = false; });
+            return r;
+        });
+
+    T('E37 a search still waiting when a <fieldset> around the field is disabled does not run',
+        {searches: []},
+        async () => {
+            scope().searches.length = 0;
+            const input = box('fs-search');
+            input.focus();
+            edit(input, 'pending');
+            apply(s => { s.state.fsSearch = true; });
+            await sleep(240);
+            const searches = scope().searches.filter(x => x.indexOf('fsq:') === 0);
+            apply(s => { s.state.fsSearch = false; });
+            return {searches};
+        });
+
+    T('E38 the basic style shows label-text (with show-label) as the caption in its line; with no placeholder, at rest too',
+        {caption: 'Part number', rest: {visibility: 'visible', opacity: '1'}, placeholderField: 'hidden'},
+        async () => {
+            const label = host('basic-label').querySelector('.aui-input-label');
+            const style = getComputedStyle(label);
+            // a field with a placeholder: the placeholder names it at rest, the caption comes with the focus
+            const other = getComputedStyle(host('basic-clear').querySelector('.aui-input-label')).visibility;
+            return {caption: label.textContent.trim(), rest: {visibility: style.visibility, opacity: style.opacity}, placeholderField: other};
+        });
+
+    T('E39 an auto-height textarea fits its text again when its size changes (the text grows with it)',
+        {fits: true},
+        async () => {
+            const area = document.querySelector('#ta-size textarea');
+            await sleep(50);
+            apply(s => { s.state.tsz = 'large'; });
+            await AuiTest.until(() => area.scrollHeight <= area.clientHeight + 1, 1000);
+            return {fits: area.scrollHeight <= area.clientHeight + 1};
+        });
+
+    T('E40 a field narrower than all its parts keeps its count inside its frame (never drawn into the next field)',
+        {inside: true},
+        async () => {
+            const frame = host('narrow-count').querySelector('.aui-input__form-trigger').getBoundingClientRect();
+            const count = host('narrow-count').querySelector('.aui-input__count').getBoundingClientRect();
+            // cut to nothing, it draws nothing (its empty margin may stay past the edge)
+            return {inside: count.width < 0.5 || count.right <= frame.right + 0.5};
+        });
+
+    T('E41 a number with value-max-length="0" (no limit) keeps its arrow keys',
+        {prevented: false},
+        async () => {
+            const event = new KeyboardEvent('keydown', {key: 'ArrowDown', bubbles: true, cancelable: true});
+            box('num-zero').dispatchEvent(event);
+            return {prevented: event.defaultPrevented};
+        });
+
+    T('E42 autofocus: a field hidden by visibility (its size kept) takes the focus when it shows',
+        {focused: true},
+        async () => {
+            outsideButton().focus();
+            await sleep(50);
+            apply(() => { document.getElementById('af-vis').style.visibility = 'visible'; });
+            await AuiTest.until(() => document.activeElement === box('af-vis'), 1000);
+            return {focused: document.activeElement === box('af-vis')};
+        });
+
+    T('E43 the form\'s native reset: the field keeps showing its model (box, count and clear button agree with it)',
+        {box: 'kept', model: 'kept', count: '4/20'},
+        async () => {
+            document.getElementById('reset-form').reset();
+            await sleep(50);
+            return {box: box('reset-field').value, model: scope().m.rs, count: host('reset-field').querySelector('.aui-input__count').textContent.trim()};
+        });
+
+    T('E44 a field without a name adds nothing to the form\'s data (a named one does)',
+        {names: ['rs']},
+        async () => ({names: Array.from(new FormData(document.getElementById('reset-form')).keys())}));
+
+    T('E45 ng-attr-aria-describedby that starts out unset: once set, on the box',
+        {described: true},
+        async () => {
+            apply(s => { s.state.lateDesc = 'desc-late'; });
+            await sleep(20);
+            return {described: (box('late-desc').getAttribute('aria-describedby') || '').indexOf('desc-late') >= 0};
+        });
+
+    T('E46 a 95px field with many parts: its clear button stays inside the frame; a click 8px outside the field clears nothing',
+        {inside: true, outsideHit: false, model: 123.45},
+        async () => {
+            const frame = host('narrow-95').querySelector('.aui-input__form-trigger').getBoundingClientRect();
+            const clear = host('narrow-95').querySelector('.aui-control-clear');
+            const r = clear.getBoundingClientRect();
+            const y = r.top + r.height / 2;
+            const hit = document.elementFromPoint(frame.right + 8, y);
+            const outsideHit = !!(hit && clear.contains(hit));
+            if (hit) hit.dispatchEvent(new MouseEvent('click', {bubbles: true, cancelable: true, clientX: frame.right + 8, clientY: y}));
+            await sleep(20);
+            return {inside: r.right <= frame.right + 0.5, outsideHit, model: scope().m.n95};
+        });
+
+    T('E47 an auto-height textarea fits its text again when the theme\'s font scale changes',
+        {fits: true, height: 'grew'},
+        async () => {
+            const area = document.querySelector('#ta-font textarea');
+            await sleep(50);
+            const before = area.clientHeight;
+            document.documentElement.style.setProperty('--aui-font-scale', '1.25');
+            try {
+                await AuiTest.until(() => area.scrollHeight <= area.clientHeight + 1 && area.clientHeight > before, 1000);
+                return {fits: area.scrollHeight <= area.clientHeight + 1, height: area.clientHeight > before ? 'grew' : 'same'};
+            } finally {
+                document.documentElement.style.removeProperty('--aui-font-scale');
+            }
         });
 
     T('E19 no Angular errors in the whole suite',

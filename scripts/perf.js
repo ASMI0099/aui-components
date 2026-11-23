@@ -216,6 +216,12 @@ async function leak(browser, server, args) {
         await run.page.close();
         return 1;
     }
+    // a step that failed inside Angular (caught by $exceptionHandler) did not run: the measure would not be the one asked
+    if (run.done.errors && run.done.errors.length) {
+        console.log('FAIL leak: angular errors in the steps: ' + JSON.stringify(run.done.errors.slice(0, 3)));
+        await run.page.close();
+        return 1;
+    }
     // the snapshot first: counting the survivors below creates references of its own
     const report = retainers ? heapSnapshot.analyze(await takeSnapshot(run.page), retainers) : '';
     const left = await survivors(run.page);

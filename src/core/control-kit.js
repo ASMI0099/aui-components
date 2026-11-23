@@ -240,11 +240,17 @@ angular.module('aui')
                 if (measureEl) observer.observe(measureEl);
             }
 
-            function measure() {
+            function measure(again) {
                 scheduled = false;
                 if (destroyed) return;
                 const tagsEl = cfg.root.querySelector('.aui-select__tags--responsive');
-                if (!tagsEl) return;
+                if (!tagsEl) {
+                    // Switched to responsive in this digest: AngularJS 1.5 applies the ng-class change in a post-digest
+                    // task as well, queued after this one, so the class is not there yet. Measured once more at the end
+                    // of the same queue (once: with no tags at all there is nothing to measure).
+                    if (again !== true) cfg.scope.$$postDigest(function () { measure(true); });
+                    return;
+                }
                 sync();
                 build(tagsEl.parentNode);
                 observe(tagsEl, box);
@@ -786,6 +792,64 @@ angular.module('aui')
             pick: true, shortcut: true, now: true, toggle: true, 'select-all': true});
 
         /**
+         * A value the user changed that ngModel has not committed yet: ng-model-options updateOn (blur...) or a debounce
+         * holds it back, and the page's model is still the value before.
+         */
+        function commitPending(model) {
+            const options = model && model.$options;
+            if (!options || (options.updateOnDefault !== false && !options.debounce)) return false;
+            const view = model.$viewValue;
+            return view !== model.$$lastCommittedViewValue && !(typeof view === 'number' && isNaN(view));
+        }
+
+        /** Leaving the field commits a value that waits for the blur (updateOn: 'blur'), as Angular's own inputs do. */
+        function commitOnLeave(model) {
+            const options = model && model.$options;
+            if (!options || !/(^|\s)blur(\s|$)/.test(options.updateOn || '') || !commitPending(model)) return;
+            model.$$debounceViewValueCommit('blur');
+        }
+
+        /**
+         * on-change once the value is the page's: with a deferred model (updateOn, a debounce) the report waits for the
+         * commit, so that it carries the new value (reported at once, it said the old one twice). report(oldValue) is
+         * the component's report; a second change before the commit keeps the first one's old value; a rollback drops it.
+         * Returns the function that reports a change. The model's commit is followed from the first change that waits:
+         * ngModel reads its ng-model-options in its pre-link, after a component's $onInit, so they are not known before.
+         */
+        function changeAfterCommit(model, report) {
+            let waiting = null;   // {args, oldValue}
+            let followed = false;
+            function follow() {
+                if (followed) return;
+                followed = true;
+                const commit = model.$commitViewValue;
+                model.$commitViewValue = function () {
+                    const result = commit.apply(model, arguments);
+                    if (waiting && !commitPending(model)) {
+                        const due = waiting;
+                        waiting = null;
+                        report.apply(null, due.args.slice(0, -1).concat([due.oldValue]));
+                    }
+                    return result;
+                };
+                const rollback = model.$rollbackViewValue;
+                model.$rollbackViewValue = function () {
+                    waiting = null;
+                    return rollback.apply(model, arguments);
+                };
+            }
+            return function () {
+                const args = Array.prototype.slice.call(arguments);
+                if (commitPending(model)) {
+                    follow();
+                    waiting = {args: args, oldValue: waiting ? waiting.oldValue : args[args.length - 1]};
+                    return;
+                }
+                report.apply(null, args);
+            };
+        }
+
+        /**
          * Tells the page that a field's value changed. change: {value, oldValue, triggerSource} and the component's own
          * fields; locals: the component's own names for the call form. on-change written as a call
          * (on-change="vm.changed($value, $byUser)") runs with the locals $value, $oldValue, $triggerSource, $byUser and
@@ -931,6 +995,9 @@ angular.module('aui')
             digestOwn: digestOwn,
             afterFrame: afterFrame,
             reportChange: reportChange,
+            commitPending: commitPending,
+            commitOnLeave: commitOnLeave,
+            changeAfterCommit: changeAfterCommit,
             focusQuietly: focusQuietly,
             onTriggerPress: onTriggerPress,
             quietPointerFocus: quietPointerFocus,

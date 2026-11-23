@@ -251,7 +251,7 @@
         }));
 
     T('D2 disabled component: does not open, not focusable, disabled style',
-        {open: false, tabindex: '-1', disabledClass: true},
+        {open: false, tabindex: null, disabledClass: true},
         async () => {
             trig('t-off').click(); await sleep(100);
             return {open: ctrl('t-off').isOpen, tabindex: trig('t-off').getAttribute('tabindex'), disabledClass: host('t-off').querySelector('.aui-select').classList.contains('aui-select--disabled')};

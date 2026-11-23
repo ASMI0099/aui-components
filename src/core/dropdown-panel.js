@@ -62,7 +62,8 @@ angular.module('aui')
          *       strategy(): 'fixed' | 'absolute', minWidth?(): px, growable?(): boolean, onShown?(), onClosed?(),
          *       ownWidth?(): boolean (the panel keeps the width of its content, its left edge on the trigger's: a
          *       calendar), onPlaced?() (after each placement, the side classes set: a panel of its own width
-         *       measures where its edges meet the trigger's)}
+         *       measures where its edges meet the trigger's), onListLimited?() (the open list was given another
+         *       height to fit its side: a short viewport; the field keeps its active row in view)}
          *
          * Placement: the side of the trigger (below or above) is chosen when the panel opens, by the height it will
          * need, and kept while it stays open: content that changes (data arriving, a search narrowing the list, nodes
@@ -203,7 +204,12 @@ angular.module('aui')
                 const around = list ? heightAroundList(list) : null;
                 if (around === null) return;   // not shown (yet): measured at the next position
                 const value = Math.max(MIN_LIST_PX, Math.floor(available - around - boxExtra(list))) + 'px';
-                if (panel.style.getPropertyValue(LIST_MAX_VAR) !== value) panel.style.setProperty(LIST_MAX_VAR, value);
+                if (panel.style.getPropertyValue(LIST_MAX_VAR) === value) return;
+                panel.style.setProperty(LIST_MAX_VAR, value);
+                // The first placement of an opening comes before the panel is shown, so it cannot measure the list: its
+                // height is fitted at the next one, after the field brought its selected row into view for the list's
+                // full height - in a short viewport (a high zoom) that row was then below the list's end.
+                if (cfg.onListLimited) cfg.onListLimited();
             }
 
             // Panel width follows the trigger, never narrower than cfg.minWidth(). The width is
@@ -266,18 +272,20 @@ angular.module('aui')
 
             function reveal() {
                 entering = false;
+                // prefers-reduced-motion: reduce - the panel fades in where it stands, it does not grow (theming.md)
+                const still = reducedMotion();
                 if (!panel.classList.contains(cls.open)) {
                     panel.classList.add(cls.open);
                     // First frame in the closed pose, then animate in.
                     panel.style.opacity = '0';
-                    panel.style.transform = 'scaleY(0.7)';
+                    panel.style.transform = still ? 'none' : 'scaleY(0.7)';
                     void panel.offsetHeight;
                 }
                 if (cfg.onShown) cfg.onShown();
                 // Into the open pose at once: the closed pose is in place (the reflow above), so this starts the
                 // transition (a timer here only delayed the opening by a frame).
                 panel.style.opacity = '1';
-                panel.style.transform = 'scaleY(1)';
+                panel.style.transform = still ? 'none' : 'scaleY(1)';
                 panel.style.pointerEvents = '';
             }
 
@@ -368,7 +376,8 @@ angular.module('aui')
                 const drawn = growing ? drawnScaleY() : 0;
                 stopGrowth();
                 panel.style.opacity = '0';
-                panel.style.transform = growing ? 'scaleY(' + drawn + ')' : 'scaleY(0.7)';
+                // reduced motion: it fades out where it stands (a growth never runs then)
+                panel.style.transform = reducedMotion() ? 'none' : (growing ? 'scaleY(' + drawn + ')' : 'scaleY(0.7)');
                 // still drawn while it fades (its open class kept), it takes no pointer: a click there would reach a
                 // field that is closed already (a quick second click on an option or a day)
                 panel.style.pointerEvents = 'none';

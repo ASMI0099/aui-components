@@ -95,6 +95,7 @@ angular.module('aui')
                 let textShown = false;   // loading-text shown now (the width held from before it)
                 let waiting = false;     // on-click's promise not settled yet
                 let copies = 0;          // copy-text: the clicks that copied so far (only the latest one's outcome shows)
+                let announced = 0;       // the feedback read out so far (only the latest one's text is read)
                 let labelShown = null;   // the label had something to show at the last drawing
                 let labelWatch = null;   // follows the label's text (a {{ }} in it can become empty, or come back)
                 // expanded: a disclosure button; the page's value written through its expression (null: not writable)
@@ -104,7 +105,7 @@ angular.module('aui')
 
                 // the page's ARIA states and relations and its tab order, written on the element, are the native button's
                 // (the element has no role and is no tab stop of its own): moved onto the button
-                const FORWARDED = ['ariaDescribedby', 'ariaHaspopup', 'ariaPressed', 'tabindex'];
+                const FORWARDED = ['ariaLabelledby', 'ariaDescribedby', 'ariaHaspopup', 'ariaPressed', 'tabindex'];
 
                 $ctrl.$postLink = function () {
                     button = host.firstElementChild;
@@ -126,7 +127,9 @@ angular.module('aui')
                         labelWatch = new MutationObserver(function () {
                             if (hasLabel() !== labelShown) render();
                         });
-                        labelWatch.observe(label, {childList: true, characterData: true, subtree: true});
+                        // (ng-show / ng-hide and [hidden] inside it too: a text hidden there shows nothing)
+                        labelWatch.observe(label, {childList: true, characterData: true, subtree: true,
+                            attributes: true, attributeFilter: ['class', 'hidden']});
                     }
                     button.addEventListener('click', onClick);
                     kit.followNgFlags($attrs, render);
@@ -146,7 +149,8 @@ angular.module('aui')
 
                 /** One of FORWARDED: set on the button and taken off the element, now and whenever it changes ({{ }}). */
                 function forward(name) {
-                    if ($attrs[name] === undefined) return;
+                    // written on the element at all (ng-attr-* too, which may start out undefined and get its value later)
+                    if (!$attrs.$attr[name]) return;
                     const htmlName = $attrs.$attr[name];
                     const move = function (value) {
                         set(htmlName, value === undefined || value === null ? null : String(value));
@@ -157,14 +161,25 @@ angular.module('aui')
                 }
 
                 /**
-                 * The label has something to show: a text (not only spaces), or an element of the page's own. The <span>
-                 * Angular wraps a text in counts by its text alone: left empty by its {{ }}, it is nothing.
+                 * The label has something to show: a text (not only spaces), or a picture (an image, a drawing, an icon
+                 * font's element) - not inside a part the page hides (ng-show / ng-hide, [hidden]). An element of the
+                 * page's own counts by what it holds: a styled <span> left empty by its {{ }} is nothing, and an icon
+                 * with nothing else is an icon alone, named by its icon.
                  */
                 function hasLabel() {
-                    if (label.textContent.trim()) return true;
-                    return Array.prototype.some.call(label.children, function (child) {
-                        return !child.classList.contains('aui-button__text');
-                    });
+                    return shows(label);
+                }
+
+                function shows(node) {
+                    for (let child = node.firstChild; child; child = child.nextSibling) {
+                        if (child.nodeType === 3) {
+                            if (child.nodeValue.trim()) return true;
+                        } else if (child.nodeType === 1) {
+                            if (child.classList.contains('ng-hide') || child.hasAttribute('hidden')) continue;
+                            if (/^(img|svg|i|canvas|picture|video|object)$/i.test(child.nodeName) || shows(child)) return true;
+                        }
+                    }
+                    return false;
                 }
 
                 function busy() {
@@ -205,7 +220,9 @@ angular.module('aui')
                     const swapText = !labelShown ? '' :
                         (loading && loadingText ? loadingText : (shownFeedback ? feedbackText(shownFeedback) : ''));
                     const withText = !!swapText;
-                    if (withText && !textShown) button.style.minWidth = button.offsetWidth + 'px';
+                    // (held as the least, but never more than its place: a block button whose place narrows meanwhile
+                    // narrows with it; a browser without min() holds nothing)
+                    if (withText && !textShown) button.style.minWidth = 'min(' + button.offsetWidth + 'px, 100%)';
                     else if (!withText && textShown) button.style.minWidth = '';
                     textShown = withText;
                     showLoadingText(swapText, loading);
@@ -464,8 +481,11 @@ angular.module('aui')
                         host.appendChild(status);
                     }
                     status.textContent = '';
+                    // only the latest feedback is read: an earlier one whose moment comes after (a success, then a
+                    // failure 25 ms later) says nothing
+                    const shown = ++announced;
                     setTimeout(function () {
-                        if (!destroyed && feedback) status.textContent = text;
+                        if (!destroyed && feedback && shown === announced) status.textContent = text;
                     }, 60);
                 }
 
@@ -474,7 +494,7 @@ angular.module('aui')
                     // the outcome shown is the latest copy's: an earlier one that ends later (a slow refusal) only
                     // reports to on-copy
                     const run = ++copies;
-                    writeClipboard(text).then(function (copied) {
+                    writeClipboard(text, run).then(function (copied) {
                         if (destroyed) return;
                         if (run === copies && toToken($ctrl.copyFeedback) !== 'none') showFeedback(copied ? 'done' : 'failed');
                         if (!$ctrl.onCopy) return;
@@ -488,8 +508,12 @@ angular.module('aui')
                     });
                 }
 
-                /** true once the text is on the clipboard: the Clipboard API, else (or when it refuses) the older way. */
-                function writeClipboard(text) {
+                /**
+                 * true once the text is on the clipboard: the Clipboard API, else (or when it refuses) the older way. A
+                 * refusal that comes after a newer copy started is not tried the older way: it would put the older text
+                 * over the newer one (that copy reports false to on-copy).
+                 */
+                function writeClipboard(text, run) {
                     const clipboard = window.navigator && window.navigator.clipboard;
                     if (clipboard && typeof clipboard.writeText === 'function' && window.isSecureContext !== false) {
                         let written;
@@ -498,7 +522,9 @@ angular.module('aui')
                         } catch (e) {
                             written = Promise.reject(e);
                         }
-                        return written.then(function () { return true; }, function () { return copyBySelection(text); });
+                        return written.then(function () { return true; }, function () {
+                            return run === copies && !destroyed ? copyBySelection(text) : false;
+                        });
                     }
                     return Promise.resolve(copyBySelection(text));
                 }

@@ -270,6 +270,38 @@ aui-textarea {
     box-shadow: none;
 }
 
+/* A box disabled by a disabled <fieldset> around the field (the field's own disabled option is not set): the same
+   disabled look - no hover, no red halo under the pointer, no focus skin. The browser disables the box itself. :has() in
+   rules of their own: a browser without it drops them, and only them. */
+.aui-input:not(.aui-input--cell) .aui-input__form-trigger:has(> input:disabled),
+.aui-input:not(.aui-input--cell) .aui-input__form-trigger:has(> textarea:disabled) {
+    cursor: not-allowed;
+    background: var(--aui-control-readonly-background-color);
+    border-color: #dbe3ec;
+    box-shadow: none;
+}
+
+.aui-input__form-trigger:has(> input:disabled)::after,
+.aui-input__form-trigger:has(> textarea:disabled)::after {
+    display: none;
+}
+
+.aui-input:not(.aui-input--cell) .aui-input__form-trigger:has(> input:disabled):hover,
+.aui-input:not(.aui-input--cell) .aui-input__form-trigger:has(> textarea:disabled):hover {
+    border-color: #dbe3ec;
+    box-shadow: none;
+}
+
+.aui-input__form-trigger:has(> input:disabled) .aui-input__count,
+.aui-input__form-trigger:has(> input:disabled) .aui-input__affix,
+.aui-input__form-trigger:has(> textarea:disabled) .aui-input__count {
+    color: var(--aui-control-disabled-color);
+}
+
+.aui-input-container:has(> input:disabled)::before {
+    border-top-color: #dbe3ec;
+}
+
 .aui-input--disabled input.aui-input__form-field,
 .aui-input input.aui-input__form-field:disabled {
     cursor: not-allowed;
@@ -372,7 +404,7 @@ aui-textarea {
 }
 
 /* aui-input basic style: its label is a caption above the line while the box has the focus (at rest the box shows
-   the placeholder). It is always above the line, never over the text: it fades in there and out. Hidden, nothing of
+   the placeholder; without one see --captioned). It is always above the line, never over the text: it fades in there and out. Hidden, nothing of
    a page's label rules shows it (their colour once lay as dark text over the placeholder); it is a <label>, so the
    page's general label rules are kept off (such a rule could make it 100px wide in 30px lines). */
 .aui-input .aui-input-label {
@@ -416,6 +448,19 @@ aui-textarea {
     opacity: 1 !important;
     transform: none;
     transition: opacity 0.15s ease, transform 0.15s ease, visibility 0s;
+}
+
+/* label-text (with show-label) and no placeholder: nothing else in the line names the field, so its caption stays
+   above the line at rest too (its room is there anyway), in the labels' colour; the accent colour while focused */
+.aui-input .aui-input-container--captioned > .aui-input-label {
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none;
+    color: var(--aui-control-label-color) !important;
+}
+
+.aui-input .aui-input-container--captioned > .aui-input-field:focus + .aui-input-label {
+    color: var(--aui-control-accent-color) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -317,11 +317,17 @@ angular.module('aui')
                 if (measureEl) observer.observe(measureEl);
             }
 
-            function measure() {
+            function measure(again) {
                 scheduled = false;
                 if (destroyed) return;
                 const tagsEl = cfg.root.querySelector('.aui-select__tags--responsive');
-                if (!tagsEl) return;
+                if (!tagsEl) {
+                    // Switched to responsive in this digest: AngularJS 1.5 applies the ng-class change in a post-digest
+                    // task as well, queued after this one, so the class is not there yet. Measured once more at the end
+                    // of the same queue (once: with no tags at all there is nothing to measure).
+                    if (again !== true) cfg.scope.$$postDigest(function () { measure(true); });
+                    return;
+                }
                 sync();
                 build(tagsEl.parentNode);
                 observe(tagsEl, box);
@@ -863,6 +869,64 @@ angular.module('aui')
             pick: true, shortcut: true, now: true, toggle: true, 'select-all': true});
 
         /**
+         * A value the user changed that ngModel has not committed yet: ng-model-options updateOn (blur...) or a debounce
+         * holds it back, and the page's model is still the value before.
+         */
+        function commitPending(model) {
+            const options = model && model.$options;
+            if (!options || (options.updateOnDefault !== false && !options.debounce)) return false;
+            const view = model.$viewValue;
+            return view !== model.$$lastCommittedViewValue && !(typeof view === 'number' && isNaN(view));
+        }
+
+        /** Leaving the field commits a value that waits for the blur (updateOn: 'blur'), as Angular's own inputs do. */
+        function commitOnLeave(model) {
+            const options = model && model.$options;
+            if (!options || !/(^|\s)blur(\s|$)/.test(options.updateOn || '') || !commitPending(model)) return;
+            model.$$debounceViewValueCommit('blur');
+        }
+
+        /**
+         * on-change once the value is the page's: with a deferred model (updateOn, a debounce) the report waits for the
+         * commit, so that it carries the new value (reported at once, it said the old one twice). report(oldValue) is
+         * the component's report; a second change before the commit keeps the first one's old value; a rollback drops it.
+         * Returns the function that reports a change. The model's commit is followed from the first change that waits:
+         * ngModel reads its ng-model-options in its pre-link, after a component's $onInit, so they are not known before.
+         */
+        function changeAfterCommit(model, report) {
+            let waiting = null;   // {args, oldValue}
+            let followed = false;
+            function follow() {
+                if (followed) return;
+                followed = true;
+                const commit = model.$commitViewValue;
+                model.$commitViewValue = function () {
+                    const result = commit.apply(model, arguments);
+                    if (waiting && !commitPending(model)) {
+                        const due = waiting;
+                        waiting = null;
+                        report.apply(null, due.args.slice(0, -1).concat([due.oldValue]));
+                    }
+                    return result;
+                };
+                const rollback = model.$rollbackViewValue;
+                model.$rollbackViewValue = function () {
+                    waiting = null;
+                    return rollback.apply(model, arguments);
+                };
+            }
+            return function () {
+                const args = Array.prototype.slice.call(arguments);
+                if (commitPending(model)) {
+                    follow();
+                    waiting = {args: args, oldValue: waiting ? waiting.oldValue : args[args.length - 1]};
+                    return;
+                }
+                report.apply(null, args);
+            };
+        }
+
+        /**
          * Tells the page that a field's value changed. change: {value, oldValue, triggerSource} and the component's own
          * fields; locals: the component's own names for the call form. on-change written as a call
          * (on-change="vm.changed($value, $byUser)") runs with the locals $value, $oldValue, $triggerSource, $byUser and
@@ -1008,6 +1072,9 @@ angular.module('aui')
             digestOwn: digestOwn,
             afterFrame: afterFrame,
             reportChange: reportChange,
+            commitPending: commitPending,
+            commitOnLeave: commitOnLeave,
+            changeAfterCommit: changeAfterCommit,
             focusQuietly: focusQuietly,
             onTriggerPress: onTriggerPress,
             quietPointerFocus: quietPointerFocus,
@@ -1454,7 +1521,8 @@ angular.module('aui')
          *       strategy(): 'fixed' | 'absolute', minWidth?(): px, growable?(): boolean, onShown?(), onClosed?(),
          *       ownWidth?(): boolean (the panel keeps the width of its content, its left edge on the trigger's: a
          *       calendar), onPlaced?() (after each placement, the side classes set: a panel of its own width
-         *       measures where its edges meet the trigger's)}
+         *       measures where its edges meet the trigger's), onListLimited?() (the open list was given another
+         *       height to fit its side: a short viewport; the field keeps its active row in view)}
          *
          * Placement: the side of the trigger (below or above) is chosen when the panel opens, by the height it will
          * need, and kept while it stays open: content that changes (data arriving, a search narrowing the list, nodes
@@ -1595,7 +1663,12 @@ angular.module('aui')
                 const around = list ? heightAroundList(list) : null;
                 if (around === null) return;   // not shown (yet): measured at the next position
                 const value = Math.max(MIN_LIST_PX, Math.floor(available - around - boxExtra(list))) + 'px';
-                if (panel.style.getPropertyValue(LIST_MAX_VAR) !== value) panel.style.setProperty(LIST_MAX_VAR, value);
+                if (panel.style.getPropertyValue(LIST_MAX_VAR) === value) return;
+                panel.style.setProperty(LIST_MAX_VAR, value);
+                // The first placement of an opening comes before the panel is shown, so it cannot measure the list: its
+                // height is fitted at the next one, after the field brought its selected row into view for the list's
+                // full height - in a short viewport (a high zoom) that row was then below the list's end.
+                if (cfg.onListLimited) cfg.onListLimited();
             }
 
             // Panel width follows the trigger, never narrower than cfg.minWidth(). The width is
@@ -1658,18 +1731,20 @@ angular.module('aui')
 
             function reveal() {
                 entering = false;
+                // prefers-reduced-motion: reduce - the panel fades in where it stands, it does not grow (theming.md)
+                const still = reducedMotion();
                 if (!panel.classList.contains(cls.open)) {
                     panel.classList.add(cls.open);
                     // First frame in the closed pose, then animate in.
                     panel.style.opacity = '0';
-                    panel.style.transform = 'scaleY(0.7)';
+                    panel.style.transform = still ? 'none' : 'scaleY(0.7)';
                     void panel.offsetHeight;
                 }
                 if (cfg.onShown) cfg.onShown();
                 // Into the open pose at once: the closed pose is in place (the reflow above), so this starts the
                 // transition (a timer here only delayed the opening by a frame).
                 panel.style.opacity = '1';
-                panel.style.transform = 'scaleY(1)';
+                panel.style.transform = still ? 'none' : 'scaleY(1)';
                 panel.style.pointerEvents = '';
             }
 
@@ -1760,7 +1835,8 @@ angular.module('aui')
                 const drawn = growing ? drawnScaleY() : 0;
                 stopGrowth();
                 panel.style.opacity = '0';
-                panel.style.transform = growing ? 'scaleY(' + drawn + ')' : 'scaleY(0.7)';
+                // reduced motion: it fades out where it stands (a growth never runs then)
+                panel.style.transform = reducedMotion() ? 'none' : (growing ? 'scaleY(' + drawn + ')' : 'scaleY(0.7)');
                 // still drawn while it fades (its open class kept), it takes no pointer: a click there would reach a
                 // field that is closed already (a quick second click on an option or a day)
                 panel.style.pointerEvents = 'none';
@@ -2534,11 +2610,15 @@ angular.module('aui')
             };
             const tickets = new Set();   // this component's own lookups, stopped when it is destroyed
             let touched = false;
+            // Each asking of a value has its number (entry.ask): an answer counts only for the asking it belongs to. An
+            // earlier one that comes late (the value picked again since, or asked again for new params) is dropped.
+            let asks = 0;
 
-            function deliver(key, result) {
+            function deliver(key, result, ask) {
                 if (destroyed) return;
                 const entry = entries.get(key);
                 if (!entry || entry.state !== 'pending') return;   // no longer selected
+                if (entry.ask !== ask) return;                      // the answer of an earlier asking
                 if (result === 'failed') {
                     entry.state = 'failed';
                 } else if (result) {
@@ -2561,15 +2641,18 @@ angular.module('aui')
                 scheduled = false;
                 if (destroyed || cfg.blocked()) return;
                 const batch = new Map();
+                const asked = new Map();   // key -> the number of this asking
                 entries.forEach(function (entry, key) {
                     if (entry.state !== 'queued') return;
                     entry.state = 'pending';
+                    entry.ask = ++asks;
                     batch.set(key, entry.value);
+                    asked.set(key, entry.ask);
                 });
                 if (batch.size === 0) return;
                 const groupKey = cfg.group();
                 if (!groupKey) {
-                    runChunks(runner, batch, function (key, result) { deliver(key, result); }, tickets).then(notify);
+                    runChunks(runner, batch, function (key, result) { deliver(key, result, asked.get(key)); }, tickets).then(notify);
                     return;
                 }
                 let group = groups.get(groupKey);
@@ -2579,8 +2662,8 @@ angular.module('aui')
                 }
                 batch.forEach(function (value, key) {
                     group.values.set(key, value);
-                    if (!group.members.has(key)) group.members.set(key, new Set());
-                    group.members.get(key).add(api);
+                    if (!group.members.has(key)) group.members.set(key, new Map());   // member -> its asking's number
+                    group.members.get(key).set(api, asked.get(key));
                 });
                 if (!group.scheduled) {
                     group.scheduled = true;
@@ -2592,15 +2675,15 @@ angular.module('aui')
                         // They run with the function of a member that is still alive.
                         let live = null;
                         group.members.forEach(function (members) {
-                            members.forEach(function (member) {
+                            members.forEach(function (ask, member) {
                                 if (!live && member.alive()) live = member.runner;
                             });
                         });
                         if (!live) return;
                         const listeners = new Set();
                         runChunks(live, group.values, function (key, result) {
-                            (group.members.get(key) || []).forEach(function (member) {
-                                member.receive(key, result);
+                            (group.members.get(key) || new Map()).forEach(function (ask, member) {
+                                member.receive(key, result, ask);
                                 listeners.add(member);
                             });
                         }, new Set()).then(function () {
@@ -2646,6 +2729,24 @@ angular.module('aui')
                     entries.forEach(function (entry, key) {
                         if (entry.state === 'missing' || entry.state === 'failed') entries.delete(key);
                     });
+                },
+                /**
+                 * The params changed: a value still being asked is asked again with the new ones (the answer for the old
+                 * data set is dropped when it comes). A value found before keeps its record until new data replaces it.
+                 */
+                askAgain: function () {
+                    let queued = false;
+                    entries.forEach(function (entry) {
+                        if (entry.state !== 'pending' && entry.state !== 'queued') return;
+                        entry.state = 'queued';
+                        entry.ask = 0;
+                        queued = true;
+                    });
+                    if (queued) schedule();
+                },
+                /** reload(): everything is asked again, found values too (their answers before are dropped). */
+                forget: function () {
+                    entries.clear();
                 },
                 /** Run what waited for blocked() to become false. */
                 kick: function () {
@@ -5292,7 +5393,7 @@ angular.module('aui')
                        ng-style="$ctrl.wrapperStyle">
                         <!--aui-part:basic-->
                         <div class="aui-input-container" aui-if="$ctrl.inputStyleType === 'basic' " ng-form aui-input-box-form
-                             ng-class="{'aui-input-container--invalid': $ctrl.showInvalid()}">
+                             ng-class="{'aui-input-container--invalid': $ctrl.showInvalid(), 'aui-input-container--captioned': $ctrl.opt.showLabel && $ctrl.labelText && !$ctrl.placeholder}">
                             <span class="aui-input__affix aui-input__affix--prefix"
                                   aui-if="$ctrl.prefixIcon || $ctrl.prefixText || $ctrl.isSearch()"
                                   ng-mousedown="$ctrl.focusBox($event)"><span aui-if="$ctrl.isSearching()" class="aui-select__spinner aui-input__search-spinner" aria-hidden="true"></span><svg aui-if="$ctrl.isSearch() && !$ctrl.isSearching() && !$ctrl.prefixIcon" class="aui-input__search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><i aui-if="$ctrl.prefixIcon && !$ctrl.isSearching()" class="aui-input__affix-icon {{ $ctrl.prefixIcon }}" aria-hidden="true"></i><span aui-if="$ctrl.prefixText" class="aui-input__affix-text" id="{{::'prefix-' + $ctrl.compId}}">{{ $ctrl.prefixText }}</span></span>
@@ -5317,7 +5418,7 @@ angular.module('aui')
 
                                   ng-attr-pattern="{{$ctrl.pattern || undefined}}"
                                   >
-                            <label for="{{::'input-' + $ctrl.compId}}" class="aui-input-label">{{$ctrl.placeholder}}</label>
+                            <label for="{{::'input-' + $ctrl.compId}}" class="aui-input-label">{{($ctrl.opt.showLabel && $ctrl.labelText) || $ctrl.placeholder}}</label>
                             <span class="aui-input-highlight"></span>
                             <span class="aui-control-clear"
                                   aui-if="$ctrl.opt.clearable"
@@ -5519,6 +5620,8 @@ angular.module('aui')
 
             const STYLES = ['basic', 'form', 'cell'];
 
+            let readSize = null;   // the size readOptions last applied (a change refits an auto-height textarea)
+
             /**
              * The options, read as aui-select and aui-tree-select read theirs (kit.readFlag): a bare attribute
              * (`<aui-input show-label readonly>`) is on; an expression or 'true'/'false' counts as given. Read again on
@@ -5555,6 +5658,15 @@ angular.module('aui')
                 syncTrim();
                 syncStaticBoxAttrs();
                 refreshRootClass();
+                // a new size is a new text size: an auto-height textarea fits its lines again - in the next frame, before it
+                // is drawn: its size class (rootClass, an interpolation) reaches the element in a digest after this one,
+                // and a fit now measured the old text size
+                const size = $ctrl.field.size();
+                if (size !== readSize) {
+                    const resized = readSize !== null;
+                    readSize = size;
+                    if (resized && $ctrl.isTextarea()) requestAnimationFrame(() => fitTextarea());
+                }
                 recheckPrecision();
                 queueTakeOver();   // a limit or check may have changed (the box checks again in this digest)
             }
@@ -5816,13 +5928,12 @@ angular.module('aui')
                 readOptions();   // (the style too: basic unless form or cell)
                 kit.followNgFlags($attrs, readOptions);
                 // the page's aria-label / aria-labelledby / aria-describedby on the field go on the box (see boxLabel)
+                // (written on the element at all, ng-attr-* too: one that starts out undefined is followed as well)
                 ['ariaLabel', 'ariaLabelledby', 'ariaDescribedby'].forEach(name => {
-                    if ($attrs[name] !== undefined) $attrs.$observe(name, syncStaticBoxAttrs);
+                    if ($attrs.$attr[name]) $attrs.$observe(name, syncStaticBoxAttrs);
                 });
-
-                if (!$ctrl.name) {
-                    $ctrl.name = $ctrl.compId;
-                }
+                // no name of the page's: the box has none either, so that it adds nothing to the form's data (as a native
+                // input without a name); the label finds the box by its id
 
 
                 if ($ctrl.ngModelCtrl) {
@@ -5856,6 +5967,8 @@ angular.module('aui')
             let reportedText = null;   // the text on-change last told the page of (or the page's value shown)
             let takenOver = {};        // the box errors the host carries now, by name
             const combined = {};       // the host validators combined with the box's result, by name
+            let committed = null;      // a deferred field: the box's text at the host's last commit (see committedState)
+            let boxTold = false;       // the box's commit under way passed its value on to the host (_onChange)
 
             /*
              * The mouse wheel over a focused number box steps its value in Chromium, and the page or the list around it
@@ -5996,10 +6109,37 @@ angular.module('aui')
                 };
             };
             let stopWidthWatch = null;
+            let stopFontWatch = null;
             let stopAutofocusWatch = null;
 
             const onTextareaResize = () => {
                 if ($ctrl.opt.autoHeight && boxEl && boxEl.clientWidth > 0 && boxEl.clientWidth !== fittedWidth) fitTextarea();
+            };
+
+            /*
+             * The text's font, watched for auto-height: a theme that changes it (--aui-font-scale on :root, a web font
+             * that arrives) wraps the text into other lines while the box keeps its width and its height, so no size
+             * of the box changes. A probe next to the textarea, unseen and out of the flow, is 1ch wide in the text's
+             * font and size: its width follows the font, and the textarea fits its text again then.
+             */
+            const watchTextFont = (element) => {
+                if (typeof ResizeObserver !== 'function' || !element.parentNode) return null;
+                const probe = document.createElement('span');
+                probe.className = 'aui-input__font-probe';
+                probe.setAttribute('aria-hidden', 'true');
+                element.parentNode.appendChild(probe);
+                let width = -1;
+                const stop = watchSize(probe, () => {
+                    const now = probe.getBoundingClientRect().width;
+                    if (now === width) return;
+                    const first = width < 0;   // the observer's first report: the font the textarea was fitted with
+                    width = now;
+                    if (!first && now > 0) fitTextarea();
+                });
+                return () => {
+                    if (stop) stop();
+                    if (probe.parentNode) probe.parentNode.removeChild(probe);
+                };
             };
 
             /*
@@ -6008,9 +6148,27 @@ angular.module('aui')
              */
             function autofocusOnceShown(element) {
                 autofocused = true;
-                const shown = () => element.getClientRects().length > 0;
+                const laidOut = () => element.getClientRects().length > 0;
+                // laid out and seen: a box under visibility: hidden has its place (and its size) but cannot take the focus
+                const shown = () => laidOut() && (typeof element.checkVisibility === 'function'
+                    ? element.checkVisibility({visibilityProperty: true})
+                    : window.getComputedStyle(element).visibility !== 'hidden');
                 const focus = () => {
                     if (boxEl === element && !$ctrl.opt.disabled) element.focus();
+                };
+                const stop = () => {
+                    if (stopAutofocusWatch) stopAutofocusWatch();
+                    stopAutofocusWatch = null;
+                };
+                // hidden while it keeps its size (visibility): its showing changes no size - looked at in the page's
+                // digests until then (one field, once)
+                const untilSeen = () => {
+                    stop();
+                    stopAutofocusWatch = $scope.$watch(shown, now => {
+                        if (!now) return;
+                        stop();
+                        focus();
+                    });
                 };
                 $timeout(() => {
                     if (boxEl !== element) return;
@@ -6018,10 +6176,17 @@ angular.module('aui')
                         focus();
                         return;
                     }
+                    if (laidOut()) {
+                        untilSeen();
+                        return;
+                    }
                     stopAutofocusWatch = watchSize(element, () => {
-                        if (!shown()) return;
-                        stopAutofocusWatch();
-                        stopAutofocusWatch = null;
+                        if (!laidOut()) return;
+                        if (!shown()) {
+                            untilSeen();
+                            return;
+                        }
+                        stop();
                         focus();
                     });
                 }, 0, false);
@@ -6125,13 +6290,25 @@ angular.module('aui')
             function markCommits(boxModel) {
                 const commit = boxModel.$commitViewValue;
                 boxModel.$commitViewValue = function () {
+                    const textBefore = this.$$lastCommittedViewValue;
                     committing = true;
+                    boxTold = false;
                     try {
                         return commit.apply(this, arguments);
                     } finally {
                         committing = false;
+                        // A typed text whose value is the one before it (a text the box's checks refuse after another,
+                        // or after an empty field: undefined both) changes no value, and Angular calls no ng-change.
+                        // A deferred field is still told: its debounce starts for it as for any other text, so that
+                        // the text commits (the field then dirty, its error shown) as Angular's own field's does.
+                        if (!boxTold && !clearing && this.$$lastCommittedViewValue !== textBefore) tellHostTyped();
                     }
                 };
+            }
+
+            function tellHostTyped() {
+                const host = $ctrl.ngModelCtrl;
+                if (host && isDeferred()) host.$setViewValue(toHostView($ctrl.internalValue));
             }
 
             $ctrl.attachBox = (boxModel, element, attrs) => {
@@ -6158,11 +6335,28 @@ angular.module('aui')
                     element.addEventListener('input', onBoxTyped);
                     element.addEventListener('compositionend', onBoxTyped);
                     if (element.parentNode) element.parentNode.addEventListener('input', onBoxInput, true);
-                    if ($ctrl.isTextarea()) stopWidthWatch = watchSize(element, onTextareaResize);
+                    if ($ctrl.isTextarea()) {
+                        stopWidthWatch = watchSize(element, onTextareaResize);
+                        stopFontWatch = watchTextFont(element);
+                    }
                     if ($ctrl.opt.autofocus && !autofocused) autofocusOnceShown(element);
+                    resetForm = element.form || null;
+                    if (resetForm) resetForm.addEventListener('reset', onFormReset);
                 }
                 syncNativeLimit();
             };
+
+            /*
+             * The form's native reset (a reset button, form.reset()) puts the box back to its first text behind Angular's
+             * back: the model keeps its value, and the box, its count and its clear button would say another. The box
+             * shows its model again once the reset is done; a page resets a field through its model.
+             */
+            let resetForm = null;
+            function onFormReset() {
+                setTimeout(() => {
+                    if (box && boxEl) box.$render();
+                }, 0);
+            }
             $ctrl.detachBox = (boxModel) => {
                 if (box !== boxModel) return;
                 if (boxEl) {
@@ -6174,15 +6368,20 @@ angular.module('aui')
                     boxEl.removeEventListener('compositionend', onBoxTyped);
                     if (boxEl.parentNode) boxEl.parentNode.removeEventListener('input', onBoxInput, true);
                 }
+                if (resetForm) resetForm.removeEventListener('reset', onFormReset);
+                resetForm = null;
                 if (stopWidthWatch) stopWidthWatch();
+                if (stopFontWatch) stopFontWatch();
                 if (stopAutofocusWatch) stopAutofocusWatch();
                 stopWidthWatch = null;
+                stopFontWatch = null;
                 stopAutofocusWatch = null;
                 fittedWidth = -1;
                 typedText = null;
                 box = null;
                 boxEl = null;
                 boxAttrs = null;
+                committed = null;   // the committed text was this box's
                 queueTakeOver();   // its results go with it
             };
 
@@ -6190,34 +6389,168 @@ angular.module('aui')
                 const host = $ctrl.ngModelCtrl;
                 const own = host.$validators[name];
                 if (!own || combined[name] === own) return;
+                // the box's error of that name (of the committed text while a typed text waits: see boxRefuses)
                 const both = function (modelValue, viewValue) {
-                    return own(modelValue, viewValue) && !(box && box.$error[name]);
+                    return own(modelValue, viewValue) && !boxRefuses(name);
                 };
                 host.$validators[name] = both;
                 combined[name] = both;
             }
 
+            // ng-model-options updateOn (blur...) or a debounce: the field's value waits for its commit
+            function isDeferred() {
+                const options = $ctrl.ngModelCtrl && $ctrl.ngModelCtrl.$options;
+                return !!options && (options.updateOnDefault === false || !!options.debounce);
+            }
+
+            const isNaNValue = (value) => typeof value === 'number' && isNaN(value);   // ngModel's "not set yet"
+
+            /*
+             * A typed text the field has not committed yet: with ng-model-options updateOn (blur...) or a debounce, the
+             * field's value and validity stay the committed value's until the commit, as Angular's own field keeps them
+             * (a Save button bound to form.$invalid does not change while a text is still being typed). The box's text
+             * is compared too: a text the box's checks refuse has no value (undefined), as an empty field has, and it
+             * still waits for its commit.
+             */
+            function draftPending() {
+                const host = $ctrl.ngModelCtrl;
+                if (!isDeferred()) return false;
+                const view = host.$viewValue;
+                if (isNaNValue(view) || isNaNValue(host.$$lastCommittedViewValue)) return false;
+                if (view !== host.$$lastCommittedViewValue) return true;
+                return !!box && !isNaNValue(box.$viewValue) && box.$viewValue !== committedState().text;
+            }
+
+            /*
+             * The committed text of a deferred field, as the box had it at the host's last commit: its text (as typed,
+             * which a refused text keeps while its value is undefined), its value as parsed, and the errors it had.
+             * A value from the page (or rolled back) is its own text: the box shows it so.
+             */
+            function committedState() {
+                if (committed) return committed;
+                const value = toBoxValue($ctrl.ngModelCtrl.$$lastCommittedViewValue);
+                return {value: value, text: formatForBox(value), errors: {}};
+            }
+
+            // a value as the box shows it (its formatters, as Angular runs them on a model value)
+            function formatForBox(value) {
+                if (!box) return value;
+                let text = value;
+                try {
+                    for (let i = box.$formatters.length - 1; i >= 0; i--) text = box.$formatters[i](text);
+                } catch (e) {
+                    return value;
+                }
+                return text;
+            }
+
+            /*
+             * The committed text against the box's rules as they are now. While a typed text waits, a rule that changes
+             * (value-max-length, pattern, min/max, precision) checks the committed value, as Angular's $validate checks a
+             * field's: the field's validity (and its model, see followCommittedValidity) are the committed value's. A
+             * parse error the text had stays with it.
+             */
+            function committedErrors() {
+                const errors = {};
+                if (!box) return errors;
+                const state = committedState();
+                Object.keys(state.errors).forEach(name => {
+                    if (!box.$validators[name]) errors[name] = true;
+                });
+                Object.keys(box.$validators).forEach(name => {
+                    // precision: its check alone (boxCheck also marks the box's own text for the browser)
+                    const validator = name === 'precision' ? precisionValidator : box.$validators[name];
+                    let valid;
+                    try {
+                        valid = !!validator(state.value, state.text);
+                    } catch (e) {
+                        valid = !state.errors[name];
+                    }
+                    if (!valid) errors[name] = true;
+                });
+                return errors;
+            }
+
+            // the box's error of that name is the field's: the box's text's, or the committed text's while a typed text waits
+            function boxRefuses(name) {
+                if (draftPending()) return !!committedErrors()[name];
+                return !!(box && box.$error[name]);
+            }
+
+            // a text the box's checks refuse is a text: required is met (see $postLink)
+            function textRefused() {
+                if (draftPending()) {
+                    const state = committedState();
+                    const text = state.text;
+                    return Object.keys(committedErrors()).length > 0 && text !== undefined && text !== null && String(text).length > 0;
+                }
+                return !!box && box.$invalid && $ctrl.hasValue();
+            }
+
+            /*
+             * The committed value's validity changed while a typed text waits (a rule changed): the model follows it as
+             * Angular's $validate has it - undefined once invalid, the committed value again once valid; not when the
+             * validity stays (a page's invalid value is left as it is), nor with allowInvalid.
+             */
+            function followCommittedValidity(validBefore) {
+                const host = $ctrl.ngModelCtrl;
+                if (host.$valid === validBefore || typeof host.$valid !== 'boolean') return;
+                if (host.$options && host.$options.allowInvalid) return;
+                const value = host.$valid ? committedModel() : undefined;
+                if (value === host.$modelValue) return;
+                host.$modelValue = value;
+                host.$$writeModelToScope();
+            }
+
+            /*
+             * The committed value as the model has it once valid: Angular's $$rawModelValue. A text refused at its
+             * commit gave the host no value (undefined): its parsed value from the box is taken through the host's
+             * parsers then, as its commit would have taken it.
+             */
+            function committedModel() {
+                const host = $ctrl.ngModelCtrl;
+                if (host.$$rawModelValue !== undefined || !committed || committed.value === undefined) return host.$$rawModelValue;
+                let value = toHostView(committed.value);
+                try {
+                    for (let i = 0; i < host.$parsers.length && value !== undefined; i++) value = host.$parsers[i](value);
+                } catch (e) {
+                    return undefined;
+                }
+                host.$$rawModelValue = value;
+                return value;
+            }
+
             function takeOverBoxState() {
                 const host = $ctrl.ngModelCtrl;
-                const errors = box ? box.$error : {};
+                // a typed text still waiting: the committed text's errors (checked with the rules as they are now)
+                const pending = draftPending();
+                const validBefore = host.$valid;
+                const errors = pending ? committedErrors() : (box ? box.$error : {});
+                // the values the validators check: the committed ones while a text waits, as Angular's $validate has them
+                const modelValue = pending ? host.$$rawModelValue : host.$modelValue;
+                const viewValue = pending ? host.$$lastCommittedViewValue : host.$viewValue;
                 const names = Object.keys(errors).concat(Object.keys(takenOver).filter(name => !errors[name]));
                 const now = {};
                 names.forEach(name => {
                     if (name === 'parse') return;   // the host's own parse error stays the host's
                     combineHostValidator(name);
                     const validator = host.$validators[name];
-                    host.$setValidity(name, validator ? !!validator(host.$modelValue, host.$viewValue) : !errors[name]);
+                    host.$setValidity(name, validator ? !!validator(modelValue, viewValue) : !errors[name]);
                     if (errors[name]) now[name] = true;
                 });
                 takenOver = now;
                 // required reads the box's text (see $postLink), which the box has just checked
                 const required = host.$validators.required;
-                if (required) host.$setValidity('required', !!required(host.$modelValue, host.$viewValue));
+                if (required) host.$setValidity('required', !!required(modelValue, viewValue));
+                if (pending) {
+                    followCommittedValidity(validBefore);
+                    return;   // dirty once the text commits (see $postLink)
+                }
                 // typed in, even if the value did not change (an invalid text stays an undefined value): the field is
-                // dirty - when the field takes its text as it is typed. With ng-model-options updateOn (blur...) it is
-                // dirty once it commits, as Angular's own field is (form.$rollbackViewValue() before then leaves the
-                // field and the form pristine).
-                if (box && box.$dirty && host.$pristine && !(host.$options && host.$options.updateOnDefault === false)) host.$setDirty();
+                // dirty - when the field takes its text as it is typed. With ng-model-options updateOn (blur...) or a
+                // debounce it is dirty once a changed text commits, as Angular's own field is (see $postLink;
+                // form.$rollbackViewValue() before then leaves the field and the form pristine).
+                if (box && box.$dirty && host.$pristine && !isDeferred()) host.$setDirty();
             }
 
             /*
@@ -6363,6 +6696,9 @@ angular.module('aui')
                 host.$render = () => {
                     typedText = null;   // the page's value: counted as it is
                     cancelPendingSearch();   // the text typed is replaced: its search does not come
+                    // the committed value shown (the page's value, a rollback): the box's text is its own again (a
+                    // clear of a deferred field shows a text still waiting: the committed text stays as it was)
+                    if (host.$viewValue === host.$$lastCommittedViewValue) committed = null;
                     $ctrl.internalValue = toBoxValue(host.$viewValue);
                     reportedText = $ctrl.internalValue;
                 };
@@ -6374,7 +6710,7 @@ angular.module('aui')
                 const required = host.$validators.required;
                 if (typeof required === 'function') {
                     host.$validators.required = (modelValue, viewValue) => required(modelValue, viewValue) ||
-                        (modelValue === undefined && !!box && box.$invalid && $ctrl.hasValue());
+                        (modelValue === undefined && textRefused());
                 }
 
                 // A number box's value is a number, which has no length: AngularJS's own length checks of a maxlength /
@@ -6387,6 +6723,22 @@ angular.module('aui')
                     host.$validators[name] = (modelValue, viewValue) =>
                         own(modelValue, typeof viewValue === 'number' ? String(viewValue) : viewValue);
                 });
+
+                // A typed text that waited for its commit (updateOn, a debounce) commits: its checks are the field's now
+                // (draftPending held them back meanwhile), and its text is the committed one. Angular commits nothing
+                // when the value is the committed one: a refused text after an empty field (undefined both) is still
+                // an edit, and the field is dirty as Angular's own field is once its text commits.
+                if (isDeferred()) {
+                    const commitViewValue = host.$commitViewValue;
+                    host.$commitViewValue = function () {
+                        const typed = !!box && !isNaNValue(box.$viewValue) && box.$viewValue !== committedState().text;
+                        const result = commitViewValue.apply(host, arguments);
+                        committed = box ? {value: box.$$rawModelValue, text: box.$viewValue, errors: angular.extend({}, box.$error)} : null;
+                        if (typed && host.$pristine) host.$setDirty();
+                        takeOverBoxState();
+                        return result;
+                    };
+                }
 
                 // The page form resets its fields through the host (form.$setPristine(), form.$setUntouched()): the box,
                 // outside the page form, is reset with it (its ng-dirty / ng-touched classes go as well).
@@ -6468,6 +6820,7 @@ angular.module('aui')
                     takeRecheckedValue();
                     return;
                 }
+                boxTold = true;
                 flushFocus();   // an on-focus still waiting came first
                 $ctrl.ngModelCtrl.$setViewValue(toHostView($ctrl.internalValue));
                 reportText('input');
@@ -6481,6 +6834,16 @@ angular.module('aui')
              */
             function takeRecheckedValue() {
                 const host = $ctrl.ngModelCtrl;
+                // A typed text still waiting for its commit (updateOn blur, a debounce) is not the field's value yet:
+                // what it commits is its text as the rule now has it (a text the rule refuses now: undefined; one it
+                // allows now: its value), as Angular's own field commits its text with the rules of the moment. The
+                // commit itself is left as it was (its debounce not started again). The committed value is checked
+                // with the rule meanwhile (takeOverBoxState); form.$rollbackViewValue() still finds it.
+                if (draftPending()) {
+                    host.$viewValue = toHostView($ctrl.internalValue);
+                    queueTakeOver();
+                    return;
+                }
                 const setDirty = host.$setDirty;
                 host.$setDirty = angular.noop;
                 try {
@@ -6601,6 +6964,8 @@ angular.module('aui')
                 cancelPendingSearch();
                 searchTimer = $timeout(() => {
                     searchTimer = null;
+                    // disabled meanwhile (by its own option, or a disabled fieldset around it): no search from it
+                    if (boxLocked()) return;
                     fireSearch(searchText());
                 }, delay);
             };
@@ -6638,7 +7003,7 @@ angular.module('aui')
              * as they step the number (past the limit, too).
              */
             $ctrl._interceptKey = (event) => {
-                if ($ctrl.inputType !== 'number' || !$ctrl.valueMaxLength) return;
+                if ($ctrl.inputType !== 'number' || !countLimit()) return;   // 0 or unset: no limit (countLimit)
                 if (isComposing(event)) return;
 
                 if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -6659,7 +7024,7 @@ angular.module('aui')
 
             // value-max-length on a number box: a paste that is no number is not taken (its length: onBoxInput)
             $ctrl._interceptPaste = (event) => {
-                if ($ctrl.inputType !== 'number' || !$ctrl.valueMaxLength) return;
+                if ($ctrl.inputType !== 'number' || !countLimit()) return;   // 0 or unset: no limit (countLimit)
                 const clipboardData = (event.originalEvent && event.originalEvent.clipboardData) || event.clipboardData || window.clipboardData;
                 if (!clipboardData) return;
                 const pasteContent = clipboardData.getData('text').replace(/\s+/g, '');
@@ -6837,6 +7202,7 @@ angular.module('aui')
                 let textShown = false;   // loading-text shown now (the width held from before it)
                 let waiting = false;     // on-click's promise not settled yet
                 let copies = 0;          // copy-text: the clicks that copied so far (only the latest one's outcome shows)
+                let announced = 0;       // the feedback read out so far (only the latest one's text is read)
                 let labelShown = null;   // the label had something to show at the last drawing
                 let labelWatch = null;   // follows the label's text (a {{ }} in it can become empty, or come back)
                 // expanded: a disclosure button; the page's value written through its expression (null: not writable)
@@ -6846,7 +7212,7 @@ angular.module('aui')
 
                 // the page's ARIA states and relations and its tab order, written on the element, are the native button's
                 // (the element has no role and is no tab stop of its own): moved onto the button
-                const FORWARDED = ['ariaDescribedby', 'ariaHaspopup', 'ariaPressed', 'tabindex'];
+                const FORWARDED = ['ariaLabelledby', 'ariaDescribedby', 'ariaHaspopup', 'ariaPressed', 'tabindex'];
 
                 $ctrl.$postLink = function () {
                     button = host.firstElementChild;
@@ -6868,7 +7234,9 @@ angular.module('aui')
                         labelWatch = new MutationObserver(function () {
                             if (hasLabel() !== labelShown) render();
                         });
-                        labelWatch.observe(label, {childList: true, characterData: true, subtree: true});
+                        // (ng-show / ng-hide and [hidden] inside it too: a text hidden there shows nothing)
+                        labelWatch.observe(label, {childList: true, characterData: true, subtree: true,
+                            attributes: true, attributeFilter: ['class', 'hidden']});
                     }
                     button.addEventListener('click', onClick);
                     kit.followNgFlags($attrs, render);
@@ -6888,7 +7256,8 @@ angular.module('aui')
 
                 /** One of FORWARDED: set on the button and taken off the element, now and whenever it changes ({{ }}). */
                 function forward(name) {
-                    if ($attrs[name] === undefined) return;
+                    // written on the element at all (ng-attr-* too, which may start out undefined and get its value later)
+                    if (!$attrs.$attr[name]) return;
                     const htmlName = $attrs.$attr[name];
                     const move = function (value) {
                         set(htmlName, value === undefined || value === null ? null : String(value));
@@ -6899,14 +7268,25 @@ angular.module('aui')
                 }
 
                 /**
-                 * The label has something to show: a text (not only spaces), or an element of the page's own. The <span>
-                 * Angular wraps a text in counts by its text alone: left empty by its {{ }}, it is nothing.
+                 * The label has something to show: a text (not only spaces), or a picture (an image, a drawing, an icon
+                 * font's element) - not inside a part the page hides (ng-show / ng-hide, [hidden]). An element of the
+                 * page's own counts by what it holds: a styled <span> left empty by its {{ }} is nothing, and an icon
+                 * with nothing else is an icon alone, named by its icon.
                  */
                 function hasLabel() {
-                    if (label.textContent.trim()) return true;
-                    return Array.prototype.some.call(label.children, function (child) {
-                        return !child.classList.contains('aui-button__text');
-                    });
+                    return shows(label);
+                }
+
+                function shows(node) {
+                    for (let child = node.firstChild; child; child = child.nextSibling) {
+                        if (child.nodeType === 3) {
+                            if (child.nodeValue.trim()) return true;
+                        } else if (child.nodeType === 1) {
+                            if (child.classList.contains('ng-hide') || child.hasAttribute('hidden')) continue;
+                            if (/^(img|svg|i|canvas|picture|video|object)$/i.test(child.nodeName) || shows(child)) return true;
+                        }
+                    }
+                    return false;
                 }
 
                 function busy() {
@@ -6947,7 +7327,9 @@ angular.module('aui')
                     const swapText = !labelShown ? '' :
                         (loading && loadingText ? loadingText : (shownFeedback ? feedbackText(shownFeedback) : ''));
                     const withText = !!swapText;
-                    if (withText && !textShown) button.style.minWidth = button.offsetWidth + 'px';
+                    // (held as the least, but never more than its place: a block button whose place narrows meanwhile
+                    // narrows with it; a browser without min() holds nothing)
+                    if (withText && !textShown) button.style.minWidth = 'min(' + button.offsetWidth + 'px, 100%)';
                     else if (!withText && textShown) button.style.minWidth = '';
                     textShown = withText;
                     showLoadingText(swapText, loading);
@@ -7206,8 +7588,11 @@ angular.module('aui')
                         host.appendChild(status);
                     }
                     status.textContent = '';
+                    // only the latest feedback is read: an earlier one whose moment comes after (a success, then a
+                    // failure 25 ms later) says nothing
+                    const shown = ++announced;
                     setTimeout(function () {
-                        if (!destroyed && feedback) status.textContent = text;
+                        if (!destroyed && feedback && shown === announced) status.textContent = text;
                     }, 60);
                 }
 
@@ -7216,7 +7601,7 @@ angular.module('aui')
                     // the outcome shown is the latest copy's: an earlier one that ends later (a slow refusal) only
                     // reports to on-copy
                     const run = ++copies;
-                    writeClipboard(text).then(function (copied) {
+                    writeClipboard(text, run).then(function (copied) {
                         if (destroyed) return;
                         if (run === copies && toToken($ctrl.copyFeedback) !== 'none') showFeedback(copied ? 'done' : 'failed');
                         if (!$ctrl.onCopy) return;
@@ -7230,8 +7615,12 @@ angular.module('aui')
                     });
                 }
 
-                /** true once the text is on the clipboard: the Clipboard API, else (or when it refuses) the older way. */
-                function writeClipboard(text) {
+                /**
+                 * true once the text is on the clipboard: the Clipboard API, else (or when it refuses) the older way. A
+                 * refusal that comes after a newer copy started is not tried the older way: it would put the older text
+                 * over the newer one (that copy reports false to on-copy).
+                 */
+                function writeClipboard(text, run) {
                     const clipboard = window.navigator && window.navigator.clipboard;
                     if (clipboard && typeof clipboard.writeText === 'function' && window.isSecureContext !== false) {
                         let written;
@@ -7240,7 +7629,9 @@ angular.module('aui')
                         } catch (e) {
                             written = Promise.reject(e);
                         }
-                        return written.then(function () { return true; }, function () { return copyBySelection(text); });
+                        return written.then(function () { return true; }, function () {
+                            return run === copies && !destroyed ? copyBySelection(text) : false;
+                        });
                     }
                     return Promise.resolve(copyBySelection(text));
                 }
@@ -7860,6 +8251,18 @@ angular.module('aui')
                 });
             });
 
+            // Disabled is the field's own option, or a disabled <fieldset> around it (a native control there is disabled:
+            // so is the field - nothing opens, picks or clears it, it looks disabled and takes no focus). The fieldset's
+            // state is read from the hidden form input, which the browser disables with it (see $postLink); the input
+            // itself follows the field's own option only.
+            let fieldsetDisabled = false;
+            $ctrl.ownDisabled = () => kit.readFlag($attrs, 'disabled', $ctrl.disabledFlag, false);
+            Object.defineProperty($ctrl, 'disabled', {
+                configurable: true,
+                enumerable: true,
+                get: () => $ctrl.ownDisabled() || fieldsetDisabled
+            });
+
             /** Red as the tree and aui-input are: the value is invalid and the field has been touched (left once). */
             $ctrl.showInvalid = function () {
                 return !!($ctrl.ngModelCtrl && $ctrl.ngModelCtrl.$invalid && $ctrl.ngModelCtrl.$touched);
@@ -7900,6 +8303,7 @@ angular.module('aui')
             let list = null;
             let lookup = null;
             let paramsId = null;                 // params key of the current list; null while loading is not enabled
+            let lookupParams = null;             // the params the lookups asked with (a change asks the running ones again)
             const picked = new Map();            // key -> copy of an option the user picked (kept while selected)
             let valueOptionsByKey = new Map();   // value-options by key
             let pendingKeys = new Set();         // selected values whose label is being looked up
@@ -8080,31 +8484,64 @@ angular.module('aui')
                 return null;
             };
 
+            /**
+             * The static options by key - the exact key first, then its text - kept while the options are the same list:
+             * built when the list changes (the options watch drops it), not on every render of the selection, which read
+             * every option's key several times (a closed field of 10,000 options: 60,000 reads at mount). An option edited
+             * in place is the same object here, so its flags are read as they are now.
+             */
+            /**
+             * The static options as the field uses them: an option that is a plain value ('Red', 7) becomes
+             * {value-field: it, label-field: its text} (the docs allow plain values); a list of objects is used as it is.
+             * Built once per list (the options watch drops it).
+             */
+            // (dropped with a marker of its own: null is a list the page can give, so it cannot mean "not built")
+            const NOT_BUILT = {};
+            let optionListOf = NOT_BUILT;
+            let optionListNow = null;
+            const optionList = function () {
+                const options = Array.isArray($ctrl.options) ? $ctrl.options : null;
+                if (options !== optionListOf) {
+                    optionListOf = options;
+                    const plain = !!options && options.some(option => option === null || typeof option !== 'object');
+                    optionListNow = !plain ? options : options.map(option => {
+                        if (option !== null && typeof option === 'object') return option;
+                        const item = {};
+                        item[$ctrl.valueField] = option;
+                        item[$ctrl.labelField] = option === null || option === undefined ? '' : String(option);
+                        return item;
+                    });
+                }
+                return optionListNow;
+            };
+
+            let staticIndexOf = NOT_BUILT;
+            let staticIndex = {byKey: new Map(), byText: new Map()};
+            const staticOptions = function () {
+                const options = dataMode() === 'static' ? optionList() : null;
+                if (options !== staticIndexOf) {
+                    staticIndexOf = options;
+                    staticIndex = {byKey: new Map(), byText: new Map()};
+                    (options || []).forEach(option => {
+                        if (!hasOptionKey(option)) return;
+                        const key = option[$ctrl.valueField];
+                        if (!staticIndex.byKey.has(key)) staticIndex.byKey.set(key, option);
+                        if (!staticIndex.byText.has(String(key))) staticIndex.byText.set(String(key), option);
+                    });
+                }
+                return staticIndex;
+            };
+            const staticOption = function (value) {
+                const index = staticOptions();
+                return index.byKey.has(value) ? index.byKey.get(value) : (index.byText.get(String(value)) || null);
+            };
+
             const resolveSelectionItems = function (values) {
-                const options = (dataMode() === 'static' && Array.isArray($ctrl.options) && $ctrl.options.length > 0) ? $ctrl.options : [];
-                const byKey = new Map();
-                const byStringKey = new Map();
-
-                options.forEach(option => {
-                    if (hasOptionKey(option)) {
-                        const k = option[$ctrl.valueField];
-                        if (!byKey.has(k)) {
-                            byKey.set(k, option);
-                        }
-                        const sk = String(k);
-                        if (!byStringKey.has(sk)) {
-                            byStringKey.set(sk, option);
-                        }
-                    }
-                });
-
-                return (Array.isArray(values) && values.length > 0 ? values : []).filter(isSelectionKey).map(value => {
-                    if (byKey.has(value)) {
-                        return angular.copy(byKey.get(value));
-                    }
-                    if (byStringKey.has(String(value))) {
-                        return angular.copy(byStringKey.get(String(value)));
-                    }
+                const wanted = (Array.isArray(values) ? values : []).filter(isSelectionKey);
+                if (wanted.length === 0) return [];
+                return wanted.map(value => {
+                    const own = staticOption(value);
+                    if (own) return angular.copy(own);
                     const known = knownItem(value);
                     if (known) return angular.copy(known);
                     // No matching option: preserve the value in a local display object
@@ -8134,13 +8571,8 @@ angular.module('aui')
                 });
                 if (lookup) lookup.retain(keys);
                 const unresolved = new Map();
-                const staticKeys = new Set();
-                if (dataMode() === 'static' && Array.isArray($ctrl.options)) {
-                    $ctrl.options.forEach(option => {
-                        const key = keyOf(option);
-                        if (key !== null) staticKeys.add(key);
-                    });
-                }
+                // the static options' keys from their index (built once per list, not on every render)
+                const staticKeys = staticOptions().byText;
                 values.forEach(value => {
                     const key = String(value);
                     if (!staticKeys.has(key) && !knownItem(value) && !hasSelectedLabel(key)) unresolved.set(key, value);
@@ -8238,7 +8670,10 @@ angular.module('aui')
             $ctrl.hiddenTagTitle = function () {
                 const items = $ctrl.selectedItems;
                 const limit = $ctrl.visibleTagLimit();
-                if (!Array.isArray(items) || items.length <= limit) return '';
+                if (!Array.isArray(items) || items.length <= limit) {
+                    hiddenTitleCache = null;   // nothing hidden now: the selection it was built for is let go
+                    return '';
+                }
                 if (!hiddenTitleCache || hiddenTitleCache.items !== items || hiddenTitleCache.length !== items.length
                     || hiddenTitleCache.limit !== limit) {
                     hiddenTitleCache = {
@@ -8322,11 +8757,36 @@ angular.module('aui')
                     $ctrl.displayText = '';
                 }
 
+                // searchable written with an expression: its change shows or hides the search box at once (it was read again
+                // only when the options changed)
+                own.$watch(() => $ctrl.searchable, (now, before) => {
+                    if (now !== before) $ctrl.determineSearchVisibility();
+                });
+
+                // label-field / value-field written with {{ }}: a change reads the options anew - the shown value, its
+                // record and the rows (the rows changed and the field kept the label of the field before)
+                own.$watch(() => $ctrl.labelField + '' + $ctrl.valueField, (now, before) => {
+                    if (now === before) return;
+                    staticIndexOf = NOT_BUILT;
+                    optionListOf = NOT_BUILT;
+                    $ctrl.refreshViewValueFromModel();
+                    $ctrl.updateFilteredOptions();
+                });
+
                 // Watch for options changes
                 own.$watchCollection(() => $ctrl.options, (newVal) => {
+                    staticIndexOf = NOT_BUILT;   // the list changed (replaced, or an option of it): built again
+                    optionListOf = NOT_BUILT;
                     if (dataMode() !== 'static') {
                         if (Array.isArray(newVal)) warnOnce('options and load-options are both set; load-options is used');
                         return;
+                    }
+                    // no list (null while the page's data reloads): no options either - the rows of the list before go,
+                    // not left there to pick
+                    if (!Array.isArray(newVal)) {
+                        $ctrl.refreshViewValueFromModel();
+                        $ctrl.updateFilteredOptions();
+                        $ctrl.activeIndex = -1;
                     }
                     if (newVal && Array.isArray(newVal)) {
                         $ctrl.refreshViewValueFromModel();
@@ -8370,7 +8830,9 @@ angular.module('aui')
                         const key = keyOf(option);
                         if (key !== null && !valueOptionsByKey.has(key)) valueOptionsByKey.set(key, option);
                     });
-                    if (options !== previous) $ctrl.refreshViewValueFromModel();
+                    // the first run too (Angular passes the same value as both then): known records given with the field
+                    // shape its selection at once - its label and the whole record in selected-items
+                    $ctrl.refreshViewValueFromModel();
                 }, true);
 
                 // Disabled or readonly while open: close, as aui-tree-select does.
@@ -8441,16 +8903,26 @@ angular.module('aui')
                     // Through load-options it waits until loading is enabled and for a list that is loading (it may
                     // have the value); a dedicated lookup needs neither.
                     blocked: () => typeof $ctrl.lookupOptions !== 'function' && (paramsId === null || (!!list && list.busy())),
-                    group: () => ($ctrl.lookupGroup
-                        ? $ctrl.lookupGroup + '\n' + (typeof $ctrl.lookupOptions === 'function' ? '' : String(paramsId))
-                        : ''),
+                    // same group and same params (a dedicated lookup too: it gets the params, so fields with other
+                    // params ask another data set - one request for both showed one set's labels in both)
+                    group: () => ($ctrl.lookupGroup ? $ctrl.lookupGroup + '\n' + remote.paramsKey($ctrl.loadParams) : ''),
                     onUpdate: () => {
                         $ctrl.refreshViewValueFromModel();
                         if ($ctrl.isOpen) rebuildRows();
                     },
                     warn: warnOnce
                 });
-                if (!remoteList) return;
+                if (!remoteList) {
+                    // a dedicated lookup without load-options: its params changing asks a running lookup again
+                    if (lookup) {
+                        own.$watch(() => remote.paramsKey($ctrl.loadParams), (params) => {
+                            if (params === lookupParams) return;
+                            if (lookupParams !== null) lookup.askAgain();
+                            lookupParams = params;
+                        });
+                    }
+                    return;
+                }
 
                 // load-params / load-enabled: compared by value, so a literal written in the template is fine.
                 own.$watch(() => (kit.readFlag($attrs, 'loadEnabled', $ctrl.loadEnabled, true) ? remote.paramsKey($ctrl.loadParams) : null),
@@ -8473,6 +8945,12 @@ angular.module('aui')
                 list.configure(id, id === null ? null : $ctrl.loadParams);
                 if (lookup) {
                     if (id !== previous) lookup.newRound();
+                    // the params themselves changed (not only load-enabled): a lookup still running asks again
+                    const params = remote.paramsKey($ctrl.loadParams);
+                    if (params !== lookupParams) {
+                        if (lookupParams !== null) lookup.askAgain();
+                        lookupParams = params;
+                    }
                     lookup.kick();
                 }
                 shownSession = null;
@@ -8586,11 +9064,19 @@ angular.module('aui')
                 if (list.retry()) rebuildRows();
             };
 
+            // A load that failed and shows its Retry: the list's first page, or its next page while no row is
+            // highlighted (Enter then picks nothing: see handleKeydown)
+            const retryWaits = function () {
+                if (!list || !$ctrl.view) return false;
+                if ($ctrl.view.status === 'error') return true;
+                return $ctrl.view.more === 'error' && (!$ctrl.keyboardMode || $ctrl.activeIndex < 0);
+            };
+
             /** The only option, when the whole list for the current params is known to have exactly one. */
             const singleOption = function () {
                 if (dataMode() === 'static') {
-                    return Array.isArray($ctrl.options) && $ctrl.options.length === 1 && typeof $ctrl.options[0] === 'object'
-                        ? $ctrl.options[0] : null;
+                    const options = optionList();
+                    return options && options.length === 1 ? options[0] : null;
                 }
                 if (!list || paramsId === null) return null;
                 const session = list.plain();
@@ -8643,6 +9129,7 @@ angular.module('aui')
 
                     const items = resolveSelectionItems(values);
                     $ctrl.selectedItems = items;
+                    hiddenTitleCache = null;   // the +N tooltip of the selection before is let go with it
                     $ctrl.selectedKeysSet = new Set();
                     items.forEach(item => {
                         if (hasOptionKey(item)) {
@@ -8685,32 +9172,78 @@ angular.module('aui')
                 }
             };
 
-            // Pending auto-select timers, cancelled on destroy so none can run against a removed select.
-            const pendingAutoSelects = new Set();
+            /**
+             * auto-select-on-single-required: a required, empty field with one option picks it a moment later. One
+             * pending pick at most (a list replaced on every digest used to stack a timer each time); everything is
+             * checked again when it runs - the opt-in too (turned off meanwhile, nothing is picked), required, the
+             * field's locks and the value. It is asked for when the options change and when the field becomes required
+             * with the opt-in on (watched in $onInit); cancelled when the opt-in goes off and on destroy.
+             */
+            let autoSelectTimer = null;
+
+            const cancelAutoSelect = () => {
+                if (autoSelectTimer) $timeout.cancel(autoSelectTimer);
+                autoSelectTimer = null;
+            };
 
             $ctrl.autoSelectHandler = function () {
-                if ($ctrl.autoSelectOnSingleRequired) {
-                    const pendingAutoSelect = $timeout(() => {
-                        pendingAutoSelects.delete(pendingAutoSelect);
-                        if ($ctrl.required && $ctrl.ngModelCtrl) {
-                            const only = singleOption();
-                            if (only) {
-                                if ($ctrl.ngModelCtrl.$isEmpty($ctrl.ngModelCtrl.$viewValue) && $ctrl.ngModelCtrl.$isEmpty($ctrl.ngModelCtrl.$modelValue)) {
-                                    const _defaultSelected = angular.copy(only);
-                                    $ctrl.selectOption(_defaultSelected, null, 'programmatic');
-                                }
-                            }
-                        }
-                    }, 1000);
-                    pendingAutoSelects.add(pendingAutoSelect);
-                }
-            }
+                if (!$ctrl.autoSelectOnSingleRequired || autoSelectTimer) return;
+                autoSelectTimer = $timeout(() => {
+                    autoSelectTimer = null;
+                    const model = $ctrl.ngModelCtrl;
+                    if (destroyed || !$ctrl.autoSelectOnSingleRequired || !$ctrl.required || !model) return;
+                    if ($ctrl.disabled || $ctrl.isReadonly()) return;
+                    const only = singleOption();
+                    if (only && model.$isEmpty(model.$viewValue) && model.$isEmpty(model.$modelValue)) {
+                        $ctrl.selectOption(angular.copy(only), null, 'programmatic');
+                    }
+                }, 1000);
+            };
+
+            // the opt-in on and the field required (also when it becomes required later): a pick is asked for; the
+            // opt-in off: a pick still waiting is dropped
+            own.$watch(() => !!($ctrl.autoSelectOnSingleRequired && $ctrl.required), (on) => {
+                if (on) $ctrl.autoSelectHandler();
+                else if (!$ctrl.autoSelectOnSingleRequired) cancelAutoSelect();
+            });
 
             // Post-link to get DOM references
+            /**
+             * The hidden form input (native required and the form's data) and the page's form:
+             * - the browser's own check of a form (a native submit) focuses its first invalid control: here the hidden
+             *   input, which no one sees - the field takes the focus instead, and shows that it is invalid (touched);
+             * - a disabled <fieldset> around the field disables the input: the field is disabled with it (fieldsetDisabled);
+             * - the form's native reset puts the input back to its first value behind Angular's back: it takes the field's
+             *   value again (a page resets a field through its model).
+             */
+            function attachHiddenInput() {
+                const input = $element[0].querySelector('.aui-select > input');
+                if (!input) return;
+                hiddenInputElement = input;
+                input.addEventListener('invalid', () => {
+                    if (destroyed || !$ctrl.ngModelCtrl || $ctrl.ngModelCtrl.$touched) return;
+                    settle(false, markTouched);
+                });
+                input.addEventListener('focus', () => {
+                    if (!destroyed && triggerElement && !$ctrl.disabled) triggerElement.focus();
+                });
+                if (input.form) {
+                    resetForm = input.form;
+                    resetForm.addEventListener('reset', onFormReset);
+                }
+                own.$watch(() => input.matches(':disabled') && !$ctrl.ownDisabled(), (now) => { fieldsetDisabled = now; });
+            }
+            let resetForm = null;
+            function onFormReset() {
+                setTimeout(() => { if (!destroyed) syncHiddenValidationInput(); }, 0);
+            }
+
             $ctrl.$postLink = function () {
+                attachHiddenInput();
+                // on-change carries the committed value (a deferred model reports once it commits)
+                $ctrl.checkAndCallOnChangeFunc = kit.changeAfterCommit($ctrl.ngModelCtrl, $ctrl.checkAndCallOnChangeFunc);
                 triggerElement = $element[0].querySelector('.aui-select__trigger');
                 panelElement = $element[0].querySelector('.aui-select__panel');
-                searchElement = $element[0].querySelector('.aui-select__search-input');
                 if (triggerElement && panelElement) {
                     panelCtl = dropdownPanel.create({
                         trigger: triggerElement,
@@ -8724,9 +9257,11 @@ angular.module('aui')
                         // options shown on open are the most there will be (a search only narrows them).
                         growable: () => dataMode() !== 'static',
                         onShown: onPanelShown,
-                        onClosed: onPanelClosed
+                        onClosed: onPanelClosed,
+                        onListLimited: onListLimited
                     });
                     panelElement.addEventListener('mousemove', onPanelMouse, {passive: true});
+                    LIST_MOVES.forEach(name => panelElement.addEventListener(name, onListMoved, {passive: true}));
                     panelElement.addEventListener('mousedown', onPanelMousedownEvent);
                     panelElement.addEventListener('click', onPanelClick);
                     stopQuietFocus = kit.quietPointerFocus(triggerElement, 'aui-select__trigger--pointer-focus');
@@ -8765,6 +9300,8 @@ angular.module('aui')
                 });
                 stopFocusLeave = kit.onFocusLeave($element[0], (next) => {
                     if (destroyed) return;
+                    // a value that waits for the blur (ng-model-options updateOn: 'blur') commits now
+                    kit.commitOnLeave($ctrl.ngModelCtrl);
                     // Focus moved to another control (Tab, or a click on it): close, touched with it. A press on the
                     // page itself is handled by the outside-press listener. Closed: touched alone (the field's look at
                     // once, the page's bindings of it once the field's ring has faded out).
@@ -8806,6 +9343,19 @@ angular.module('aui')
                 resetSearch();
                 tipRowEl = null;
                 localDigest();
+            };
+
+            /*
+             * The list fitted to a shorter height after it was shown (a short viewport, a high zoom: the first placement
+             * of an opening cannot measure it): the active (selected) option comes into view again - until the user
+             * moves the list (a wheel, a touch, a press in the panel), whose place is then the user's.
+             */
+            const LIST_MOVES = ['wheel', 'touchmove', 'pointerdown'];
+            let listMoved = false;
+            const onListMoved = () => { listMoved = true; };
+            const onListLimited = function () {
+                if (!$ctrl.isOpen || !panelElement || listMoved || $ctrl.activeIndex < 0) return;
+                revealActive('center-if-hidden');
             };
 
             /** Called by the panel engine once the panel is shown: bring the active (selected) option into view. */
@@ -8924,7 +9474,6 @@ angular.module('aui')
                     // An option of a remote list may be gone after the next search: keep it while it is selected.
                     if (dataMode() !== 'static') picked.set(keyOf(targetOption), angular.copy(targetOption));
                 }
-                if (!targetOption) return;
 
                 let selectedItems = [];
                 const ngModelCtrl = $ctrl.ngModelCtrl;
@@ -9003,7 +9552,11 @@ angular.module('aui')
              */
             $ctrl.isOptionDisabled = function (option) {
                 if (!hasOptionKey(option)) return false;
-                if ($ctrl.disabledField && option[$ctrl.disabledField] === true) return true;
+                // the option as it is now: a selected value's own copy is from the moment it was picked, and an option
+                // locked since (disabled-field set, or replaced by a locked one) must stay through Clear
+                const key = option[$ctrl.valueField];
+                const current = staticOption(key) || (dataMode() !== 'static' && list ? list.find(String(key)) : null) || option;
+                if ($ctrl.disabledField && current[$ctrl.disabledField] === true) return true;
                 return $ctrl.disabledOptionsKeySet.has(option[$ctrl.valueField]) || $ctrl.disabledOptionsKeySet.has(String(option[$ctrl.valueField]));
             };
 
@@ -9112,7 +9665,9 @@ angular.module('aui')
              * Open dropdown
              */
             $ctrl.openDropdown = function () {
-                if ($ctrl.isOpen || $ctrl.disabled || $ctrl.isReadonly()) return;
+                // every way of opening (a press, a key, api.open()): not while busy (loading), as a press is refused, and
+                // never once destroyed (an api.open() still queued when the field went)
+                if (destroyed || $ctrl.isOpen || $ctrl.disabled || $ctrl.loading || $ctrl.isReadonly()) return;
 
                 // A close that is still fading out has not reset the search yet: do it now.
                 if (closeFinishing) {
@@ -9125,6 +9680,7 @@ angular.module('aui')
                 $ctrl.keyboardMode = false;
                 lastPointer = null;
                 interacted = false;
+                listMoved = false;
                 autoFill = 0;
                 shownSession = null;
                 // What asks the page goes through pageAsk.ask: right after the panel's first frame when the user opens
@@ -9246,7 +9802,8 @@ angular.module('aui')
                 const view = {status: '', more: '', stale: false, refreshing: false, timeout: false, minLength: 0, setSize: null, searching: false};
                 let base = [];
                 if (mode === 'static') {
-                    base = (Array.isArray($ctrl.options) ? $ctrl.selectFilter($ctrl.options, $ctrl.searchQuery, $ctrl.labelField) : []) || [];
+                    const options = optionList();
+                    base = (options ? $ctrl.selectFilter(options, $ctrl.searchQuery, $ctrl.labelField) : []) || [];
                 } else if (paramsId === null || !list) {
                     view.status = 'off';
                 } else if (mode === 'all') {
@@ -9447,14 +10004,45 @@ angular.module('aui')
 
             // --- Keyboard and active option (the same model as aui-tree-select) ---
 
-            const optionId = (i) => 'aui-select-options-' + $scope.$id + '-o' + i;
+            // the list's id and its rows': the controller's own (an id written as {{ ::$id }} was the scope's where it
+            // stood - the search box, inside a part of its own, pointed at a list that does not exist)
+            $ctrl.listId = 'aui-select-options-' + $scope.$id;
+            const optionId = (i) => $ctrl.listId + '-o' + i;
             $ctrl.optionId = optionId;
             $ctrl.activeIndex = -1;
             $ctrl.keyboardMode = false;
 
+            /*
+             * The page's aria-label, aria-labelledby and aria-describedby on the field go on its trigger, the element that has
+             * the focus (as aui-input gives them to its box): a field named or described by the page is so to screen readers.
+             * aria-label goes before label-text and the placeholder; aria-labelledby goes before both (as in the browser's
+             * naming); aria-describedby joins the message line's id.
+             */
+            $ctrl.triggerLabel = function () {
+                return $attrs.ariaLabel || $ctrl.labelText || $ctrl.placeholder || $ctrl.t.placeholder;
+            };
+            $ctrl.triggerLabelledBy = function () {
+                return $attrs.ariaLabelledby ? String($attrs.ariaLabelledby).trim() || undefined : undefined;
+            };
+            $ctrl.triggerDescribedBy = function () {
+                const ids = [];
+                const message = $ctrl.field.messageId();
+                if (message) ids.push(message);
+                if ($attrs.ariaDescribedby) ids.push(String($attrs.ariaDescribedby).trim());
+                return ids.join(' ').trim() || undefined;
+            };
+
+            /**
+             * aria-activedescendant: the active row's id while that row is in the page - the list shown (not loading),
+             * the row inside the scroll window. Scrolled out of the window (the list scrolled by hand) or hidden by a
+             * load, the row is not there, and an id that leads nowhere is no active row: none is named until the row
+             * is in the page again (the next arrow key brings it).
+             */
             $ctrl.activeOptionId = function () {
-                return $ctrl.isOpen && $ctrl.activeIndex >= 0 && $ctrl.activeIndex < $ctrl.filteredOptions.length
-                    ? optionId($ctrl.activeIndex) : '';
+                const i = $ctrl.activeIndex;
+                if (!$ctrl.isOpen || $ctrl.loading || !$ctrl.panelReady || i < 0 || i >= $ctrl.filteredOptions.length) return '';
+                if (virtual && (i < windowStart || i >= windowEnd)) return '';
+                return optionId(i);
             };
 
             const optionsList = () => (panelElement ? panelElement.querySelector('ul.aui-select__options') : null);
@@ -9517,6 +10105,9 @@ angular.module('aui')
             };
 
             $ctrl.onOptionClick = function (option, i, $event) {
+                // the dimmed rows of the previous query (the new one still loading, or still waiting for its pause)
+                // answer another text: a press there picks nothing, as Enter does
+                if ($ctrl.view.stale || searchTimer) return;
                 $ctrl.activeIndex = i;
                 $ctrl.selectOption(option, $event, 'userInteracted');
             };
@@ -9651,6 +10242,12 @@ angular.module('aui')
                 if (!li || !panelElement || !panelElement.contains(li)) return;
                 const row = li.__auiSelectRow;
                 if (!row) return;
+                // the dimmed rows of the previous query (the new one still loading, or waiting for its pause) answer
+                // another text: a press there picks nothing, as Enter does
+                if ($ctrl.view.stale || searchTimer) {
+                    event.stopPropagation();
+                    return;
+                }
                 // One value (single mode): the panel closes and the value is set now, the page's digest follows after
                 // the close's first frame (closeFromInput). Several values: the panel stays, the value is set now and
                 // the page's digest follows once the picking pauses (pickInPlace).
@@ -9763,6 +10360,12 @@ angular.module('aui')
                     case 'Enter':
                         // Never submit a surrounding form from inside the dropdown.
                         $event.preventDefault();
+                        // A failed load: Enter tries again, as its Retry link does (the keyboard's way to it: the
+                        // focus stays in the field) - the first page, or the next one while no row is highlighted.
+                        if (retryWaits()) {
+                            if (!kit.isRepeat($event)) $ctrl.retryLoad(null);
+                            return;
+                        }
                         pickActive($event, active);
                         return;
                     case ' ':
@@ -9805,7 +10408,8 @@ angular.module('aui')
                                 if ($ctrl.isOpen || readPreload()) list.reload();
                                 else list.drop();
                             }
-                            if (lookup) lookup.newRound();
+                            // "look up again": the labels found before as well (a record renamed on the server)
+                            if (lookup) lookup.forget();
                             $ctrl.refreshViewValueFromModel();
                             if ($ctrl.isOpen) rebuildRows();
                         });
@@ -9837,8 +10441,7 @@ angular.module('aui')
                 pageAsk.cancel();
                 pageDigest.forget();
                 cancelSearchFocus();
-                pendingAutoSelects.forEach(pendingAutoSelect => $timeout.cancel(pendingAutoSelect));
-                pendingAutoSelects.clear();
+                cancelAutoSelect();
                 if (searchTimer) {
                     $timeout.cancel(searchTimer);
                     searchTimer = null;
@@ -9886,6 +10489,7 @@ angular.module('aui')
                     panelElement.removeEventListener('click', onPanelClick);
                     panelElement.removeEventListener('scroll', onPanelScroll, true);
                     panelElement.removeEventListener('mouseover', onPanelOver);
+                    LIST_MOVES.forEach(name => panelElement.removeEventListener(name, onListMoved, {passive: true}));
                 }
                 if (stopTriggerPress) {
                     stopTriggerPress();
@@ -9909,9 +10513,16 @@ angular.module('aui')
                 $ctrl.viewRows = [];
                 $ctrl.options = null;
                 $ctrl.valueOptions = null;
+                // the option list's caches go with it (they hold the list, or an index of all its options)
+                staticIndexOf = NOT_BUILT;
+                optionListOf = NOT_BUILT;
+                optionListNow = null;
+                staticIndex = {byKey: new Map(), byText: new Map()};
                 picked.clear();
                 valueOptionsByKey = new Map();
                 shownSession = null;
+                if (resetForm) resetForm.removeEventListener('reset', onFormReset);
+                resetForm = null;
                 triggerElement = panelElement = searchElement = hiddenInputElement = tipRowEl = null;
             };
 
@@ -9963,6 +10574,8 @@ angular.module('aui')
                             type="text"
                             name="{{ $ctrl.name }}"
                             ng-required="$ctrl.required"
+                            ng-disabled="$ctrl.ownDisabled()"
+                            ng-readonly="$ctrl.isReadonly()"
                             class="aui-select__hidden-input"
                             tabindex="-1"
                             aria-hidden="true"
@@ -9982,18 +10595,19 @@ angular.module('aui')
                                         'aui-select__trigger--clearable': $ctrl.clearable && $ctrl.hasClearable() && !$ctrl.disabled && !$ctrl.loading && !$ctrl.isReadonly(),
                                         'aui-select__trigger--busy': $ctrl.loading,
                                         'aui-select__trigger--invalid': $ctrl.showInvalid()}"
-                             tabindex="{{ $ctrl.disabled ? -1 : 0 }}"
+                             ng-attr-tabindex="{{ $ctrl.disabled ? undefined : 0 }}"
                              role="combobox"
                              aria-expanded="{{$ctrl.isOpen}}"
                              aria-haspopup="listbox"
-                             aria-label="{{ $ctrl.labelText || $ctrl.placeholder || $ctrl.t.placeholder }}"
+                             aria-label="{{ $ctrl.triggerLabel() }}"
+                             ng-attr-aria-labelledby="{{ $ctrl.triggerLabelledBy() }}"
                              aria-required="{{ $ctrl.required }}"
                              aria-disabled="{{ !!$ctrl.disabled }}"
                              aria-readonly="{{ $ctrl.isReadonly() }}"
                              aria-invalid="{{ $ctrl.showInvalid() }}"
                              aria-busy="{{ !!($ctrl.labelsPending || $ctrl.loading) }}"
-                             aria-controls="aui-select-options-{{ ::$id }}"
-                             ng-attr-aria-describedby="{{ $ctrl.field.messageId() }}"
+                             aria-controls="{{ ::$ctrl.listId }}"
+                             ng-attr-aria-describedby="{{ $ctrl.triggerDescribedBy() }}"
                              ng-attr-aria-activedescendant="{{ $ctrl.activeOptionId() || undefined }}">
 
                             <div class="aui-control-label"
@@ -10060,7 +10674,7 @@ angular.module('aui')
 
                         <!-- Dropdown Panel -->
                         <div class="aui-select__panel"
-                             id="aui-select-options-{{ ::$id }}"
+                             id="{{ ::$ctrl.listId }}"
                              ng-class="{'aui-select__panel--multiple': $ctrl.multiple, 'aui-select__panel--keyboard': $ctrl.keyboardMode}"
                              ng-style="$ctrl.panelStyle"
                              aria-multiselectable="{{ !!$ctrl.multiple }}"
@@ -10083,7 +10697,7 @@ angular.module('aui')
                                        aui-search-input-stop-click
                                        placeholder="{{ $ctrl.searchPlaceholder !== undefined ? $ctrl.searchPlaceholder : $ctrl.t.search }}"
                                        aria-label="{{ ::$ctrl.t.searchLabel }}"
-                                       aria-controls="aui-select-options-{{ ::$id }}"
+                                       aria-controls="{{ ::$ctrl.listId }}"
                                        aria-autocomplete="list"
                                        ng-attr-aria-activedescendant="{{ $ctrl.activeOptionId() || undefined }}"
                                        autocomplete="off"
@@ -10097,7 +10711,7 @@ angular.module('aui')
                             </div>
 
                             <!-- Options list: in the page only while the panel is shown -->
-                            <ul class="aui-select__options aui-scroll" aui-if="$ctrl.panelReady && !$ctrl.loading"
+                            <ul role="none" class="aui-select__options aui-scroll" aui-if="$ctrl.panelReady && !$ctrl.loading"
                                 ng-class="{'aui-select__options--stale': $ctrl.view.stale}"
                                 aria-busy="{{ !!($ctrl.view.status === 'loading' || $ctrl.view.more === 'loading' || $ctrl.view.stale) }}">
                                 <li class="aui-select__spacer" role="none"
@@ -10125,20 +10739,22 @@ angular.module('aui')
                                 <li class="aui-select__status" role="status" aui-if="$ctrl.view.more === 'loading'">
                                     <span class="aui-select__spinner" aria-hidden="true"></span><span>{{ ::$ctrl.t.loadingMore }}</span>
                                 </li>
-                                <li class="aui-select__status aui-select__status--retry" role="none"
+                                <!-- A failed load, the list empty, too short a search: said to screen readers as they come
+                                     (a status, as the notice), the focus left in the field; Enter there retries -->
+                                <li class="aui-select__status aui-select__status--retry" role="status"
                                     aui-if="$ctrl.view.more === 'error'"
                                     ng-click="$ctrl.retryLoad($event)">{{ ::$ctrl.t.moreFailed }} <span class="aui-select__retry-link">{{ ::$ctrl.t.retry }}</span></li>
-                                <li class="aui-select__no-results aui-select__status--retry" role="none"
+                                <li class="aui-select__no-results aui-select__status--retry" role="status"
                                     aui-if="$ctrl.view.status === 'error'"
                                     ng-click="$ctrl.retryLoad($event)">{{ $ctrl.view.timeout ? $ctrl.t.timeout : $ctrl.t.failed }} <span class="aui-select__retry-link">{{ ::$ctrl.t.retry }}</span></li>
-                                <li class="aui-select__no-results" role="none"
+                                <li class="aui-select__no-results" role="status"
                                     aui-if="$ctrl.view.status === 'min-length'">{{ $ctrl.t.minLength.replace('{n}', $ctrl.view.minLength) }}</li>
                                 <!-- Loading is off (load-enabled false): what to do first -->
                                 <li class="aui-select__notice" role="status" aui-if="$ctrl.loadNotice()">
                                     <span class="aui-select__notice-icon" aria-hidden="true"></span><span class="aui-select__notice-text">{{ $ctrl.loadNotice() }}</span>
                                 </li>
                                 <!-- No results -->
-                                <li class="aui-select__no-results" role="none"
+                                <li class="aui-select__no-results" role="status"
                                     aui-if="$ctrl.view.status === 'empty' || ($ctrl.view.status === 'off' && !$ctrl.loadNotice())">
                                     {{ $ctrl.emptyText || $ctrl.t.empty }}
                                 </li>
@@ -10750,6 +11366,7 @@ angular.module('aui')
             const LOADING_FADE_OUT_MS = 160;
             const DEFAULT_CACHE_TTL_MS = 60000;
             const MORE_MARGIN_PX = 200;        // a "Load more" row this close to the visible area loads by itself
+            const REVEAL_PAGE_LIMIT = 20;      // reveal-selected: further pages of children it loads to find the path
             const EMPTY_FIELDS = Object.freeze({value: 'id', label: 'label', children: 'children', disabled: 'disabled', leaf: 'isLeaf'});
 
             let ngm = null;
@@ -10789,6 +11406,7 @@ angular.module('aui')
             let list = null;
             let lookup = null;
             let paramsId = '{}';               // params key; null while loading is not enabled
+            let lookupParams = null;           // the params the lookups asked with (a change asks the running ones again)
             let valueOptionsByKey = new Map(); // value-options as known entries
             let pendingKeys = new Set();       // selected values whose label is being looked up
             let knownVersion = 0;              // changes whenever a label source changes (selected-items is rebuilt then)
@@ -10891,10 +11509,22 @@ angular.module('aui')
                 };
             }
 
+            let fieldsetDisabled = false;   // a disabled <fieldset> around the field (see attachHiddenInput)
+
             function readOptions() {
                 opt.multiple = kit.readFlag($attrs, 'multiple', $ctrl.multiple, false);
-                opt.disabled = kit.readFlag($attrs, 'disabled', $ctrl.disabled, false);
+                // the field's own disabled option, or a disabled <fieldset> around it (read from the hidden form input,
+                // which the browser disables with it: see attachHiddenInput); the input follows the own option only
+                opt.ownDisabled = kit.readFlag($attrs, 'disabled', $ctrl.disabled, false);
+                opt.disabled = opt.ownDisabled || fieldsetDisabled;
                 opt.readonly = kit.readFlag($attrs, 'readonly', $ctrl.readonly, false);
+                // locked while open - by the bindings, by ng-disabled / ng-readonly, by a fieldset: the panel closes (a
+                // locked field never stays open and usable)
+                if ($ctrl.isOpen && (opt.disabled || opt.readonly)) {
+                    $scope.$evalAsync(function () {
+                        if ($ctrl.isOpen && (opt.disabled || opt.readonly)) close({restoreFocus: false});
+                    });
+                }
                 opt.loading = kit.readFlag($attrs, 'loading', $ctrl.loading, false);
                 opt.clearable = kit.readFlag($attrs, 'clearable', $ctrl.clearable, false);
                 opt.showLabel = kit.readFlag($attrs, 'showLabel', $ctrl.showLabel, false);
@@ -10976,6 +11606,11 @@ angular.module('aui')
             /** A raw node's value as a string, or null when it has none. */
             function rawKey(raw) {
                 return raw !== null && typeof raw === 'object' && kit.isSelectionKey(raw[fields.value]) ? String(raw[fields.value]) : null;
+            }
+
+            /** A selected value without a node (a model value, not a record) locked by disabled-values. */
+            function lockedValue(value) {
+                return kit.isSelectionKey(value) && disabledValueKeys.has(String(value));
             }
 
             function rawLabel(raw) {
@@ -11078,6 +11713,9 @@ angular.module('aui')
 
             function rebuildIndex() {
                 index = engine.build(rootData(), fields, {lazy: hasLoader(), loaded: lazy.loaded});
+                // new data: selected-items take their records from it again (new objects with the same ids and the same
+                // count gave the same signature, and the records of the list before stayed)
+                knownVersion += 1;
                 reportWarnings(index.warnings);
                 if (!defaultExpandApplied && index.nodes.length > 0) {
                     defaultExpandApplied = true;
@@ -11089,6 +11727,7 @@ angular.module('aui')
                 if (remote.raw) refreshResultIndex();
                 else if (searchState && !hasRemoteSearch()) runSearch();
                 scheduleAutoSelect();
+                pruneDomIds();
             }
 
             function applyDefaultExpand() {
@@ -11395,10 +12034,10 @@ angular.module('aui')
                         blocked: function () {
                             return typeof $ctrl.lookupOptions !== 'function' && (!loadReady() || (!!list && list.busy()));
                         },
+                        // same group and same params (a dedicated lookup too: it gets the params, so trees with other
+                        // params ask another data set - one request for both showed one set's labels in both)
                         group: function () {
-                            return $ctrl.lookupGroup
-                                ? $ctrl.lookupGroup + '\n' + (typeof $ctrl.lookupOptions === 'function' ? '' : String(paramsId))
-                                : '';
+                            return $ctrl.lookupGroup ? $ctrl.lookupGroup + '\n' + remoteData.paramsKey($ctrl.loadParams) : '';
                         },
                         onUpdate: function () {
                             knownVersion += 1;
@@ -11448,6 +12087,14 @@ angular.module('aui')
                     clearRemote();
                     if (lookup) lookup.newRound();
                     rebuildIndex();
+                }
+                // the params themselves changed (not only load-enabled): a lookup still running asks again
+                const params = remoteData.paramsKey($ctrl.loadParams);
+                if (lookup && params !== lookupParams) {
+                    if (lookupParams !== null) lookup.askAgain();
+                    lookupParams = params;
+                }
+                if (changed) {
                     if ($ctrl.isOpen && hasRemoteSearch() && normalizedQuery()) onRemoteQuery();
                 }
                 if (lookup) lookup.kick();
@@ -11580,18 +12227,45 @@ angular.module('aui')
                     }
                     handle.promise.then(function () { $scope.$evalAsync(next); }, angular.noop);
                 };
+                // still the field's value: a value set meanwhile (by the page, by a pick) ends this reveal - its
+                // branches loaded later no longer move the keyboard to the value before
+                const stillValue = function () {
+                    const now = viewValues();
+                    return now.length === 1 && typeof now[0] === typeof value && String(now[0]) === String(value);
+                };
+                // A node of the path on a later page of its branch (children in pages: the first page came, the node
+                // was not in it): the branch's next page, then the step again - as its "Load more" row would, up to
+                // REVEAL_PAGE_LIMIT pages for the whole reveal. No next page: the path does not match this tree.
+                let pagesLeft = REVEAL_PAGE_LIMIT;
+                const nextPage = function (parentNode, again) {
+                    const more = lazy.more.get(parentNode ? parentNode.sid : ROOT_SID);
+                    if (!more || more.error || pagesLeft <= 0) return;
+                    pagesLeft -= 1;
+                    if (!more.loading) loadMoreChildren(parentNode);
+                    if (!more.loading) return;   // loading is off now
+                    more.loading.promise.then(function () { $scope.$evalAsync(again); }, angular.noop);
+                };
+                const parentOf = function (i) {
+                    return i === 0 ? null : (index.byKey.get(chain[i - 1]) || null);
+                };
                 const step = function (i) {
-                    if (run !== revealRun || !$ctrl.isOpen || destroyed) return;
+                    if (run !== revealRun || !$ctrl.isOpen || destroyed || !stillValue()) return;
                     if (i >= chain.length) {
                         const node = index.byKey.get(String(value));
-                        if (!node) return;
+                        if (!node) {
+                            nextPage(parentOf(chain.length), function () { step(i); });
+                            return;
+                        }
                         revealNode(node);
                         rebuildRows();
                         if (rowIndex.has(node.sid)) setActiveIndex(rowIndex.get(node.sid), true);
                         return;
                     }
                     const node = index.byKey.get(chain[i]);
-                    if (!node) return;   // the chain does not match this tree
+                    if (!node) {
+                        nextPage(parentOf(i), function () { step(i); });
+                        return;
+                    }
                     expanded.add(node.sid);
                     if (node.children === null) {
                         loadChildren(node);
@@ -11761,7 +12435,9 @@ angular.module('aui')
             function rememberLoadedValues() {
                 viewValues().forEach(function (value) {
                     const node = index.byKey.get(String(value));
-                    if (node && !rememberedNodes.has(node)) {
+                    // remembered again when its copy went (the value cleared, then picked again: forgetUnselected let
+                    // the copy go, while the node was still marked as remembered)
+                    if (node && (!rememberedNodes.has(node) || !remembered.has(node.key))) {
                         rememberedNodes.add(node);
                         remember(node);
                     }
@@ -11807,11 +12483,14 @@ angular.module('aui')
                     const nodes = cascade()
                         ? engine.strategyNodes(index, selection.checked, 'parent', conductDisabled)
                         : index.nodes.filter(function (node) { return node.key !== null && selection.checked.has(node.key); });
-                    const tags = nodes.map(function (node) {
+                    // A tag's tooltip is its path: worked out for the tags that can be drawn (kit.TAG_RENDER_CAP at most,
+                    // see visibleTagLimit) - thousands of values selected built every path, for tags never shown
+                    const drawable = kit.TAG_RENDER_CAP;
+                    const tags = nodes.map(function (node, i) {
                         return {
                             id: node.sid,
                             label: node.label,
-                            title: engine.pathLabel(node, separator),
+                            title: i < drawable ? engine.pathLabel(node, separator) : '',
                             node: node,
                             removable: !isDisabled(node)
                         };
@@ -11819,9 +12498,11 @@ angular.module('aui')
                     selection.unknown.forEach(function (value) {
                         const pending = pendingKeys.has(String(value));
                         tags.push({id: 'u:' + typeof value + ':' + String(value), label: unknownLabel(value),
-                            title: pending ? '' : unknownPath(value), node: null, value: value, removable: true, pending: pending});
+                            title: pending || tags.length >= drawable ? '' : unknownPath(value), node: null, value: value,
+                            removable: !lockedValue(value), pending: pending});
                     });
                     $ctrl.tags = tags;
+                    hiddenTitleCache = null;   // the +N tooltip of the tags before is let go with them
                     $ctrl.hasValue = tags.length > 0;
                     $ctrl.displayText = '';
                     $ctrl.displayTitle = '';
@@ -11830,6 +12511,7 @@ angular.module('aui')
                     $ctrl.displayPending = false;
                     const node = selection.selectedKey !== null ? index.byKey.get(selection.selectedKey) : null;
                     $ctrl.tags = [];
+                    hiddenTitleCache = null;
                     if (node) {
                         const path = engine.pathLabel(node, separator);
                         $ctrl.displayText = opt.showPath ? path : node.label;
@@ -11873,7 +12555,46 @@ angular.module('aui')
              * value before; the node it came from (a copy, without its children; null for a clear). The object of the
              * reference form keeps aui-select's selectedValues.
              */
-            function notifyChange(sourceNode, source, oldValue) {
+            /**
+             * The hidden form input (native required and the form's data) and the page's form:
+             * - the browser's own check of a form (a native submit) focuses its first invalid control: here the hidden
+             *   input, which no one sees - the field takes the focus instead, and shows that it is invalid (touched);
+             * - a disabled <fieldset> around the field disables the input: the field is disabled with it (fieldsetDisabled);
+             * - the form's native reset puts the input back to its first value behind Angular's back: it takes the field's
+             *   value again (a page resets a field through its model).
+             */
+            let resetForm = null;
+            function attachHiddenInput() {
+                const input = hiddenInputEl;
+                if (!input) return;
+                input.addEventListener('invalid', function () {
+                    if (destroyed || !ngm || ngm.$touched) return;
+                    settle(false, markTouched);
+                });
+                input.addEventListener('focus', function () {
+                    if (!destroyed && triggerEl && !opt.disabled) triggerEl.focus();
+                });
+                if (input.form) {
+                    resetForm = input.form;
+                    resetForm.addEventListener('reset', onFormReset);
+                }
+                $scope.$watch(function () { return input.matches(':disabled') && !opt.ownDisabled; }, function (now) {
+                    if (now === fieldsetDisabled) return;
+                    fieldsetDisabled = now;
+                    readOptions();
+                });
+            }
+            function onFormReset() {
+                setTimeout(function () {
+                    if (!destroyed && hiddenInputEl) hiddenInputEl.value = viewValues().map(String).join(',');
+                }, 0);
+            }
+
+            // on-change carries the committed value: with a deferred model (updateOn, a debounce) it waits for the commit
+            // (set once the model is known, see $onInit)
+            let notifyChange = function () { return reportChangeNow.apply(null, arguments); };
+
+            function reportChangeNow(sourceNode, source, oldValue) {
                 const items = Array.isArray($ctrl.selectedItems) ? $ctrl.selectedItems : [];
                 const selectedValues = opt.multiple ? items : (items[0] || null);
                 const node = sourceNode ? copyItem(sourceNode.raw) : null;
@@ -11963,12 +12684,19 @@ angular.module('aui')
             $ctrl.clearSelection = function ($event) {
                 if ($event) $event.stopPropagation();
                 if (!$ctrl.showClear()) return;
+                clearValues('clear');
+            };
+
+            /**
+             * The clear itself, for the Clear button and api.clear(): locked values stay - a disabled node, and a value in
+             * disabled-values also while its node is not loaded (a lazy branch closed, the list replaced).
+             */
+            function clearValues(source) {
                 if (opt.multiple) {
-                    // Disabled nodes are locked: clearing keeps them.
                     const locked = [];
                     selection.checked.forEach(function (key) {
                         const node = index.byKey.get(key);
-                        if (node && isDisabled(node)) locked.push(key);
+                        if (node ? isDisabled(node) : disabledValueKeys.has(key)) locked.push(key);
                     });
                     if (cascade()) {
                         const conducted = engine.conductCheck(index, new Set(locked), conductDisabled);
@@ -11981,9 +12709,11 @@ angular.module('aui')
                 } else {
                     selection.selectedKey = null;
                 }
-                selection.unknown = [];
-                commitSelection(null, 'clear');
-            };
+                selection.unknown = opt.multiple
+                    ? selection.unknown.filter(lockedValue)
+                    : [];
+                commitSelection(null, source);
+            }
 
             $ctrl.onClearKeydown = function ($event) {
                 if (!$event) return;
@@ -12027,7 +12757,10 @@ angular.module('aui')
             $ctrl.hiddenTagTitle = function () {
                 const tags = $ctrl.tags;
                 const limit = $ctrl.visibleTagLimit();
-                if (tags.length <= limit) return '';
+                if (tags.length <= limit) {
+                    hiddenTitleCache = null;   // nothing hidden now: the tags it was built for (and their nodes) are let go
+                    return '';
+                }
                 if (!hiddenTitleCache || hiddenTitleCache.tags !== tags || hiddenTitleCache.limit !== limit) {
                     hiddenTitleCache = {
                         tags: tags,
@@ -12147,6 +12880,28 @@ angular.module('aui')
                     domIds.set(sid, baseId + '-n' + domSeq);
                 }
                 return domIds.get(sid);
+            }
+
+            /*
+             * The rows' DOM ids stay with their nodes while the nodes are in the data (a row keeps its id across
+             * rebuilds). A field that lives on while its data is replaced (other datasets, new ids each time) let the
+             * ids of nodes long gone pile up until it was destroyed: the map is swept once it holds more than twice the
+             * nodes there are now (and 256), the ids of the nodes there keeping theirs.
+             */
+            function pruneDomIds() {
+                const live = index.nodes.length + (remote.index ? remote.index.nodes.length : 0);
+                if (domIds.size <= 2 * live + 256) return;
+                const keep = new Set(['m:' + ROOT_SID]);
+                const add = function (node) {
+                    keep.add(node.sid);
+                    keep.add('m:' + node.sid);
+                };
+                index.nodes.forEach(add);
+                if (remote.index) remote.index.nodes.forEach(add);
+                if ($ctrl.activeSid !== null) keep.add($ctrl.activeSid);
+                domIds.forEach(function (id, sid) {
+                    if (!keep.has(sid)) domIds.delete(sid);
+                });
             }
 
             function decorate(visible, enterIndex, marks) {
@@ -12390,8 +13145,37 @@ angular.module('aui')
                 });
             }
 
+            /*
+             * The page's aria-label, aria-labelledby and aria-describedby on the field go on its trigger, the element that has
+             * the focus (as aui-input gives them to its box): a field named or described by the page is so to screen readers.
+             * aria-label goes before label-text and the placeholder; aria-labelledby goes before both (as in the browser's
+             * naming); aria-describedby joins the message line's id.
+             */
+            $ctrl.triggerLabel = function () {
+                return $attrs.ariaLabel || $ctrl.labelText || $ctrl.placeholder || $ctrl.t.placeholder;
+            };
+            $ctrl.triggerLabelledBy = function () {
+                return $attrs.ariaLabelledby ? String($attrs.ariaLabelledby).trim() || undefined : undefined;
+            };
+            $ctrl.triggerDescribedBy = function () {
+                const ids = [];
+                const message = $ctrl.field.messageId();
+                if (message) ids.push(message);
+                if ($attrs.ariaDescribedby) ids.push(String($attrs.ariaDescribedby).trim());
+                return ids.join(' ').trim() || undefined;
+            };
+
+            /**
+             * aria-activedescendant: the active row's id while that row is in the page - a row now (not filtered out,
+             * its branch open), inside the scroll window, the tree shown (not loading). Scrolled out of the window (the
+             * list scrolled by hand), the row is not there, and an id that leads nowhere is no active row: none is
+             * named until it is in the page again (the next arrow key brings it).
+             */
             $ctrl.activeDomId = function () {
-                return $ctrl.activeSid !== null ? domIdFor($ctrl.activeSid) : '';
+                if ($ctrl.activeSid === null || opt.loading || $ctrl.rootLoading()) return '';
+                const i = activeIndex();
+                if (i < 0 || (virtual && (i < windowStart || i >= windowEnd))) return '';
+                return domIdFor($ctrl.activeSid);
             };
 
             function activeIndex() {
@@ -12424,6 +13208,9 @@ angular.module('aui')
                 const expandable = node.children === null || node.children.length > 0;
                 if (!expandable) return;
                 const sid = node.sid;
+                // already so (api.expand() twice): nothing changes, and on-expand is not told again - except a branch
+                // open whose children are not there (their load failed): asked to open, it loads them again (a retry)
+                if (!searchState && expanded.has(sid) === open && !(open && node.children === null)) return;
                 if (searchState) {
                     if (open) { searchOpen.add(sid); searchClosed.delete(sid); }
                     else { searchOpen.delete(sid); searchClosed.add(sid); }
@@ -12524,6 +13311,26 @@ angular.module('aui')
             }
 
             /** Bring the keyboard's row into view, centred when it is out of view (an opening, data arriving). */
+            /*
+             * The list fitted to a shorter height after it was shown (a short viewport, a high zoom: the first placement
+             * of an opening cannot measure it): the active (selected) row comes into view again - until the user moves
+             * the list (a wheel, a touch, a press in the panel), whose place is then the user's.
+             */
+            const LIST_MOVES = ['wheel', 'touchmove', 'pointerdown'];
+            let listMoved = false;
+            function onListMoved() { listMoved = true; }
+            function onListLimited() {
+                if (destroyed || !$ctrl.isOpen || listMoved || !listEl) return;
+                const i = activeIndex();
+                if (i < 0) return;
+                if (virtual) {
+                    const rowPitch = pitch || DEFAULT_ROW_PITCH;
+                    const top = i * rowPitch;
+                    if (top >= listEl.scrollTop && top + rowPitch <= listEl.scrollTop + listEl.clientHeight) return;
+                }
+                centerActiveRow();
+            }
+
             function centerActiveRow() {
                 const i = activeIndex();
                 if (i < 0 || !listEl || !$ctrl.isOpen) return;
@@ -12729,7 +13536,9 @@ angular.module('aui')
             function runRemoteSearch() {
                 cancelRemote();
                 const query = normalizedQuery();
-                if (!query || destroyed) return;
+                // loading not enabled (load-enabled false: the field it depends on is still empty): no server search either,
+                // as the list and the children wait
+                if (!query || destroyed || !loadReady()) return;
                 const ticket = {query: query, text: String($ctrl.searchQuery || '').trim(), stopped: false, handle: null};
                 ticket.handle = remoteData.call(function (request) {
                     return pageAnswer('remote-search', 'remote-search="vm.search($query)"',
@@ -12819,6 +13628,7 @@ angular.module('aui')
                 remote.error = false;
                 remote.index = engine.build(remote.raw, fields, {lazy: hasLoader(), loaded: lazy.loaded});
                 reportWarnings(remote.index.warnings);
+                pruneDomIds();   // the results of the searches before let go of their rows' ids
                 searchQueryUsed = query;
                 searchOpen = new Set();
                 searchClosed = new Set();
@@ -13134,6 +13944,16 @@ angular.module('aui')
                 runRemoteSearch();
             };
 
+            // Enter on a failed load (the tree's first level) or a failed server search: the retry it shows
+            function retryEnter(event) {
+                const search = $ctrl.remoteState() === 'error';
+                if (!search && !$ctrl.rootError()) return false;
+                if (kit.isRepeat(event)) return true;
+                if (search) $ctrl.retryRemoteSearch(null);
+                else $ctrl.retryRoot(null);
+                return true;
+            }
+
             // ------------------------------------------------------------------ open / close
 
             function initialActiveIndex() {
@@ -13172,6 +13992,7 @@ angular.module('aui')
                 }
                 $ctrl.isOpen = true;
                 $ctrl.keyboardMode = false;
+                listMoved = false;
                 lastPointer = null;
                 rebuildRows();
                 const first = initialActiveIndex();
@@ -13332,6 +14153,9 @@ angular.module('aui')
             $ctrl.onRowClick = function (row, $event) {
                 if ($event) $event.stopPropagation();
                 if (!row || opt.disabled || opt.readonly || opt.loading) return;
+                // the dimmed rows of the previous text (the new search still loading, or waiting for its pause) answer
+                // another text: a press there picks nothing, as Enter does
+                if (!$ctrl.rowsAnswerQuery()) return;
                 $ctrl.activeSid = row.sid;
                 activateRow(row);
             };
@@ -13485,6 +14309,10 @@ angular.module('aui')
                 if (!row) return;
                 if (target.closest('.aui-tree-select__caret')) {
                     branchAction(function () { $ctrl.onCaretClick(row, event); });
+                } else if (!$ctrl.rowsAnswerQuery()) {
+                    // a dimmed row of the previous search text (the new search still on its way): it picks nothing and
+                    // the panel stays open, as Enter does there (see onRowClick)
+                    return;
                 } else if (pickCloses(row)) {
                     // A value picked (single mode): the panel closes and the value is set now, the page's digest
                     // follows after the close's first frame (closeFromInput)
@@ -13681,6 +14509,9 @@ angular.module('aui')
                     case 'Enter':
                         // Never submit a surrounding form from inside the dropdown.
                         $event.preventDefault();
+                        // A failed load of the tree or a failed search: Enter tries again, as its Retry link does (the
+                        // keyboard's way to it: the focus stays in the field)
+                        if (retryEnter($event)) return;
                         pickRow($event, row);
                         return;
                     case ' ':
@@ -13709,7 +14540,9 @@ angular.module('aui')
                 if (autoSelectTimer) $timeout.cancel(autoSelectTimer);
                 autoSelectTimer = $timeout(function () {
                     autoSelectTimer = null;
-                    if (destroyed || opt.multiple || opt.disabled || opt.readonly || !$ctrl.isRequired() || !ngm.$isEmpty(ngm.$viewValue)) return;
+                    // checked again now: the opt-in too (turned off meanwhile: nothing is picked)
+                    if (destroyed || !opt.autoSelectOnSingleRequired || opt.multiple || opt.disabled || opt.readonly || !$ctrl.isRequired() ||
+                        !ngm.$isEmpty(ngm.$viewValue)) return;
                     let only = null;
                     for (let i = 0; i < index.nodes.length; i += 1) {
                         if (!isSelectable(index.nodes[i])) continue;
@@ -13719,6 +14552,16 @@ angular.module('aui')
                     if (only) selectSingle(only, true);
                 }, AUTO_SELECT_DELAY_MS);
             }
+
+            // the opt-in on and the field required (also when it becomes required later): a pick is asked for; the
+            // opt-in off: a pick still waiting is dropped
+            $scope.$watch(function () { return !!(opt.autoSelectOnSingleRequired && ngm && $ctrl.isRequired()); }, function (on) {
+                if (on) scheduleAutoSelect();
+                else if (!opt.autoSelectOnSingleRequired && autoSelectTimer) {
+                    $timeout.cancel(autoSelectTimer);
+                    autoSelectTimer = null;
+                }
+            });
 
             // ------------------------------------------------------------------ api
 
@@ -13768,7 +14611,8 @@ angular.module('aui')
                         $scope.$evalAsync(function () {
                             if (value === undefined || value === null) {
                                 resetLazy();
-                                if (lookup) lookup.newRound();
+                                // "look up again": the labels found before as well (a record renamed on the server)
+                                if (lookup) lookup.forget();
                                 if (list && loadReady()) {
                                     if ($ctrl.isOpen || readPreload()) list.reload();
                                     else list.drop();
@@ -13797,12 +14641,8 @@ angular.module('aui')
                     refresh: function () { $scope.$evalAsync(rebuildIndex); },
                     clear: function () {
                         $scope.$evalAsync(function () {
-                            if (!$ctrl.hasValue) return;
-                            selection.selectedKey = null;
-                            selection.checked = new Set();
-                            selection.half = new Set();
-                            selection.unknown = [];
-                            commitSelection(null, 'api');
+                            if (!$ctrl.hasValue || opt.disabled || opt.readonly || opt.loading) return;
+                            clearValues('api');
                         });
                     },
                     getNode: function (value) {
@@ -13833,10 +14673,13 @@ angular.module('aui')
 
             $ctrl.$onInit = function () {
                 ngm = $ctrl.ngModelCtrl;
+                notifyChange = kit.changeAfterCommit(ngm, reportChangeNow);
                 readFields();
                 readOptions();
                 kit.followNgFlags($attrs, readOptions);
                 if ($ctrl.compId) $ctrl.ids.trigger = $ctrl.compId;
+                // comp-id written with {{ }}: the trigger follows a change too (a label or a page's selector finds it by it)
+                $attrs.$observe('compId', function (id) { if (id) $ctrl.ids.trigger = id; });
 
                 ngm.$formatters.push(formatModel);
                 ngm.$parsers.push(parseView);
@@ -13859,10 +14702,10 @@ angular.module('aui')
                             valueOptionsByKey.set(key, {item: copyItem(raw), label: rawLabel(raw), path: rawLabel(raw), ancestors: []});
                         }
                     });
-                    if (options !== previous) {
-                        knownVersion += 1;
-                        renderFromView();
-                    }
+                    // the first run too (Angular passes the same value as both then): known records given with the tree
+                    // shape its selection at once - the label, and the whole record in selected-items as getSelectedNodes()
+                    knownVersion += 1;
+                    renderFromView();
                 }, true);
 
                 own.$watchCollection(function () { return $ctrl.options; }, onOptionsChange);
@@ -13936,6 +14779,7 @@ angular.module('aui')
                 panelEl = $element[0].querySelector('.aui-select__panel');
                 listEl = $element[0].querySelector('.aui-tree-select__tree');
                 hiddenInputEl = $element[0].querySelector('.aui-select__hidden-input');
+                attachHiddenInput();
                 if (triggerEl && panelEl) {
                     panelCtl = dropdownPanel.create({
                         trigger: triggerEl,
@@ -13944,7 +14788,8 @@ angular.module('aui')
                         minWidth: function () { return opt.panelMinWidth; },
                         growable: function () { return true; },   // a tree grows when nodes are opened
                         onShown: onPanelShown,
-                        onClosed: onPanelClosed
+                        onClosed: onPanelClosed,
+                        onListLimited: onListLimited
                     });
                 }
                 if (rootEl) {
@@ -13955,6 +14800,8 @@ angular.module('aui')
                     });
                     stopFocusLeave = kit.onFocusLeave(rootEl, function (next) {
                         if (destroyed) return;
+                        // a value that waits for the blur (ng-model-options updateOn: 'blur') commits now
+                        kit.commitOnLeave(ngm);
                         // Focus moved to another control (Tab): close, touched with it. A null target (a press on the
                         // page) is handled by the outside-press listener. Closed: touched alone (the field's look at once,
                         // the page's bindings of it once the field's ring has faded out).
@@ -13995,6 +14842,7 @@ angular.module('aui')
                     });
                 }
                 if (panelEl) panelEl.addEventListener('mousedown', onPanelMousedownEvent);
+                if (panelEl) LIST_MOVES.forEach(function (name) { panelEl.addEventListener(name, onListMoved, {passive: true}); });
                 if (listEl) listEl.addEventListener('click', onListClick);
                 $element[0].addEventListener('keydown', onRootKeydown);
                 stopLabelTip = kit.labelTip($element[0]);
@@ -14028,6 +14876,8 @@ angular.module('aui')
                 if (heightFrame !== null) window.cancelAnimationFrame(heightFrame);
                 if (dismiss) dismiss.stop();
                 if (stopFocusLeave) stopFocusLeave();
+                if (resetForm) resetForm.removeEventListener('reset', onFormReset);
+                resetForm = null;
                 if (listEl) {
                     listEl.removeEventListener('scroll', onListScroll);
                     listEl.removeEventListener('mousemove', onListMouse);
@@ -14037,6 +14887,7 @@ angular.module('aui')
                 if (stopQuietFocus) stopQuietFocus();
                 if (stopLabelTip) stopLabelTip();
                 if (panelEl) panelEl.removeEventListener('mousedown', onPanelMousedownEvent);
+                if (panelEl) LIST_MOVES.forEach(function (name) { panelEl.removeEventListener(name, onListMoved, {passive: true}); });
                 if (listEl) listEl.removeEventListener('click', onListClick);
                 $element[0].removeEventListener('keydown', onRootKeydown);
                 if (panelCtl) panelCtl.destroy();
@@ -14106,6 +14957,8 @@ angular.module('aui')
                                class="aui-select__hidden-input"
                                name="{{ $ctrl.name }}"
                                ng-required="$ctrl.isRequired()"
+                               ng-disabled="$ctrl.opt.ownDisabled"
+                               ng-readonly="$ctrl.opt.readonly"
                                tabindex="-1"
                                aria-hidden="true"
                                autocomplete="off">
@@ -14123,18 +14976,19 @@ angular.module('aui')
                                         'aui-select__trigger--clearable': $ctrl.showClear(),
                                         'aui-select__trigger--busy': $ctrl.opt.loading,
                                         'aui-select__trigger--invalid': $ctrl.showInvalid()}"
-                             tabindex="{{ $ctrl.opt.disabled ? -1 : 0 }}"
+                             ng-attr-tabindex="{{ $ctrl.opt.disabled ? undefined : 0 }}"
                              role="combobox"
                              aria-haspopup="tree"
                              aria-expanded="{{ $ctrl.isOpen }}"
                              aria-controls="{{ ::$ctrl.ids.tree }}"
                              ng-attr-aria-activedescendant="{{ ($ctrl.isOpen && $ctrl.activeDomId()) || undefined }}"
-                             aria-label="{{ $ctrl.labelText || $ctrl.placeholder || $ctrl.t.placeholder }}"
+                             aria-label="{{ $ctrl.triggerLabel() }}"
+                             ng-attr-aria-labelledby="{{ $ctrl.triggerLabelledBy() }}"
                              aria-required="{{ $ctrl.isRequired() }}"
                              aria-disabled="{{ !!$ctrl.opt.disabled }}"
                              aria-readonly="{{ !!$ctrl.opt.readonly }}"
                              aria-busy="{{ !!($ctrl.labelsPending || $ctrl.opt.loading) }}"
-                             ng-attr-aria-describedby="{{ $ctrl.field.messageId() }}"
+                             ng-attr-aria-describedby="{{ $ctrl.triggerDescribedBy() }}"
                              aria-invalid="{{ $ctrl.showInvalid() }}">
 
                             <div class="aui-control-label"
@@ -14253,16 +15107,18 @@ angular.module('aui')
                                 <li class="aui-select__notice" role="status" aui-if="$ctrl.loadNotice()">
                                     <span class="aui-select__notice-icon" aria-hidden="true"></span><span class="aui-select__notice-text">{{ $ctrl.loadNotice() }}</span>
                                 </li>
-                                <li class="aui-select__no-results" role="none"
+                                <!-- Nothing found, a failed load or search: said to screen readers as they come (a status,
+                                     as the notice), the focus left in the field; Enter there retries -->
+                                <li class="aui-select__no-results" role="status"
                                     aui-if="$ctrl.rows.length === 0 && !$ctrl.rootError() && !$ctrl.remoteState() && !$ctrl.loadNotice()">{{ $ctrl.emptyText || $ctrl.t.empty }}</li>
                                 <li class="aui-select__no-results aui-tree-select__searching" role="status"
                                     aui-if="$ctrl.remoteState() === 'searching'"><span class="aui-select__spinner" aria-hidden="true"></span><span>{{ ::$ctrl.t.searching }}</span></li>
-                                <li class="aui-select__no-results aui-tree-select__retry" role="none"
+                                <li class="aui-select__no-results aui-tree-select__retry" role="status"
                                     aui-if="$ctrl.remoteState() === 'error'"
                                     ng-click="$ctrl.retryRemoteSearch($event)">{{ ::$ctrl.t.searchFailed }} <span class="aui-tree-select__retry-link">{{ ::$ctrl.t.retry }}</span></li>
                                 <li class="aui-tree-select__more" role="note"
                                     aui-if="$ctrl.remoteMoreText()">{{ $ctrl.remoteMoreText() }}</li>
-                                <li class="aui-select__no-results aui-tree-select__retry" role="none"
+                                <li class="aui-select__no-results aui-tree-select__retry" role="status"
                                     aui-if="$ctrl.rootError()"
                                     ng-click="$ctrl.retryRoot($event)">{{ $ctrl.rootTimeout() ? $ctrl.t.timeout : $ctrl.t.failed }} <span class="aui-tree-select__retry-link">{{ ::$ctrl.t.retry }}</span></li>
                             </ul>

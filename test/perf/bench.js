@@ -18,10 +18,15 @@
     const ctrl = () => angular.element(document.querySelector('aui-tree-select')).controller('auiTreeSelect');
     const domRows = () => document.querySelectorAll('li.aui-tree-select__node').length;
 
+    const failures = [];   // waits that ran out: the step did not reach its state (its time says nothing)
     async function step(name, fn, settle) {
         const t0 = now();
         fn();
-        if (settle) await settle(); else await frames(2);
+        if (settle) {
+            if ((await settle()) === false) failures.push(name + ': its state was not reached (wait timed out)');
+        } else {
+            await frames(2);
+        }
         const ms = Math.round(now() - t0);
         timings[name] = ms;
         durations.add(name);
@@ -68,7 +73,7 @@
         const lastText = lastLabel.length ? lastLabel[lastLabel.length - 1].textContent.trim() : '';
 
         let input = document.querySelector('.aui-select__search-input');
-        const target = 'Store ' + (R - 1) + '-' + (C - 1) + '-' + (L - 1);
+        const target = 'Item ' + (R - 1) + '-' + (C - 1) + '-' + (L - 1);
         if (input) {
             await step('search (incl. 120 ms debounce)', () => { input.value = target; input.dispatchEvent(new Event('input')); },
                 () => until(() => ctrl().rows.length > 0 && ctrl().rows.length < 10));
@@ -88,7 +93,11 @@
             timings.domTagsAll = document.querySelectorAll('.aui-select__tag').length;
             timings.modelAll = window.benchScope.m.v.length;
             all = null;
-            await step('uncheck one group (click)', () => document.querySelector('li.aui-tree-select__node').click());
+            const strict = kind.indexOf('strict') >= 0;
+            const toUncheck = strict
+                ? document.querySelector('li.aui-tree-select__node[aria-checked="true"]')
+                : document.querySelector('li.aui-tree-select__node');
+            await step(strict ? 'uncheck one value (click)' : 'uncheck one group (click)', () => { if (toUncheck) toUncheck.click(); });
             timings.modelAfterUncheck = window.benchScope.m.v.length;
             await step('clear all', () => apply(() => ctrl().clearSelection()));
             timings.modelAfterClear = window.benchScope.m.v.length;
@@ -119,8 +128,9 @@
         out.push(`rows: after open ${rowsAfterOpen}, after expand all ${visibleAfterExpand.toLocaleString()} (DOM rows ${domAfterExpand}); last row at the end: "${lastText}"`);
         Object.keys(timings).forEach(k => out.push(`  ${k}: ${timings[k]}${durations.has(k) ? ' ms' : ''}`));
         out.push(`heap: start ${heap0} MB, loaded ${heapLoaded} MB (+${heapLoaded - heap0} MB incl. the data), after destroy ${heapAfter} MB`);
+        failures.forEach(text => out.push('FAILED ' + text));
         out.push(`angular errors: ${window.__ngErrors.length}${window.__ngErrors.length ? ' ' + JSON.stringify(window.__ngErrors.slice(0, 3)) : ''}`);
-        window.__bench = {kind, nodes, timings, rowsAfterOpen, visibleAfterExpand, domAfterExpand, lastText, heap0, heapLoaded, heapAfter, errors: window.__ngErrors.slice(), lines: out};
+        window.__bench = {kind, nodes, timings, rowsAfterOpen, visibleAfterExpand, domAfterExpand, lastText, heap0, heapLoaded, heapAfter, errors: window.__ngErrors.slice().concat(failures), lines: out};
         document.getElementById('results').textContent = out.join('\n');
     }
 

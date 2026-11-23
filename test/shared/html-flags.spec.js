@@ -47,7 +47,7 @@
         async () => ({tag: box('ta-d').tagName.toLowerCase(), boxDisabled: box('ta-d').disabled}));
 
     T('H6 aui-select disabled="disabled": not focusable, marked disabled, a press does not open it',
-        {ariaDisabled: 'true', tabindex: '-1', open: false},
+        {ariaDisabled: 'true', tabindex: null, open: false},
         async () => {
             await pressed(trigger('se-d'));
             return {ariaDisabled: trigger('se-d').getAttribute('aria-disabled'), tabindex: trigger('se-d').getAttribute('tabindex'),
@@ -81,7 +81,7 @@
         });
 
     T('H8 aui-tree-select disabled="disabled": not focusable, marked disabled, a press does not open it',
-        {option: true, ariaDisabled: 'true', tabindex: '-1', open: false},
+        {option: true, ariaDisabled: 'true', tabindex: null, open: false},
         async () => {
             await pressed(trigger('tr-d'));
             const c = ctrl('tr-d', 'aui-tree-select', 'auiTreeSelect');

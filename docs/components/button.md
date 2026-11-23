@@ -7,7 +7,7 @@ a class on `<aui-button>` works. Drawn without watchers.
 <aui-button ng-click="vm.search()">Search</aui-button>
 <aui-button variant="outline" intent="neutral" size="sm" icon="download">Export</aui-button>
 <aui-button intent="danger" variant="soft" icon="delete" disabled="!vm.picked.length" title="Pick a row first">Delete</aui-button>
-<aui-button type="submit" on-click="vm.save()">Save</aui-button>      <!-- waits for vm.save()'s promise -->
+<aui-button on-click="vm.save()">Save</aui-button>                    <!-- loading until vm.save()'s promise settles -->
 <aui-button icon="settings" variant="ghost"></aui-button>             <!-- an icon alone: square, named "Settings" -->
 ```
 
@@ -18,11 +18,11 @@ a class on `<aui-button>` works. Drawn without watchers.
 | `size` | `xs` (26px), `sm` (30px), `md` (34px, the fields' height; default), `lg` (40px), `xl` (48px). Text sizes follow `--aui-font-scale`. A `link` has no box: its height is its text's. |
 | `shape` | `pill`, `square` (as wide as high). Boxed variants only: a `link` keeps its own size. |
 | `block` | As wide as its place. A label longer than its place is cut with an ellipsis. |
-| `type` | `button` (default: it never submits a form by itself), `submit`, `reset`. |
+| `type` | `button` (default: it never submits a form by itself), `submit`, `reset`. A `submit` button's form is sent by the browser at the click, as a native button's: it does not wait for `on-click`'s promise (a save that must finish first is started from `on-click` on a `button`, or from the form's `ng-submit`). |
 | `icon` | An icon by name: `add`, `edit`, `pencil`, `square-pen`, `delete`, `copy`, `check`, `close`, `circle-check`, `circle-close`, `search`, `refresh`, `download`, `upload`, `filter`, `settings`, `more`, `info`, `help` (the same line icons as aui-popover's trigger). Or the classes of an icon font: `icon="fa fa-plus"`. |
 | `icon-position` | `right` (or `end`): after the text. Default: before it. |
-| `aria-label`, `title` | The button's name and tooltip (set on the native button). An icon alone without them is named, and has its tooltip, by the icon's name (`auiTexts.icons`); with only a `title`, the title names it. A label written with `{{ }}` that is empty leaves an icon alone, named so. |
-| `aria-describedby`, `aria-haspopup`, `aria-pressed`, `tabindex` | Moved onto the native button (written with `{{ }}` too), where they act: a description, a menu button, a toggle button, a toolbar's tab order. |
+| `aria-label`, `title` | The button's name and tooltip (set on the native button). An icon alone without them is named, and has its tooltip, by the icon's name (`auiTexts.icons`); with only a `title`, the title names it. A label that shows nothing (an empty `{{ }}`, an empty styled `<span>`, a text hidden by `ng-show`) leaves an icon alone, named so. |
+| `aria-labelledby`, `aria-describedby`, `aria-haspopup`, `aria-pressed`, `tabindex` | Moved onto the native button (written with `{{ }}` or `ng-attr-` too, also when they start out unset), where they act: a name from text elsewhere on the page, a description, a menu button, a toggle button, a toolbar's tab order. |
 | `disabled` | The native disabled button (a bare `disabled` counts too, and `ng-disabled` on the element). It keeps the pointer: its "not allowed" cursor and its tooltip show, and a click on it reaches nothing behind it (a clickable row). |
 | `loading` | Its spinner over the icon (or over the text, hidden meanwhile): the width stays. It keeps the focus and its name, and takes no click (`aria-disabled`, `aria-busy`): not ng-click, not a form's submit, not a row behind it. |
 | `loading-text` | A text for the time it loads, e.g. `loading-text="Saving..."`: meanwhile the spinner (at the icon, or before the text) and this text in place of the label, with `loading` or with `on-click`'s promise (no page flag or `{{ }}` switch needed). The width never shrinks meanwhile; a longer text widens it. An icon alone keeps its square (no text). Without it: as `loading`. |
@@ -36,8 +36,9 @@ a class on `<aui-button>` works. Drawn without watchers.
 | `done-text` | After `on-click`'s promise resolves, this text for a moment (`done-text="Saved"`), and on a button with an icon the drawn check in place of the icon. A new click ends it at once (a failed retry never shows the earlier success). Without it nothing changes after a click. |
 | `done-duration` | How long the feedback shows, in ms: 2000 by default, held between 300 and 10000. |
 
-The space between buttons is the page's layout (the button has no margin of its own). Leave at least 4px between
-small icon buttons (`xs`, `link`) placed side by side, so that their 24px targets do not overlap. The native button's
+The space between buttons is the page's layout (the button has no margin of its own). Leave at least 6px between
+small icon buttons (`xs`, `link`) placed side by side, so that their centres stay 24px apart at every supported text
+scale (an `xs` icon link is 18.5px at `--aui-font-scale: 0.85`). The native button's
 form attributes (`form`, `name`, `value`, `formaction`, `formnovalidate`, ...) are not passed on: use `on-click`, or a
 native `<button>` where a form needs them.
 

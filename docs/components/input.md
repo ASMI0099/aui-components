@@ -27,7 +27,9 @@ Text, number, password and search fields, in three styles; `aui-textarea` is the
 | `input-text-bold` | The text bold and dark. |
 
 In a field too narrow for all its parts, the prefix and suffix texts and the label in the box give way first (cut with
-an ellipsis); the text, the clear button and the count keep their room. The fields are laid out left to right; right-to-left
+an ellipsis); the text, the clear button and the count keep their room. Narrower still, the count is cut, then the clear
+button and the password eye narrow, all inside the field's frame (nothing runs into the next field, and a click outside
+the field never reaches its buttons). The fields are laid out left to right; right-to-left
 pages are not supported yet.
 
 ## Limits and checks
@@ -88,14 +90,23 @@ the model follows the check as Angular's own fields do, the field stays pristine
 |---|---|
 | `on-change` | `fn($value, $oldValue, $triggerSource, $byUser)`; `$triggerSource` is `input` (typing), `clear` (the clear button) or `api`. |
 | `on-finish` | Enter was pressed, or the field was left (moving to its own clear button or eye is not leaving it). |
-| `on-search` | A search field: `fn($value)`, the text in the box. |
+| `on-search` | A search field: `fn($value)`, the text in the box without the spaces around it (all of it with `ng-trim="false"`). |
 | `on-focus`, `on-blur` | `fn($event, $value)`. |
 | `on-clear` | After the value was cleared: `fn($event)`. |
 | `api` | An object that receives methods: `focus()`, `blur()`, `clear()`, `select()`. |
 
 `ng-model-options` acts on the field as on Angular's own inputs: `updateOn` (`blur` included, with its debounce),
-`debounce` and `getterSetter`; with `updateOn` the field is dirty once it commits, as Angular's own. `allowInvalid` is
-not supported: an invalid text leaves the model empty. `ng-trim="false"` keeps the spaces around the text in the model.
+`debounce` and `getterSetter`; with `updateOn` or a debounce the field is dirty once a changed text commits, as Angular's
+own (an invalid text too, whose value stays empty). Until a typed text commits, the field's value and validity stay
+those of the value before it: a rule that changes meanwhile re-checks that value, and the model follows as Angular's
+`$validate` has it (empty once invalid); the typed text then commits with the rules as they are at its commit (a form
+submit commits it too). `form.$rollbackViewValue()` brings the value before it back. `allowInvalid` is not supported:
+an invalid text leaves the model empty. `ng-trim="false"` keeps the spaces around the text in the model.
+
+A form's native reset (a reset button, `form.reset()`) does not change Angular models: the field keeps showing its
+model's value. A typed text still waiting for its commit stays, as in Angular's own input
+(`form.$rollbackViewValue()` puts the value back). Reset a field through its model. A field without a `name` adds nothing to the form's data. Angular's
+`required` reads the trimmed text, the browser's the text as it is: a text of spaces is empty to Angular only.
 
 ## Field options
 
@@ -103,4 +114,7 @@ not supported: an invalid text leaves the model empty. `ng-trim="false"` keeps t
 `error-text`, `error-messages`, `show-errors`: see [fields](../fields.md).
 
 The field's own `aria-label`, `aria-labelledby` and `aria-describedby` are given to its box, where screen readers read
-them. Inside a disabled `<fieldset>` the field is disabled as a native one: nothing clears it or shows its password.
+them. Inside a disabled `<fieldset>` the field is disabled as a native one: it looks disabled, nothing clears it, shows
+its password or starts a search from it. In the basic style the label is the caption in the line: `label-text` with
+`show-label`, otherwise the placeholder. The caption shows above the line while the box has the focus (at rest the
+placeholder names the field); with `label-text` and no placeholder it stays there at rest too.

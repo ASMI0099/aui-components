@@ -111,7 +111,39 @@
             <aui-input ng-model="m.ba" prefix-text="$" suffix-text="kg" placeholder="Weight"></aui-input></div>
         <div class="cell" id="basic-narrow"><label>basic, 90px</label>
             <aui-input ng-model="m.bn" width="90" suffix-text="per unit" placeholder="Price"></aui-input></div>
+        <div class="cell" id="draft-limit"><label>updateOn blur, limit bound</label>
+            <aui-input name="draftLimit" ng-model="m.dl" ng-model-options="{updateOn: 'blur'}" value-max-length="{{ state.dlLimit }}"
+                       input-style-type="form"></aui-input></div>
+        <div class="cell" id="draft-pattern"><label>updateOn blur, required, pattern</label>
+            <aui-input name="draftPattern" ng-model="m.dp" ng-model-options="{updateOn: 'blur'}" required pattern="[A-Z]+"
+                       input-style-type="form"></aui-input></div>
+        <fieldset class="cell" id="fs-look" ng-disabled="state.fsLook"><legend>fieldset look</legend>
+            <aui-input name="fsLook" ng-model="m.fl" required input-style-type="form"></aui-input></fieldset>
+        <fieldset class="cell" id="fs-search" ng-disabled="state.fsSearch"><legend>fieldset search</legend>
+            <aui-input ng-model="m.fsq" search search-debounce="100" on-search="searched('fsq', $value)"></aui-input></fieldset>
+        <div class="cell" id="basic-label"><label>basic with label-text</label>
+            <aui-input ng-model="m.bl" show-label label-text="Part number"></aui-input></div>
+        <div class="cell" id="ta-size"><label>textarea, size bound</label>
+            <aui-textarea ng-model="m.tsz" width="220" rows="1" max-rows="16" auto-height size="{{ state.tsz }}"></aui-textarea></div>
+        <div class="cell" id="narrow-count"><label>120px, many parts</label>
+            <aui-input ng-model="m.n2w" input-type="number" width="120" show-label label-text="Price" prefix-text="$"
+                       suffix-text="per unit" clearable show-count value-max-length="12" input-style-type="form"></aui-input></div>
+        <div class="cell" id="num-zero"><label>number, limit 0</label>
+            <aui-input ng-model="m.nz" input-type="number" precision="0" value-max-length="0"></aui-input></div>
+        <div class="cell" id="af-vis" style="visibility: hidden"><label>autofocus under visibility: hidden</label>
+            <aui-input ng-model="m.afv" autofocus></aui-input></div>
+        <div class="cell" id="late-desc"><label>ng-attr-aria-describedby set late</label>
+            <aui-input ng-model="m.lad" ng-attr-aria-describedby="{{ state.lateDesc }}"></aui-input></div>
+        <div class="cell" id="narrow-95"><label>95px, many parts</label>
+            <aui-input ng-model="m.n95" input-type="number" width="95" show-label label-text="Price" prefix-text="$"
+                       suffix-text="per unit" clearable show-count value-max-length="12" input-style-type="form"></aui-input></div>
+        <div class="cell" id="ta-font"><label>textarea, auto-height, theme font scale</label>
+            <aui-textarea ng-model="m.tfont" width="220" rows="1" max-rows="16" auto-height></aui-textarea></div>
     </div>
+</form>
+<form id="reset-form" name="g" novalidate>
+    <div class="cell" id="reset-field"><aui-input name="rs" ng-model="m.rs" clearable show-count value-max-length="20"></aui-input></div>
+    <div class="cell" id="unnamed-field"><aui-input ng-model="m.un"></aui-input></div>
 </form>
 <div class="bottom-spacer"></div>
 </body>

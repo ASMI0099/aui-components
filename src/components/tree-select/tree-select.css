@@ -29,11 +29,14 @@
     overflow: hidden !important;
 }
 
-/* Tree row: one line, indented by depth */
+/* Tree row: one line, indented by depth. A deep level in a narrow panel (14 levels in a phone's width) stops indenting
+   where the row keeps 120px for its caret, box and label: indented further, the label had no width left at all (a
+   blank row that could still be picked). Up to that depth (about 10 levels in a 300px panel) nothing changes. */
 .aui-select__option.aui-tree-select__node {
     display: flex;
     align-items: center;
     padding-left: calc(6px + var(--aui-tree-depth, 0) * var(--aui-tree-select-indent, 18px));
+    padding-left: max(6px, min(calc(6px + var(--aui-tree-depth, 0) * var(--aui-tree-select-indent, 18px)), calc(100% - 120px)));
     white-space: nowrap;
 }
 
@@ -255,6 +258,8 @@
     bottom: -1px;
     left: 15px;
     width: calc(var(--aui-tree-depth, 0) * var(--aui-tree-select-indent, 18px));
+    /* they end where the row's indent ends (see the row: a deep level in a narrow panel) */
+    width: max(0px, min(calc(var(--aui-tree-depth, 0) * var(--aui-tree-select-indent, 18px)), calc(100% - 126px)));
     background-image: repeating-linear-gradient(to right,
         #e3e8ef 0, #e3e8ef 1px,
         transparent 1px, transparent var(--aui-tree-select-indent, 18px));
@@ -326,7 +331,7 @@
     margin-top: -7px;
     box-sizing: border-box;
     pointer-events: none;
-    animation: spin 0.7s linear infinite, aui-tree-select-loading-in 0.15s ease both;
+    animation: aui-select-spin 0.7s linear infinite, aui-tree-select-loading-in 0.15s ease both;
 }
 
 .aui-select__search--busy .aui-select__search-icon {
@@ -421,4 +426,48 @@
 
 .aui-select__panel.aui-select__panel--open {
     transition-timing-function: var(--aui-motion-ease-color), var(--aui-motion-ease), var(--aui-motion-ease);
+}
+
+/* High contrast (forced colours): the system replaces backgrounds and shadows.
+   - the keyboard's row (aui-select's too): its tint and inset ring are gone there - an outline in the system's
+     highlight colour shows it;
+   - the branch caret (a mask over a background colour) is drawn in the system's text colour, so that a branch and
+     its state show;
+   - a checked or half-checked box: the highlight fill, its mark in the highlight text colour drawn as a mask (the
+     white drawn marks lay on the system's white face, and a check and a dash looked the same). */
+@media (forced-colors: active) {
+    .aui-select__panel--keyboard .aui-select__option--active {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
+
+    .aui-tree-select__caret::before {
+        forced-color-adjust: none;
+        background-color: CanvasText;
+    }
+
+    .aui-tree-select__node--checked > .aui-tree-select__checkbox,
+    .aui-tree-select__node--half > .aui-tree-select__checkbox {
+        forced-color-adjust: none;
+        border-color: Highlight;
+        background-color: Highlight;
+    }
+
+    .aui-tree-select__node--checked > .aui-tree-select__checkbox::after,
+    .aui-tree-select__node--half > .aui-tree-select__checkbox::after {
+        forced-color-adjust: none;
+        border-color: transparent;
+        background-color: HighlightText;
+        background-image: none;
+    }
+
+    .aui-tree-select__node--checked > .aui-tree-select__checkbox::after {
+        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.5 3.5L13 5'/%3E%3C/svg%3E") center / 13px 13px no-repeat;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 8.5l3.5 3.5L13 5'/%3E%3C/svg%3E") center / 13px 13px no-repeat;
+    }
+
+    .aui-tree-select__node--half > .aui-tree-select__checkbox::after {
+        -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M4 8h8'/%3E%3C/svg%3E") center / 13px 13px no-repeat;
+        mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M4 8h8'/%3E%3C/svg%3E") center / 13px 13px no-repeat;
+    }
 }

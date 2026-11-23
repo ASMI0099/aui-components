@@ -51,5 +51,6 @@ angular.module('auiTest', ['aui'])
         $scope.races = [];
         $scope.raced = function (success, text) { $scope.races.push([success, text]); };
         $scope.dynLabel = '';
+        $scope.styledLabel = '';
         $scope.quick = function () { return $q.resolve(); };
     }]);

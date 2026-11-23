@@ -315,7 +315,9 @@ body.ex {
         display: none;
     }
 
+    /* one column on a phone: minmax(0, 1fr), not 1fr (min-content as its least): a field with a long value (a deep
+       saved path) widened the column, and the whole page with it, to its text's width */
     .ex-example__row {
-        grid-template-columns: 1fr;
+        grid-template-columns: minmax(0, 1fr);
     }
 }

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-tree-select: lookups, forms, locks, picks</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #f6f7f9; color: #222; }
+        .grid { display: grid; grid-template-columns: repeat(3, 300px); gap: 16px 24px; }
+        .cell label { display: block; font-size: 12px; color: #666; margin-bottom: 4px; }
+        fieldset { border: 0; margin: 0; padding: 0; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="round.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="round.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="TreeRoundCtrl">
+<button type="button" id="outside">Outside</button>
+<div class="grid">
+    <div class="cell" id="g-n"><label>group g1, store N</label>
+        <aui-tree-select ng-model="m.gn" label-field="name" value-field="id" lookup-options="ask($request)" lookup-group="g1"
+                         load-params="{f: 'g', store: 'N'}"></aui-tree-select></div>
+    <div class="cell" id="g-s"><label>group g1, store S</label>
+        <aui-tree-select ng-model="m.gs" label-field="name" value-field="id" lookup-options="ask($request)" lookup-group="g1"
+                         load-params="{f: 'g', store: 'S'}"></aui-tree-select></div>
+    <div class="cell" id="sw"><label>params change while looking up</label>
+        <aui-tree-select ng-model="m.sw" label-field="name" value-field="id" lookup-options="ask($request)"
+                         load-params="{f: 'sw', store: state.swStore}"></aui-tree-select></div>
+    <div class="cell" id="race"><label>9, 10, 9</label>
+        <aui-tree-select ng-model="m.race" label-field="name" value-field="id" lookup-options="ask($request)"
+                         load-params="{f: 'race'}"></aui-tree-select></div>
+    <div class="cell" id="st"><label>server search</label>
+        <aui-tree-select ng-model="m.st" label-field="name" value-field="id" load-children="kids($node)" searchable="true"
+                         remote-search="search($query, 'st')" search-delay="40"></aui-tree-select></div>
+    <div class="cell" id="vo"><label>value-options at mount</label>
+        <aui-tree-select ng-model="m.vo" label-field="name" value-field="id" options="[]"
+                         value-options="[{id: 51, name: 'Known', sku: 'K'}]" selected-items="state.voItems"></aui-tree-select></div>
+    <div class="cell" id="lock"><label>check-strictly, A locked, api</label>
+        <aui-tree-select ng-model="m.lock" label-field="name" value-field="id" multiple check-strictly="true" options="letters"
+                         disabled-values="['A']" clearable="true" disabled="state.lockOff" api="apis.lock"></aui-tree-select></div>
+    <div class="cell" id="auto1"><label>auto pick, opt-out</label>
+        <aui-tree-select ng-if="state.showAuto1" ng-model="m.auto1" label-field="name" value-field="id" required
+                         auto-select-on-single-required="state.autoOn" options="[{id: 1, name: 'Only'}]"></aui-tree-select></div>
+    <div class="cell" id="auto2"><label>auto pick, required later</label>
+        <aui-tree-select ng-if="state.showAuto2" ng-model="m.auto2" label-field="name" value-field="id" ng-required="state.req2"
+                         auto-select-on-single-required="true" options="[{id: 1, name: 'Only'}]"></aui-tree-select></div>
+    <div class="cell" id="lo"><label>remote search, loading off</label>
+        <aui-tree-select ng-model="m.lo" label-field="name" value-field="id" load-children="kids($node)" load-enabled="false"
+                         searchable="true" remote-search="search($query, 'lo')" search-delay="40"></aui-tree-select></div>
+    <div class="cell" id="unl"><label>A locked, its node goes</label>
+        <aui-tree-select ng-model="m.unl" label-field="name" value-field="id" multiple check-strictly="true"
+                         options="state.unlOpts" disabled-values="['A']" clearable="true"></aui-tree-select></div>
+    <div class="cell" id="exp"><label>api expand / collapse twice</label>
+        <aui-tree-select ng-model="m.exp" label-field="name" value-field="id" options="expOpts" api="apis.exp"
+                         on-expand="expanded.push($expanded)"></aui-tree-select></div>
+    <div class="cell" id="blur"><label>updateOn blur</label>
+        <aui-tree-select ng-model="m.blur" label-field="name" value-field="id" options="letters"
+                         ng-model-options="{updateOn: 'blur'}"></aui-tree-select></div>
+    <div class="cell" id="deb"><label>debounce 180</label>
+        <aui-tree-select ng-model="m.deb" label-field="name" value-field="id" options="letters" ng-model-options="{debounce: 180}"
+                         on-change="changed($value, $oldValue)"></aui-tree-select></div>
+    <div class="cell" id="cid"><label>comp-id bound</label>
+        <aui-tree-select ng-model="m.cid" label-field="name" value-field="id" options="letters" comp-id="{{ state.cid }}"></aui-tree-select></div>
+    <div class="cell" id="mtc" style="width: 210px"><label>max-tag-count 2, then responsive</label>
+        <aui-tree-select ng-model="m.mtc" label-field="name" value-field="id" multiple check-strictly="true" options="tagOpts"
+                         max-tag-count="state.mtc"></aui-tree-select></div>
+    <div class="cell" id="open"><label>ng-disabled while open</label>
+        <aui-tree-select ng-model="m.open" label-field="name" value-field="id" options="letters" ng-disabled="state.ngOff"></aui-tree-select></div>
+    <div class="cell" id="eq"><label>options replaced, same id</label>
+        <aui-tree-select ng-model="m.eq" label-field="name" value-field="id" options="state.eqOpts"
+                         selected-items="state.eqItems"></aui-tree-select></div>
+    <div class="cell" id="tvirt"><label>180 nodes (scroll window)</label>
+        <aui-tree-select ng-model="m.tvirt" label-field="name" value-field="id" options="manyNodes"></aui-tree-select></div>
+    <div class="cell" id="tfail"><label>the tree's load fails</label>
+        <aui-tree-select ng-model="m.tfail" label-field="name" value-field="id" load-options="ask($request)"
+                         load-params="{f: 'tfail'}" searchable="true"></aui-tree-select></div>
+    <div class="cell" id="tsfail"><label>a server search fails</label>
+        <aui-tree-select ng-model="m.tsfail" label-field="name" value-field="id" load-children="kids($node)" searchable="true"
+                         remote-search="search($query, 'tsfail')" search-delay="40"></aui-tree-select></div>
+    <div class="cell" id="tax"><label>the page's aria attributes</label>
+        <span id="tax-help">Pick the shelf the goods go to</span>
+        <aui-tree-select ng-model="m.tax" label-field="name" value-field="id" options="letters"
+                         aria-label="External inventory label" aria-describedby="tax-help"></aui-tree-select></div>
+    <div class="cell" id="deep"><label>14 levels, all open</label>
+        <aui-tree-select ng-model="m.deep" label-field="name" value-field="id" options="deepOpts" default-expand-level="all"
+                         show-line="true"></aui-tree-select></div>
+    <div class="cell" id="rev"><label>reveal-selected, the value changed meanwhile</label>
+        <aui-tree-select ng-model="m.rev" label-field="name" value-field="id" load-children="kidsAsk($node)"
+                         lookup-options="ask($request)" load-params="{f: 'rev'}" reveal-selected="true"></aui-tree-select></div>
+    <div class="cell" id="tl"><label>cleared, set again, then its data goes</label>
+        <aui-tree-select ng-model="m.tl" label-field="name" value-field="id" options="state.tlOpts"></aui-tree-select></div>
+    <div class="cell" id="pg"><label>reveal-selected, the value on page 2 of its branch</label>
+        <aui-tree-select ng-model="m.pg" label-field="name" value-field="id" load-children="kidsPaged($request)"
+                         lookup-options="ask($request)" load-params="{f: 'pg'}" reveal-selected="true"></aui-tree-select></div>
+    <div class="cell" id="ids"><label>its data replaced again and again</label>
+        <aui-tree-select ng-model="m.ids" label-field="name" value-field="id" options="state.idOpts"></aui-tree-select></div>
+    <div class="cell" id="big"><label>1,200 values, max-tag-count 1</label>
+        <aui-tree-select ng-model="m.big" label-field="name" value-field="id" multiple check-strictly="true" max-tag-count="1"
+                         options="bigOpts"></aui-tree-select></div>
+</div>
+<form id="tf" name="tf" onsubmit="event.preventDefault()">
+    <div class="grid">
+        <div class="cell" id="fr"><label>required, empty</label>
+            <aui-tree-select name="fr" ng-model="m.fr" label-field="name" value-field="id" required options="letters"></aui-tree-select></div>
+        <div class="cell" id="fd"><label>disabled, C</label>
+            <aui-tree-select name="pick" ng-model="m.fd" label-field="name" value-field="id" disabled="true" options="letters"></aui-tree-select></div>
+        <div class="cell" id="fro"><label>readonly, required, empty</label>
+            <aui-tree-select name="fro" ng-model="m.fro" label-field="name" value-field="id" readonly="true" required options="letters"></aui-tree-select></div>
+        <fieldset class="cell" id="fs" ng-disabled="state.fsOff"><label>in a fieldset</label>
+            <aui-tree-select name="fs" ng-model="m.fs" label-field="name" value-field="id" options="letters"></aui-tree-select></fieldset>
+        <div class="cell" id="frs"><label>reset</label>
+            <aui-tree-select name="rs" ng-model="m.frs" label-field="name" value-field="id" options="letters"></aui-tree-select></div>
+    </div>
+</form>
+<div style="height: 600px"></div>
+</body>
+</html>

@@ -22,6 +22,12 @@
     box-shadow: none;
 }
 
+/* a cell disabled by a disabled <fieldset> around it is plain text as well: no border under the pointer (a rule of its
+   own: a browser without :has() drops it alone) */
+.aui-input--cell:not(.aui-input--disabled):not(.aui-input--readonly) .aui-input__form-trigger:not(.aui-input__form-trigger--invalid):has(> input:disabled):hover {
+    border-color: transparent;
+}
+
 /* focused: the box gets its white at once, the focused skin fades in over it */
 .aui-input--cell .aui-input__form-trigger:focus-within {
     background-color: var(--aui-control-background-color);
@@ -114,6 +120,26 @@
 .aui-input.aui-input--disabled .aui-input__form-trigger > textarea.aui-input__form-field,
 .aui-input.aui-input--readonly .aui-input__form-trigger > textarea.aui-input__form-field {
     resize: none;
+}
+
+/* the probe of the text's font (see watchTextFont): 1ch of the textarea's font and size, unseen, out of the flow,
+   nothing to click or read; its width follows a theme's font change, which refits an auto-height textarea */
+.aui-input__font-probe {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    display: block !important;
+    width: 1ch !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    font-family: inherit !important;
+    font-size: var(--aui-control-value-size) !important;
+    font-weight: 400 !important;
 }
 
 .aui-input__form-trigger--textarea .aui-control-clear {

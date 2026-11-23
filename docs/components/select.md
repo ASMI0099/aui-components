@@ -37,6 +37,10 @@ The model holds the values (`value-field`, `id` by default): one value, or an ar
 | `panel-min-width` | The smallest width of the panel in px; by default the field's width. |
 | `auto-select-on-single-required` | A required field with exactly one option picks it. |
 
+An option's label is read when its object comes: to rename an option, give a new object (or a new array). The field's
+shown value and `selected-items` follow the new object; an edit inside the same object shows in the open list only.
+A `label-field` or `value-field` written with `{{ }}` and changed reads the options anew.
+
 ## Options from a server
 
 `load-options="fn($request)"` loads the options. Without `page-size` everything is loaded at once and searched in the
@@ -68,7 +72,7 @@ See [options from a server](../remote-data.md) for `$request` and the answers in
 |---|---|
 | `on-change` | `fn($value, $oldValue, $items, $option, $triggerSource, $byUser)`, or a function reference called with one object. |
 | `on-open`, `on-close` | The panel opened or closed. |
-| `api` | An object that receives methods: `open()`, `close()`, `toggle()`, `focus()`, `reload()`, `clear()`. |
+| `api` | An object that receives methods: `open()`, `close()`, `toggle()`, `focus()`, `reload()`, `clear()`, `getSelectedItems()` (copies of the selected options: changing them changes nothing in the field). |
 
 ## Field options
 

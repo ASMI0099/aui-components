@@ -115,7 +115,7 @@
         });
 
     T('FP7 a disabled select is out of the Tab order and says so (aria-disabled), as the tree',
-        {select: {tabindex: '-1', aria: 'true'}, tree: {tabindex: '-1', aria: 'true'}}, async () => {
+        {select: {tabindex: null, aria: 'true'}, tree: {tabindex: null, aria: 'true'}}, async () => {
             const r = el => ({tabindex: trig(el).getAttribute('tabindex'), aria: trig(el).getAttribute('aria-disabled')});
             return {select: r(in_('disabled', 'aui-select')), tree: r(in_('disabled', 'aui-tree-select'))};
         });

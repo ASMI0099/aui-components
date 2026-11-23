@@ -42,7 +42,8 @@ everything. A browser without `color-mix()` draws the default shades.
 
 Keep the text colours readable. On white the defaults meet WCAG AA: 4.5:1 for the value, the labels and the second
 texts, 3:1 for the field border (3.2:1) and the focus ring. The placeholder is a light hint (2.4:1), so that it never
-reads as a value; a page that must meet 4.5:1 for placeholders too sets `--aui-control-placeholder-color: #6b7889`.
+reads as a value; a page that must meet 4.5:1 for placeholders too sets `--aui-control-placeholder-color: #64748b`
+(4.76:1 on white).
 A primary button draws white text on the accent colour, so an accent lighter than about `#0d6efd` loses contrast.
 
 ## Sizes and shapes

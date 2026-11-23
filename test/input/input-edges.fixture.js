@@ -14,7 +14,11 @@ angular.module('auiTest', ['aui'])
             long: 'One short first line, then some words to wrap repeatedly as the panel around it gets narrower. ' +
                 'This second sentence makes sure the text needs several lines at a narrow width.',
             fsText: 'Locked', fsPw: 'secret', dark: 'Typed text', rb: 'old', bc: 'Text', narrow: 123.45, fo: 'Start'};
-        $scope.state = {places: 2, max: 40, afShown: false, w: 220, auto: true, style: 'form'};
+        $scope.state = {places: 2, max: 40, afShown: false, w: 220, auto: true, style: 'form', dlLimit: 8, fsLook: false,
+            fsSearch: false, tsz: 'small', lateDesc: undefined};
+        angular.extend($scope.m, {dl: 'AA', dp: 'GOOD', fl: '', fsq: '', bl: '', n2w: 123.45, nz: 2, afv: '', lad: '', rs: 'kept',
+            un: 'free', tsz: new Array(5).join('one two three four five six seven eight nine ten '),
+            n95: 123.45, tfont: new Array(5).join('one two three four five six seven eight nine ten ')});
         $scope.fsApi = {};
         $scope.foApi = {};
         $scope.ceApi = {};
