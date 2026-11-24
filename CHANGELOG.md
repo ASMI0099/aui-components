@@ -27,6 +27,9 @@ All notable changes to this project are documented here. The format follows
   type and described by its message; blank button captions keep the defaults.
 - AuiMessage: the pointer (not a tap) and the keyboard's focus hold a notice; a notice without a title says its kind to
   screen readers; the Close cross is darker (4.8:1); on a phone the two places form one column.
+- AuiMessage: a notice leaves as it comes in and is seen all the way: it fades evenly over 300ms while it slides away
+  (it vanished in about 180ms), and the notices after it glide up into its place (they jumped there); not with
+  reduced motion.
 - The message services mount one set of hosts per AngularJS application on the page, removed when it ends.
 - `aui-button`: the keyboard focus is a 2px ring in the accent around a 2px gap on every variant and intent (it was a
   light ring in the intent's colour); in forced-colours mode an outline in the system's highlight colour.
@@ -68,8 +71,8 @@ All notable changes to this project are documented here. The format follows
   duration past 24 days no longer ends at once; `clearAll()` draws once; a title-only update does not format the
   message again; a closed notice's content is let go; the notices are repeated without `track by` (a closed one is not
   kept); a leaving notice takes no clicks; a focused link keeps the focus across an update; `type: undefined` is
-  `info`; a card's padding no longer widens it past a phone's screen; a long message and a full stack scroll;
-  preformatted text scrolls sideways.
+  `info`; a card's padding no longer widens it past a phone's screen; a long message scrolls; preformatted text
+  scrolls sideways.
 - Rich messages keep `scope`, `lang`, `dir` and an ordered list's `start`; a relative link resolves from the
   document's base.
 - AuiMessage, AuiMessageBox: in forced colours (high contrast) the status icons show; on a page with a dark colour

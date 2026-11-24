@@ -11,7 +11,8 @@ angular.module('aui')
     .factory('AuiMessage', ['$rootScope', '$timeout', '$exceptionHandler', 'AuiSafeHtml',
         function ($rootScope, $timeout, $exceptionHandler, AuiSafeHtml) {
 
-            const EXIT_MS = 180;
+            // the exit's length in the stylesheet (.aui-message--leaving): removed when it has ended
+            const EXIT_MS = 300;
             const ENTER_MS = 240;
             // the longest wait a browser's timer keeps (about 24.8 days): a longer duration overflowed it and the
             // message left at once
@@ -388,33 +389,94 @@ angular.module('aui')
             function render() {
                 if (destroyed) return;
                 const mark = focusMark();
+                const places = glideMark();
                 if ($scope.$root.$$phase) {
                     $scope.$evalAsync(angular.noop);
                     $scope.$$postDigest(function () {
                         if (mark) focusBack(mark);
-                        fitStacks();
+                        // after this digest's classes (ng-class puts them on in a turn of its own, queued before
+                        // this one): the notices' new places
+                        if (places) $scope.$$postDigest(function () { glide(places); });
                     });
                 } else {
                     kit.digestOwn($scope);
                     if (mark) focusBack(mark);
-                    fitStacks();
+                    glide(places);
                 }
                 place(null);
             }
 
             /*
-             * A stack that runs past the window's bottom (more notices than it holds) scrolls: the newest were below the
-             * screen, out of reach. Only then: a stack that fits keeps its look (its cards' shadows and slide-in are not
-             * cut by a scrolling box). A phone's single column scrolls on its own (the stylesheet).
+             * A notice removed: the ones after it close the gap by gliding up into their new places (they jumped there
+             * in one frame). Each one's place on the screen is measured before the change and after it, and it moves
+             * from the first to the second by a transform, added to an entrance or an exit still running. A notice
+             * still gliding when another goes adds the new glide to the one it has: it moves on from where it is drawn.
+             * A browser that cannot add animations: the new glide takes over from where it is drawn, and a notice
+             * still coming in or leaving (its own motion is a transform too, which a glide would replace) does not
+             * glide. The same when a notice comes and moves others (a phone's column: the notices under it go down).
+             * Not with reduced motion.
              */
-            function fitStacks() {
-                if (destroyed || !hostEl) return;
-                const limit = window.innerHeight - 32;
-                Array.prototype.forEach.call(hostEl.querySelectorAll('.aui-message-host__stack'), function (stack) {
-                    const over = stack.children.length > 1 && stack.scrollHeight > limit;
-                    if (stack.classList.contains('aui-message-host__stack--scroll') !== over) {
-                        stack.classList.toggle('aui-message-host__stack--scroll', over);
-                    }
+            const GLIDE_MS = 220;
+            const GLIDE_EASING = 'cubic-bezier(0.2, 0, 0, 1)';
+            const additive = typeof window.KeyframeEffect === 'function' && 'composite' in window.KeyframeEffect.prototype;
+            const glides = new Map();   // where animations cannot add: each notice's running glide
+
+            function cards() {
+                return hostEl ? Array.prototype.slice.call(hostEl.querySelectorAll('.aui-message-host__stack > .aui-message')) : [];
+            }
+
+            // The notices that stay, each with its place, when the change about to be drawn adds or removes one; else
+            // null (a countdown, a hold, an update: nothing moves, nothing is measured)
+            function glideMark() {
+                if (destroyed || !hostEl) return null;
+                const list = cards();
+                if (!list.length || typeof list[0].animate !== 'function') return null;
+                const ids = {};
+                let count = 0;
+                $ctrl.positions.forEach(function (pos) {
+                    AuiMessage.state[pos].forEach(function (item) {
+                        ids[item.id] = true;
+                        count += 1;
+                    });
+                });
+                const staying = list.filter(function (el) { return ids[el.getAttribute('data-aui-message-id')] === true; });
+                if (staying.length === list.length && list.length === count) return null;
+                if (!staying.length || (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches)) return null;
+                const places = new Map();
+                staying.forEach(function (el) { places.set(el, el.getBoundingClientRect().top); });
+                return places;
+            }
+
+            function glide(places) {
+                if (!places || destroyed || !hostEl) return;
+                if (!additive) {
+                    // the glides running: they took the notices to where they are drawn now (measured as their places)
+                    glides.forEach(function (animation) { animation.cancel(); });
+                    glides.clear();
+                }
+                // every place measured before the first glide starts (one layout)
+                const moves = [];
+                cards().forEach(function (el) {
+                    if (!places.has(el)) return;
+                    if (!additive && (el.classList.contains('aui-message--leaving') || el.classList.contains('aui-message--enter'))) return;
+                    const dy = places.get(el) - el.getBoundingClientRect().top;
+                    if (Math.abs(dy) > 0.5) moves.push({el: el, dy: dy});
+                });
+                moves.forEach(function (move) {
+                    const options = {duration: GLIDE_MS, easing: GLIDE_EASING};
+                    if (additive) options.composite = 'add';
+                    try {
+                        const animation = move.el.animate([
+                            {transform: 'translateY(' + move.dy + 'px)'},
+                            {transform: 'translateY(0)'}
+                        ], options);
+                        if (!additive) {
+                            glides.set(move.el, animation);
+                            animation.onfinish = function () {
+                                if (glides.get(move.el) === animation) glides.delete(move.el);
+                            };
+                        }
+                    } catch (e) { /* no glide: the notice stands in its new place at once */ }
                 });
             }
 
@@ -575,6 +637,8 @@ angular.module('aui')
             $ctrl.$onDestroy = function () {
                 destroyed = true;
                 cleanups.forEach(function (fn) { fn(); });
+                glides.forEach(function (animation) { animation.cancel(); });
+                glides.clear();
                 if (!hostEl) return;
                 if (popoverShown) {
                     try { hostEl.hidePopover(); } catch (e) { }

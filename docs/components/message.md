@@ -35,8 +35,9 @@ close button the notice had: give `duration` and `dismissible` with it where the
 
 The countdown pauses while the pointer (a mouse, a pen) is over a notice and while the keyboard's focus is in it (a
 link being read); a tap does not hold it. A notice without a title says its kind to screen readers ("Error: ...").
-A long message scrolls inside its notice, and notices that do not fit the window's height scroll; on a phone the two
-places form one column. A link in an updated message keeps the focus when the new message has the same link.
+A long message scrolls inside its notice; on a phone the two places form one column. A notice slides in, and leaves the same way, fading over 300ms, and the notices after it glide up into its
+place; with reduced motion they all change at once. A link in an updated message keeps the focus when the new message
+has the same link.
 `AuiMessage.clearAll()` removes every notice.
 
 Notices stay above the dialogs of `aui-modal`, `AuiModal` and `AuiMessageBox` (and can take the focus there). A

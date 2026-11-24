@@ -2,7 +2,8 @@
 // asks for another as it closes, a way out always, errors told to the application, the box's name and description,
 // blank captions, no page digest for a queued box, formatting when shown, narrow layouts, a long message reachable;
 // AuiMessage - holds (pointer, focus, touch), patches, errors, long durations, clearAll, formatting, no track by,
-// focus kept across an update, defaults, the kind said, layout, rich content and colours.
+// focus kept across an update, defaults, the kind said, layout, rich content and colours; the exit, and the glide of the
+// notices that stay when one is removed.
 (function () {
     const {sleep, until} = AuiTest;
     const svc = name => angular.element(document.body).injector().get(name);
@@ -16,8 +17,11 @@
     const card = id => document.querySelector('.aui-message[data-aui-message-id="' + id + '"]');
     const hostScope = () => angular.element(document.querySelector('aui-message-host')).isolateScope();
     const pointer = (el, type, kind) => el.dispatchEvent(new PointerEvent(type, {pointerType: kind || 'mouse', bubbles: false}));
+    const frame = () => new Promise(r => requestAnimationFrame(r));
     const tests = [];
     const T = (name, expect, fn) => tests.push({name, expect, fn});
+    // a check of frames (sampled on the main thread): runs again when a busy machine dropped them
+    const TT = (name, expect, fn) => tests.push({name, expect, fn, timing: true});
 
     // answers every box left (OK), until none shows
     async function drain() {
@@ -35,7 +39,7 @@
 
     async function clearToasts() {
         svc('AuiMessage').clearAll();
-        await sleep(260);
+        await sleep(400);     // past their 300 ms exit
     }
 
     T('MB01 a box asked for by the answer of one closed with Escape waits behind the box that was waiting: A, B, C',
@@ -257,7 +261,7 @@
             h.close();
             await sleep(20);
             const value = card(h.id) ? getComputedStyle(card(h.id)).pointerEvents : 'gone';
-            await sleep(250);
+            await sleep(400);
             return {pointer: value};
         });
 
@@ -349,16 +353,24 @@
             return r;
         });
 
-    T('AM14 AM16 AM17 AM36 layout: a card counts its padding in its width, a stack taller than the window scrolls, a long message and preformatted text scroll in the card',
-        {box: 'border-box', stackScrolls: true, messageCapped: true, pre: 'auto'},
+    T('AM14 AM16 AM17 AM36 layout: a card counts its padding in its width (414px as always), a full stack keeps the size of its cards and has no scroll box, a long message and preformatted text scroll in the card',
+        {box: 'border-box', width: 414, noScrollbar: true, cardsKeepHeight: true, messageCapped: true, pre: 'auto'},
         async () => {
             const m = svc('AuiMessage');
+            const first = m.show({message: 'Notice', duration: 0});
+            await sleep(80);
+            const height = card(first.id).offsetHeight;
             for (let i = 0; i < 30; i += 1) m.show({message: 'Notice ' + i, duration: 0});
             const r = m.show({message: '<pre>' + new Array(40).join('build-step ') + '</pre>', useHtml: true, duration: 0});
             await sleep(80);
             const stack = document.querySelector('.aui-message-host__stack--top-right');
             const out = {box: getComputedStyle(card(r.id)).boxSizing,
-                stackScrolls: stack.classList.contains('aui-message-host__stack--scroll'),
+                // on a wide window as wide as ever (380px of content), the padding counted in
+                width: card(first.id).offsetWidth,
+                // a full stack runs on below the window, as always: no scroll box beside the notices
+                noScrollbar: getComputedStyle(stack).overflowY === 'visible',
+                // the cards keep their height (a stack held to the window's height squashed them)
+                cardsKeepHeight: card(first.id).offsetHeight === height,
                 messageCapped: getComputedStyle(card(r.id).querySelector('.aui-message__content')).maxHeight !== 'none',
                 pre: getComputedStyle(card(r.id).querySelector('pre')).overflowX};
             await clearToasts();
@@ -401,6 +413,125 @@
             await until(() => boxText() === 'Scheme', 2000);
             r.dialog = getComputedStyle(boxDialog()).colorScheme;
             await drain();
+            return r;
+        });
+
+    // a glide: a script animation of the card (not a CSS animation or transition)
+    const glides = el => el.getAnimations().filter(x => !x.animationName && !x.transitionProperty).length;
+    // a card's top in every frame for ms
+    async function tops(el, ms) {
+        const list = [];
+        const t = performance.now();
+        while (performance.now() - t < ms) {
+            await frame();
+            list.push(el.getBoundingClientRect().top);
+        }
+        return list;
+    }
+
+    TT('AM41 a notice removed: the one after it glides up into its place (it jumped there in one frame)',
+        {moved: true, glided: true, end: true},
+        async () => {
+            const m = svc('AuiMessage');
+            const a = m.show({message: 'First', duration: 0});
+            const b = m.show({message: 'Second', duration: 0});
+            m.show({message: 'Third', duration: 0});
+            await sleep(400);
+            const from = card(b.id).getBoundingClientRect().top;
+            const to = card(a.id).getBoundingClientRect().top;
+            const el = card(b.id);
+            a.close();
+            const list = await tops(el, 800);
+            const r = {moved: from - to > 20, glided: list.filter(y => y < from - 1 && y > to + 1).length >= 3,
+                end: Math.abs(list[list.length - 1] - to) < 1};
+            await clearToasts();
+            return r;
+        });
+
+    TT('AM44 two notices removed one after the other: the ones after them move on from where they are drawn, never back',
+        {back: 0, smooth: true, end: true},
+        async () => {
+            const m = svc('AuiMessage');
+            const a = m.show({message: 'First', duration: 0});
+            const b = m.show({message: 'Second', duration: 0});
+            m.show({message: 'Third', duration: 0});
+            const d = m.show({message: 'Fourth', duration: 0});
+            await sleep(400);
+            const el = card(d.id);
+            const from = el.getBoundingClientRect().top;
+            const to = card(b.id).getBoundingClientRect().top;
+            a.close();
+            const list = [from];
+            const t = performance.now();
+            let closed = false;
+            while (performance.now() - t < 800) {
+                await frame();
+                if (!closed && performance.now() - t >= 100) {
+                    b.close();
+                    closed = true;
+                }
+                list.push(el.getBoundingClientRect().top);
+            }
+            let back = 0;
+            let step = 0;
+            for (let i = 1; i < list.length; i += 1) {
+                if (list[i] > list[i - 1] + 0.5) back += 1;
+                step = Math.max(step, list[i - 1] - list[i]);
+            }
+            const r = {back, smooth: step < (from - to) * 0.35, end: Math.abs(list[list.length - 1] - to) < 1};
+            await clearToasts();
+            return r;
+        });
+
+    T('AM42 the exit is seen all the way (an even fade over 300 ms, a gentle slide), and the notice is removed when it has ended',
+        {duration: '0.3s, 0.3s', easing: 'linear, cubic-bezier(0.4, 0, 0.2, 1)', removedAfterExit: true},
+        async () => {
+            const m = svc('AuiMessage');
+            const a = m.show({message: 'Leaving', duration: 0});
+            await sleep(400);
+            const el = card(a.id);
+            let removedAt = null;
+            const t = performance.now();
+            const observer = new MutationObserver(() => {
+                if (removedAt === null && !document.contains(el)) removedAt = performance.now() - t;
+            });
+            observer.observe(document.body, {childList: true, subtree: true});
+            a.close();
+            await until(() => el.classList.contains('aui-message--leaving'), 1000);
+            const style = getComputedStyle(el);
+            const r = {duration: style.transitionDuration, easing: style.transitionTimingFunction};
+            await until(() => removedAt !== null, 1500);
+            observer.disconnect();
+            r.removedAfterExit = removedAt !== null && removedAt >= 295;
+            return r;
+        });
+
+    T('AM43 no glide when no notice comes or goes (an update, a hold), nor with reduced motion (the notices stand in their places at once)',
+        {update: 0, hold: 0, reduced: 0, reducedEnd: true},
+        async () => {
+            const m = svc('AuiMessage');
+            const a = m.show({message: 'First', duration: 0});
+            const b = m.show({message: 'Second', duration: 5000});
+            await sleep(400);
+            a.update({message: 'First, and a longer message now', title: 'A title'});
+            await sleep(30);
+            const r = {update: glides(card(b.id))};
+            pointer(card(b.id), 'pointerenter');
+            await sleep(30);
+            r.hold = glides(card(b.id));
+            pointer(card(b.id), 'pointerleave');
+            const real = window.matchMedia;
+            window.matchMedia = q => /reduced-motion/.test(q) ? {matches: true, media: q} : real.call(window, q);
+            try {
+                const to = card(a.id).getBoundingClientRect().top;
+                a.close();
+                await until(() => !card(a.id), 1500);
+                r.reduced = glides(card(b.id));
+                r.reducedEnd = Math.abs(card(b.id).getBoundingClientRect().top - to) < 1;
+            } finally {
+                window.matchMedia = real;
+            }
+            await clearToasts();
             return r;
         });
 

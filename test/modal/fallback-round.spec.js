@@ -137,7 +137,7 @@
             await sleep(50);
             const focused = document.activeElement === close;
             m.clearAll();
-            await sleep(250);
+            await sleep(400);
             await closeAndWait('bg');
             return {inOverlay, focused};
         });

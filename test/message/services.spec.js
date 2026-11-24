@@ -180,7 +180,7 @@
             const t = performance.now();
             while (!document.querySelector('.aui-message--leaving') && performance.now() - t < 1500) await sleep(10);
             handle.update({message: 'again', duration: 700});
-            await sleep(260);     // past its 180 ms exit
+            await sleep(400);     // past its 300 ms exit
             const box = document.querySelector('.aui-message');
             const back = !!box && !box.classList.contains('aui-message--leaving');
             const text = box ? box.querySelector('.aui-message__content').textContent.trim() : null;
@@ -245,7 +245,7 @@
             await sleep(100);
             const lookOut = look(document.querySelector('.aui-message'));
             M.clearAll();
-            await sleep(300);
+            await sleep(400);
             const modal = svc('AuiModal').open({title: 'Dialog', content: 'body'});
             await sleep(700);
             M.info('over the dialog', {duration: 0});
@@ -260,7 +260,7 @@
             r.backHome = document.querySelector('aui-message-host').contains(host) && host.matches(':popover-open');
             r.hitAfter = hitsAt(document.querySelector('.aui-message'), '.aui-message');
             M.clearAll();
-            await sleep(300);
+            await sleep(400);
             return r;
         });
 

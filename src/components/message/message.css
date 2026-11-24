@@ -43,7 +43,9 @@
     align-items: center;
     max-width: calc(100vw - 32px);
 }
+/* a card keeps its height, whatever the stack's (a card clips its content: nothing else holds its height) */
 .aui-message-host__stack > .aui-message {
+    flex-shrink: 0;
     pointer-events: auto;
 }
 
@@ -53,14 +55,6 @@
     pointer-events: none;
 }
 
-/* More notices than the window's height holds (the host sets this when a stack runs past the window's bottom): the
-   stack scrolls, so the newest are reached (a wheel or a touch over them, the keyboard's focus) */
-.aui-message-host__stack.aui-message-host__stack--scroll {
-    max-height: calc(100vh - 32px);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-}
-
 .aui-message {
     --aui-message-accent:    #0593e6;
     --aui-message-chip-ring: rgba(5, 147, 230, 0.18);
@@ -68,8 +62,10 @@
 
     position: relative;
     overflow: hidden;
+    /* the padding and the borders inside the width (they widened a card past a phone's screen); 414px: 380px for its
+       content, as always */
     box-sizing: border-box;
-    width: 380px;
+    width: 414px;
     max-width: calc(100vw - 32px);
     /* a white card: its links and controls in the light scheme, also on a page that declares a dark one (a dark
        scheme's link colour was 2.4:1 on it) */
@@ -114,20 +110,24 @@
     from { opacity: 0; transform: translateY(-28px) scale(0.96); }
 }
 
+/* The exit, seen all the way: it fades evenly over 300ms while it slides away, starting and ending gently (a fade
+   that did its most at once - or an exit that stood still, then left at full speed - looked like a sudden
+   disappearance). The service removes the notice when it ends (EXIT_MS), and the notices below glide up into its
+   place (the host, message.js). */
 .aui-message-host__stack--top-right .aui-message.aui-message--leaving {
     opacity: 0;
     transform: translateX(110%);
     transition:
-            opacity   180ms cubic-bezier(0.4, 0, 1, 1),
-            transform 180ms cubic-bezier(0.4, 0, 1, 1);
+            opacity   300ms linear,
+            transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
     animation: none;
 }
 .aui-message-host__stack--top-center .aui-message.aui-message--leaving {
     opacity: 0;
     transform: translateY(-24px) scale(0.96);
     transition:
-            opacity   180ms cubic-bezier(0.4, 0, 1, 1),
-            transform 180ms cubic-bezier(0.4, 0, 1, 1);
+            opacity   300ms linear,
+            transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
     animation: none;
 }
 
@@ -298,7 +298,7 @@
 }
 
 /* A phone: the two stacks, both across the screen, take one column (top-right, then top-center): side by side at the
-   same place, one covered the other's notices. The column scrolls when it runs past the screen's bottom. */
+   same place, one covered the other's notices. */
 @media (max-width: 640px) {
     .aui-message-host,
     .aui-message-host[popover] {
@@ -309,11 +309,8 @@
         left: 0;
         z-index: 20000;
         flex-direction: column;
-        gap: 10px;
         box-sizing: border-box;
         padding: 16px;
-        overflow-y: auto;
-        overscroll-behavior: contain;
     }
     /* a flex column only while shown: a hidden popover keeps the browser's own display: none (two rules: a browser
        without popovers drops a selector list that names :popover-open) */
@@ -330,9 +327,10 @@
         align-items: stretch;
         transform: none;
     }
-    .aui-message-host__stack.aui-message-host__stack--scroll {
-        max-height: none;
-        overflow: visible;
+    /* the space between the two stacks: under the last top-right notice (a gap between the stacks was there also with
+       no top-right notice, and the top-center ones started 10px lower) */
+    .aui-message-host__stack--top-right > .aui-message:last-child {
+        margin-bottom: 10px;
     }
     .aui-message {
         width: 100%;
