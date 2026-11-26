@@ -1,7 +1,8 @@
 // Modal round suite (page: round.html, fixture: round.fixture.js): native aui-modals and AuiModal - a save promise made
 // in another window keeps the dialog open while it runs and on its "no"; errors of the page's functions reach the
 // application's $exceptionHandler; header and footer slots take the height they need; aria-describedby describes the
-// dialog itself; a tall box on top stays in the window (a removed host: test/message/apps).
+// dialog itself; a tall box on top stays in the window; on-open / onOpen once per opening (a removed host:
+// test/message/apps).
 (function () {
     const {sleep, until} = AuiTest;
     const scope = () => angular.element(document.body).scope();
@@ -93,6 +94,83 @@
             const inside = r.top >= -1 && r.bottom <= window.innerHeight + 1;
             await closeAndWait('top');
             return {inside};
+        });
+
+    T('MR6 on-open: once per opening, as it opens (in the opening digest, is-open true, before its first frame); one on-close after it; opened again while it fades out: neither; closed in the turn it opened: both',
+        {first: ['open:true'], firstFrame: false, closed: ['open:true', 'rendered', 'close:false'], turnedBack: [], sameTurn: ['open:true', 'close:false']},
+        async () => {
+            const s = scope();
+            s.events.length = 0;
+            apply(x => { x.open.events = true; });
+            // read in the same task: the dialog has not had a frame yet
+            const first = s.events.slice();
+            // on-rendered comes after the first frame: not yet
+            const firstFrame = s.events.indexOf('rendered') >= 0;
+            await until(() => isShown('m-events'), 2000);
+            await sleep(300);
+            await closeAndWait('events');
+            await sleep(300);
+            const closed = s.events.slice();
+            // opened again while it still fades out
+            s.events.length = 0;
+            await openAndWait('events');
+            s.events.length = 0;
+            apply(x => { x.open.events = false; });
+            await sleep(40);
+            apply(x => { x.open.events = true; });
+            await sleep(400);
+            const turnedBack = s.events.slice();
+            await closeAndWait('events');
+            await sleep(300);
+            // opened and closed in one turn
+            s.events.length = 0;
+            apply(x => { x.open.events = true; });
+            apply(x => { x.open.events = false; });
+            await sleep(300);
+            const sameTurn = s.events.filter(e => e !== 'rendered');
+            return {first, firstFrame, closed, turnedBack, sameTurn};
+        });
+
+    T('MR7 on-open with defer-render: before the body is built (on-rendered after it); an on-open that fails reaches $exceptionHandler and the dialog opens',
+        {bodies: ['open:false', 'rendered:true'], failed: true, opened: true},
+        async () => {
+            const s = scope();
+            s.bodies.length = 0;
+            await openAndWait('deferred');
+            const bodies = s.bodies.slice();
+            await closeAndWait('deferred');
+            const before = window.__purposeErrors.length;
+            await openAndWait('throws');
+            const failed = window.__purposeErrors.length > before;
+            const opened = isShown('m-throws');
+            await closeAndWait('throws');
+            return {bodies, failed, opened};
+        });
+
+    T('MR8 AuiModal onOpen: once as the dialog opens; one opened meanwhile waits and gets it when its turn comes; one closed while it waits gets onClose alone',
+        {afterFirst: ['A open'], afterQueue: ['A open', 'A close', 'B open'], dropped: ['C close'], all: ['A open', 'A close', 'B open', 'C close', 'B close']},
+        async () => {
+            const modal = svc('AuiModal');
+            const seen = [];
+            const one = name => ({title: name, onOpen: () => seen.push(name + ' open'), onClose: () => seen.push(name + ' close')});
+            const a = modal.open(one('A'));
+            await until(() => !!hostDialog(), 2000);
+            await sleep(300);
+            const b = modal.open(one('B'));
+            const c = modal.open(one('C'));
+            await sleep(100);
+            const afterFirst = seen.slice();
+            apply(() => { a.close(); });
+            await until(() => seen.indexOf('B open') >= 0, 3000);
+            await sleep(300);
+            const afterQueue = seen.slice();
+            apply(() => { c.close(); });
+            await sleep(50);
+            const dropped = seen.filter(e => /^C/.test(e));
+            apply(() => { b.close(); });
+            await until(() => !hostDialog(), 3000);
+            await sleep(100);
+            return {afterFirst, afterQueue, dropped, all: seen.slice()};
         });
 
     T('MR99 no Angular errors other than the ones thrown on purpose',

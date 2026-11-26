@@ -4278,6 +4278,8 @@ angular.module('aui')
      *   modal again (the fade turns back). A modal closed before any frame of it was drawn is shut at once.
      * - Escape: auiModalRegistry.keys. background-opacity="OPAQUE_LIKE": a translucent, blurred box (as the select's
      *   panel); otherwise opaque.
+     * - on-open: once per opening, as it opens (is-open true, before its first frame), in a digest of the page; opened
+     *   again while it still fades out: no new call (the close is taken back, it has no on-close either).
      * - on-rendered: once per opening, when the body is built and linked (after the open digest, or with defer-render
      *   after the deferred one), in a digest of the page: where page code sets up the body (a broadcast to it, a
      *   drag-sort on its table). A timer started at the opening does not know when a deferred body is there.
@@ -4285,6 +4287,7 @@ angular.module('aui')
     .component('auiModal', {
         bindings: {
             isOpen: '=?',
+            onOpen: '&?',                // once per opening, as it opens (see _reportOpen)
             onClose: '&?',
             onConfirm: '&?',
             size: '@?',
@@ -4513,6 +4516,28 @@ angular.module('aui')
                     if ($ctrl.isOpen !== true) $ctrl.isOpen = true;
                     _cancelEnter();
                     cancelEnter = kit.afterFrame(() => _onFirstFrame(token, shownBefore));
+                    if (!shownBefore) _reportOpen(token);
+                }
+
+                /**
+                 * on-open: once per opening, as it opens - is-open true, in the page's digest, before the modal's first
+                 * frame (the body is built in this digest; with defer-render after that frame: on-rendered says when).
+                 * Opened again while it still fades out, the modal turns back: no new call (and no on-close for the close
+                 * it took back), so each on-open is followed by one on-close when the modal closes. An error of the
+                 * page's function goes to $exceptionHandler; the opening goes on.
+                 */
+                function _reportOpen(token) {
+                    if (!($ctrl.onOpen instanceof Function)) return;
+                    const call = function () {
+                        if (token !== transitionToken || isDestroyed || $ctrl.state !== 'open') return;
+                        try {
+                            $ctrl.onOpen();
+                        } catch (e) {
+                            $exceptionHandler(e);
+                        }
+                    };
+                    if ($scope.$root.$$phase) call();
+                    else $scope.$apply(call);
                 }
 
                 // The opening's first frame is drawn (its fade goes on from there on the compositor, whatever the main
@@ -5112,6 +5137,7 @@ angular.module('aui')
      * `borderRadius` is in pixels; `initialFocus` is a selector scoped to the modal.
      * Omit these options to retain the standard modal presentation and focus behavior.
      * The returned promise resolves after close and exposes close()/dismiss().
+     * `onOpen()`: once, when the dialog opens (a queued one: when its turn comes).
      */
     .factory('AuiModal', ['$rootScope', '$timeout', '$q', '$exceptionHandler', 'auiTexts',
         function ($rootScope, $timeout, $q, $exceptionHandler, texts) {
@@ -5142,6 +5168,7 @@ angular.module('aui')
                 backgroundOpacity: null,
                 onConfirm: null,
                 onCancel: null,
+                onOpen: null,
                 onClose: null
             };
 
@@ -5196,6 +5223,7 @@ angular.module('aui')
                     result: undefined,
                     _onConfirm: asFunction(config.onConfirm),
                     _onCancel: asFunction(config.onCancel),
+                    _onOpen: asFunction(config.onOpen),
                     _onClose: asFunction(config.onClose),
                     _deferred: deferred,
                     _rendered: false,
@@ -5301,6 +5329,7 @@ angular.module('aui')
                 item.render = null;
                 item._onConfirm = null;
                 item._onCancel = null;
+                item._onOpen = null;
                 item._onClose = null;
                 if (onClose) {
                     try {
@@ -5324,6 +5353,20 @@ angular.module('aui')
                         });
                     }
                 }, 0, false);
+            }
+
+            // onOpen: once, as the dialog opens (one waiting in the queue: when its turn comes); a dialog closed before it
+            // opened (still waiting) gets onClose alone. An error of it goes to $exceptionHandler; the dialog goes on.
+            function onOpened(item) {
+                if (!item || state.current !== item || item._resolved) return;
+                const onOpen = item._onOpen;
+                item._onOpen = null;
+                if (!onOpen) return;
+                try {
+                    onOpen();
+                } catch (error) {
+                    report(error);
+                }
             }
 
             function onRendered(item) {
@@ -5359,6 +5402,7 @@ angular.module('aui')
                 close: close,
                 _confirmCurrent: confirmCurrent,
                 _cancelCurrent: cancelCurrent,
+                _onOpened: onOpened,
                 _onRendered: onRendered,
                 _onAfterClose: onAfterClose,
                 _hostGone: hostGone,
@@ -5455,12 +5499,14 @@ angular.module('aui')
             $ctrl.handleConfirm = function (item) { AuiModal._confirmCurrent(item); };
             $ctrl.handleCancel = function (item) { AuiModal._cancelCurrent(item); };
             $ctrl.handleClose = function (item) { item._promise.close(); };
+            $ctrl.handleOpen = function (item) { AuiModal._onOpened(item); };
             $ctrl.handleAfterClose = function (item) { AuiModal._onAfterClose(item); };
             $ctrl.$onDestroy = function () { AuiModal._hostGone(); };
         }],
         template: `
             <aui-modal ng-repeat="item in ($ctrl.svc.state.current ? [$ctrl.svc.state.current] : []) track by item.id"
                        is-open="item.isOpen"
+                       on-open="$ctrl.handleOpen(item)"
                        on-close="$ctrl.handleAfterClose(item)"
                        size="{{item.size}}"
                        width="{{item.width}}"

@@ -53,5 +53,17 @@
 <aui-modal id="m-top" is-open="open.top" size="medium" height="98vh" display-on-top="true">
     <content><div style="padding: 8px;">Tall, on top</div></content>
 </aui-modal>
+
+<aui-modal id="m-events" is-open="open.events" size="small" on-open="note('open', open.events)" on-rendered="note('rendered')" on-close="note('close', open.events)">
+    <content><div style="padding: 8px;">Opens and closes</div></content>
+</aui-modal>
+
+<aui-modal id="m-deferred" is-open="open.deferred" size="small" defer-render="true" on-open="noteBody('open')" on-rendered="noteBody('rendered')">
+    <content><div style="padding: 8px;" id="deferred-body">A body built after the first frame</div></content>
+</aui-modal>
+
+<aui-modal id="m-throws" is-open="open.throws" size="small" on-open="failOpen()">
+    <content><div style="padding: 8px;">Its on-open fails</div></content>
+</aui-modal>
 </body>
 </html>

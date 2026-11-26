@@ -34,7 +34,8 @@ closes it (`aui-modal-close="vm.cancel()"` evaluates the expression too).
 | `show-confirm-button` | `"true"` adds the Confirm button to the default footer. |
 | `confirm-text`, `confirm-loading-text` | The Confirm button's text, and its text while `on-confirm`'s promise runs. |
 | `on-confirm` | Called by Confirm. Return `false` to stay open, or a promise (also one made in another window, such as an editor in a frame): the button shows its loading state, and the dialog closes when the promise resolves to anything but `false`. |
-| `on-close` | Called when the dialog closes. |
+| `on-open` | Called once per opening, as the dialog opens (`is-open` is true; before its first frame, in the page's digest). The body is built in that digest, or with `defer-render` after the first frame: `on-rendered` says when it is there. Opened again while it still fades out, the dialog turns back: no new call (and no `on-close` for the close it took back), so each `on-open` is followed by one `on-close`. |
+| `on-close` | Called when the dialog closes (not when the page removes the open dialog from the page). |
 | `close-on-esc` | `"true"`: Escape closes it. Off by default (a form is not lost to a stray key); `AuiModal.open` closes on Escape unless `closeOnEsc: false`. |
 | `initial-focus` | A selector inside the dialog for the element that takes the focus on open. |
 | `content-layout` | `fill`: the content without padding and outer scrolling (a full-size editor, a chart). |
@@ -76,7 +77,8 @@ AuiModal.open({
 | `showCancel`, `cancelText` | The cancel button (shown by default; "Close"). |
 | `showConfirm`, `confirmText` | The confirm button (hidden by default; "OK"). |
 | `onConfirm` | Called by the confirm button: `false` keeps the dialog open; a promise keeps it open until it settles. |
-| `onCancel`, `onClose` | `onCancel`: called by the cancel button and `controls.cancel()` (its return value is the result's value); `dismiss('cancel')` closes without it. `onClose`: after the dialog closed (with `{reason, value}`). An error thrown by these, by `render` or by its cleanup goes to the application's `$exceptionHandler`. |
+| `onOpen` | Called once, when the dialog opens: one opened while another is shown, when its turn comes. A dialog closed while it still waits never opens: it gets `onClose` alone. |
+| `onCancel`, `onClose` | `onCancel`: called by the cancel button and `controls.cancel()` (its return value is the result's value); `dismiss('cancel')` closes without it. `onClose`: after the dialog closed (with `{reason, value}`). An error thrown by these (and `onOpen`), by `render` or by its cleanup goes to the application's `$exceptionHandler`. |
 | `size`, `width`, `height`, `autoSize`, `contentLayout`, `contentClass`, `initialFocus`, `borderRadius`, `showHeader`, `showFooter`, `closeOnEsc`, `displayOnTop`, `backgroundOpacity`, `ariaLabel` | As the attributes of `aui-modal`. With a `title` shown, the dialog is named by its title; `ariaLabel` names a dialog without one (`showHeader: false`, no title). |
 
 The returned promise also has `close(value)` and `dismiss(reason, value)`; `AuiModal.close(reason, value)` closes the

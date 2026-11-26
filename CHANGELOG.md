@@ -8,6 +8,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `aui-modal`: `on-open`, called once per opening as the dialog opens (before its first frame); `AuiModal.open`
+  takes `onOpen` (a dialog that waits its turn: when it opens). Each `on-open` is followed by one `on-close`.
 - `aui-button`: `aria-describedby`, `aria-haspopup`, `aria-pressed` and `tabindex` on the element are moved onto the
   native button, where they act (also when written with `{{ }}`).
 - `aui-button`: `aria-labelledby` on the element is moved onto the native button too.

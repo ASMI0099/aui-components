@@ -15,7 +15,14 @@ angular.module('auiTest', ['aui'])
         }]);
     }])
     .controller('ModalRoundCtrl', ['$scope', function ($scope) {
-        $scope.open = {frame: false, slots: false, desc: false, top: false};
+        $scope.open = {frame: false, slots: false, desc: false, top: false, events: false, deferred: false, throws: false};
+        // on-open / on-rendered / on-close: what was called, with is-open at that moment
+        $scope.events = [];
+        $scope.note = function (what, isOpen) { $scope.events.push(isOpen === undefined ? what : what + ':' + isOpen); };
+        // defer-render: whether the body was there at on-open and at on-rendered
+        $scope.bodies = [];
+        $scope.noteBody = function (what) { $scope.bodies.push(what + ':' + !!document.getElementById('deferred-body')); };
+        $scope.failOpen = function () { throw new Error('on-open failed on purpose'); };
         $scope.saves = 0;
         // on-confirm: a promise made in the frame's window (an editor in an iframe), answering false after a moment
         $scope.saveInFrame = function () {

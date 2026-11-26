@@ -454,6 +454,8 @@ angular.module('aui')
      *   modal again (the fade turns back). A modal closed before any frame of it was drawn is shut at once.
      * - Escape: auiModalRegistry.keys. background-opacity="OPAQUE_LIKE": a translucent, blurred box (as the select's
      *   panel); otherwise opaque.
+     * - on-open: once per opening, as it opens (is-open true, before its first frame), in a digest of the page; opened
+     *   again while it still fades out: no new call (the close is taken back, it has no on-close either).
      * - on-rendered: once per opening, when the body is built and linked (after the open digest, or with defer-render
      *   after the deferred one), in a digest of the page: where page code sets up the body (a broadcast to it, a
      *   drag-sort on its table). A timer started at the opening does not know when a deferred body is there.
@@ -461,6 +463,7 @@ angular.module('aui')
     .component('auiModal', {
         bindings: {
             isOpen: '=?',
+            onOpen: '&?',                // once per opening, as it opens (see _reportOpen)
             onClose: '&?',
             onConfirm: '&?',
             size: '@?',
@@ -689,6 +692,28 @@ angular.module('aui')
                     if ($ctrl.isOpen !== true) $ctrl.isOpen = true;
                     _cancelEnter();
                     cancelEnter = kit.afterFrame(() => _onFirstFrame(token, shownBefore));
+                    if (!shownBefore) _reportOpen(token);
+                }
+
+                /**
+                 * on-open: once per opening, as it opens - is-open true, in the page's digest, before the modal's first
+                 * frame (the body is built in this digest; with defer-render after that frame: on-rendered says when).
+                 * Opened again while it still fades out, the modal turns back: no new call (and no on-close for the close
+                 * it took back), so each on-open is followed by one on-close when the modal closes. An error of the
+                 * page's function goes to $exceptionHandler; the opening goes on.
+                 */
+                function _reportOpen(token) {
+                    if (!($ctrl.onOpen instanceof Function)) return;
+                    const call = function () {
+                        if (token !== transitionToken || isDestroyed || $ctrl.state !== 'open') return;
+                        try {
+                            $ctrl.onOpen();
+                        } catch (e) {
+                            $exceptionHandler(e);
+                        }
+                    };
+                    if ($scope.$root.$$phase) call();
+                    else $scope.$apply(call);
                 }
 
                 // The opening's first frame is drawn (its fade goes on from there on the compositor, whatever the main
