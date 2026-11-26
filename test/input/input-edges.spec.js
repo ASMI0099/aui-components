@@ -337,7 +337,7 @@
         });
 
     T('E28 the basic style: a resting line under the text; its clear button a 24px target (10px beside its centre hits it)',
-        {line: {width: '1px', color: 'rgb(133, 144, 160)'}, besideHits: true},
+        {line: {width: '1px', color: 'rgb(197, 205, 217)'}, besideHits: true},
         async () => {
             const line = getComputedStyle(host('basic-clear').querySelector('.aui-input-container'), '::before');
             const clear = host('basic-clear').querySelector('.aui-control-clear');

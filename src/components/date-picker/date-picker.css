@@ -461,7 +461,7 @@
 }
 
 .aui-date-picker__panel .aui-date-picker__day--outside {
-    color: var(--aui-control-placeholder-color);
+    color: var(--aui-calendar-muted-color, #9aa8b8);
 }
 
 .aui-date-picker__day--today > span {
@@ -536,7 +536,7 @@
 }
 
 .aui-date-picker__panel .aui-date-picker__day--outside.aui-date-picker__day--in-range > span {
-    color: var(--aui-control-placeholder-color);
+    color: var(--aui-calendar-muted-color, #9aa8b8);
 }
 
 .aui-date-picker__panel .aui-date-picker__day--hidden {
@@ -588,7 +588,7 @@
 }
 
 .aui-date-picker__panel .aui-date-picker__cell--edge {
-    color: var(--aui-control-placeholder-color);
+    color: var(--aui-calendar-muted-color, #9aa8b8);
 }
 
 .aui-date-picker__panel .aui-date-picker__cell--selected,
@@ -977,7 +977,7 @@
     width: 32px;
     font-size: calc(var(--aui-font-11) * 1px);
     font-weight: 500;
-    color: var(--aui-control-placeholder-color);
+    color: var(--aui-calendar-muted-color, #9aa8b8);
     font-variant-numeric: tabular-nums;
 }
 
@@ -1158,7 +1158,7 @@
 /* the years beside a decade: muted, the value and a range drawn on them as on any year, lighter; in a range's two
    decades, the year one shows of the other is left out (each year once) */
 .aui-date-picker__panel .aui-date-picker__unit--outside {
-    color: var(--aui-control-placeholder-color);
+    color: var(--aui-calendar-muted-color, #9aa8b8);
 }
 
 .aui-date-picker__panel .aui-date-picker__unit--outside.aui-date-picker__unit--selected > .aui-date-picker__unit-in {
@@ -1167,7 +1167,7 @@
 }
 
 .aui-date-picker__panel .aui-date-picker__unit--outside.aui-date-picker__unit--in-range > .aui-date-picker__unit-in {
-    color: var(--aui-control-placeholder-color);
+    color: var(--aui-calendar-muted-color, #9aa8b8);
 }
 
 .aui-date-picker__panel .aui-date-picker__unit--hidden {

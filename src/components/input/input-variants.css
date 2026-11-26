@@ -49,6 +49,39 @@
     align-items: flex-start;
 }
 
+/* The textarea reaches the box's border at its right and bottom: the box's padding there is the textarea's own (the
+   variables below; its text where it was), so that its resize grip and its scrollbar sit at the box's corner and edge,
+   as a plain textarea's do - inside the padding the grip sat 9px and 5px off the corner, a speck that did not read as
+   a handle. */
+.aui-input.aui-input--form .aui-input__form-trigger.aui-input__form-trigger--textarea {
+    --aui-textarea-pad-end: 8px;
+    --aui-textarea-pad-bottom: 4px;
+    padding-right: 0;
+    padding-bottom: 0;
+}
+
+.aui-input.aui-input--form.aui-input--small .aui-input__form-trigger.aui-input__form-trigger--textarea {
+    --aui-textarea-pad-bottom: 3px;
+}
+
+/* In a dialog (its slim scrollbars, aui-scroll): the textarea's scrollbar in a 10px lane - its thumb as slim as the
+   others', its corner clear - so that the browser draws the grip at a size that reads as one (in the 4px lane it was a
+   dark grey 4px square) */
+.aui-scroll .aui-input textarea.aui-input__form-field::-webkit-scrollbar {
+    width: 10px !important;
+    height: 10px !important;
+}
+
+.aui-scroll .aui-input textarea.aui-input__form-field::-webkit-scrollbar-thumb {
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    border-radius: 5px;
+}
+
+.aui-scroll .aui-input textarea.aui-input__form-field::-webkit-scrollbar-corner {
+    background-color: transparent;
+}
+
 .aui-input.aui-input--form .aui-input__form-trigger > textarea.aui-input__form-field {
     appearance: none !important;
     -webkit-appearance: none !important;
@@ -60,7 +93,8 @@
     height: auto;
     min-height: 24px;
     margin: 0 !important;
-    padding: 2px 0 !important;
+    /* the box's right and bottom padding are the textarea's (see the box above) */
+    padding: 2px var(--aui-textarea-pad-end, 0px) calc(2px + var(--aui-textarea-pad-bottom, 0px)) 0 !important;
     border: 0 !important;
     border-radius: 0 !important;
     outline: 0 !important;
@@ -153,7 +187,7 @@
 
 .aui-input.aui-input--clearable-active .aui-input__form-trigger--textarea > textarea.aui-input__form-field,
 .aui-input:has(.aui-control-clear:not(.aui-control-clear--hidden)) .aui-input__form-trigger--textarea > textarea.aui-input__form-field {
-    padding-right: 28px !important;
+    padding-right: calc(28px + var(--aui-textarea-pad-end, 0px)) !important;
 }
 
 /* the count in the bottom right corner, left of the textarea's resize handle (none with auto-height, disabled, readonly) */
@@ -172,5 +206,5 @@
 }
 
 .aui-input.aui-input--with-count .aui-input__form-trigger--textarea > textarea.aui-input__form-field {
-    padding-bottom: 18px !important;
+    padding-bottom: calc(18px + var(--aui-textarea-pad-bottom, 0px)) !important;
 }

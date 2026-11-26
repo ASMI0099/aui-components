@@ -137,7 +137,8 @@
             const tags = ['aui-input', 'aui-select', 'aui-tree-select'];
             const label = in_('long-label', 'aui-select').querySelector('.aui-control-label');
             return {long: tags.map(tag => read('long-label', tag)), short: tags.map(tag => read('empty', tag)),
-                ellipsis: getComputedStyle(label).textOverflow === 'ellipsis' && getComputedStyle(label).overflow === 'hidden'};
+                // clipped with an ellipsis (overflow: clip where the browser lets the clip reach past the box, else hidden)
+                ellipsis: getComputedStyle(label).textOverflow === 'ellipsis' && ['hidden', 'clip'].indexOf(getComputedStyle(label).overflow) >= 0};
         });
 
     T('FP9 --aui-control-label-max-width: the label\'s share of the field (50% by default), another one for a form or one field; kept between 20% and what leaves the value its room; any other value counts as 50%',

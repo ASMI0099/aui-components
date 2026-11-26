@@ -21,6 +21,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- The package description and the README name the AngularJS version the library is made and tested for: 1.5.3
+  (they said 1.5+).
 - `aui-modal`: `aria-describedby` describes the dialog itself; the header and footer slots take the height they need
   (they were cut at 80px and 100px).
 - AuiMessageBox: a box with neither button shows its OK (it could not be closed); without a title it is named by its
@@ -40,18 +42,29 @@ All notable changes to this project are documented here. The format follows
 - `aui-modal`: on a small window the preset sizes keep at least 20rem × 12rem (never more than the window), and the
   footer's actions wrap to a second line instead of running out of the dialog.
 - `aui-modal` without `<dialog>` (older browsers): the page behind an open dialog is hidden from screen readers.
-- Field borders are darker (`#8590a0`, 3.2:1 on white) so an empty field shows where it is; the hover border follows.
-  The line between a label in the box and the value keeps the light colour through `--aui-control-divider-color`.
+- Field borders are a step firmer (`#c5cdd9`, hover `#adb7c5`), so an empty field shows where it is while a dense form
+  stays light; the line between a label in the box and the value keeps its lighter colour through
+  `--aui-control-divider-color`. A page that needs the 3:1 outline of WCAG 1.4.11 sets `#8590a0` (see theming).
 - `aui-input` basic style: a thin resting line under the text.
 - `aui-input`: in a field too narrow for all its parts, the prefix and suffix texts and the label give way (ellipsis);
   narrower still the count, then the clear button and the password eye narrow, all inside the field's frame.
 - `aui-input` basic style: with `show-label`, `label-text` and no placeholder, the caption stays above the line at rest.
 - `aui-select`, `aui-tree-select`: a disabled field has no `tabindex` (it took the focus from a press or from code).
 - `aui-tree-select`: a row at a deep level in a narrow panel stops indenting where it keeps 120px for its label.
-- Theming guide: the suggested placeholder colour `#64748b` (4.76:1 on white).
+- Placeholders are a step lighter (`#abb6c4`); the date picker's days outside the month, edge cells and week numbers
+  keep their colour through `--aui-calendar-muted-color` (`#9aa8b8`).
+- Theming guide: the colours for pages that must meet WCAG AA for the field border and placeholders too
+  (`#8590a0` / `#737f90`, `#64748b`).
 
 ### Fixed
 
+- `aui-select`, `aui-tree-select`: the value text sits on the same line as an input's in a form row (it could be up to
+  2 device pixels apart at 125% display scaling).
+- `aui-modal`: no one-row step at the end of the opening animation (seen at 125% scaling and at odd window heights).
+- `aui-input` textarea: the resize grip sits at the box's corner, and in a scroll area its scrollbar no longer covers
+  the text.
+- Inline field labels: the divider between the label and the value is no longer cut away in some places (a field at a
+  fractional position, after a dialog's scale-in); nothing moves.
 - AuiModal, AuiMessageBox, AuiMessage: a second AngularJS application on the page shows its own dialogs, boxes and
   toasts (they waited for a host of the first one); a box asked for as an application starts shows at once.
 - AuiModal, AuiMessageBox, AuiMessage: errors thrown by the page's callbacks (on-cancel, on-close, render, the box's

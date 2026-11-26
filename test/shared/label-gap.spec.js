@@ -3,7 +3,8 @@
 // input's text) - are equal (8px) for every field kind with an inline label, on the page and inside an aui-modal (a
 // scroll area), and stay so under a stylesheet that gives every element a scrollbar gutter
 // (* { scrollbar-gutter: stable both-edges !important }). The divider's place is read from the label's real padding
-// box, so a gutter, a padding or a border that moved it shows here.
+// box and the divider's own offset, so a gutter, a padding or a border that moved it shows here. The divider lies
+// inside the label's clip, never on its edge (where a browser's rounding at a fractional place cut it away).
 (function () {
     const {sleep} = AuiTest;
     const scope = () => angular.element(document.body).scope();
@@ -37,8 +38,10 @@
             const ls = getComputedStyle(label);
             const lr = label.getBoundingClientRect();
             const gutter = label.offsetWidth - label.clientWidth - parseFloat(ls.borderLeftWidth) - parseFloat(ls.borderRightWidth);
-            const dividerRight = lr.right - parseFloat(ls.borderRightWidth) - gutter;
-            const dividerLeft = dividerRight - parseFloat(getComputedStyle(label, '::after').width);
+            const after = getComputedStyle(label, '::after');
+            // the clip's edge (the padding box), and the divider set in from it by its own offset
+            const dividerRight = lr.right - parseFloat(ls.borderRightWidth) - gutter - parseFloat(after.right);
+            const dividerLeft = dividerRight - parseFloat(after.width);
             const text = charRect(label, true);
             let value;
             const input = field.querySelector('input.aui-input__form-field');
@@ -76,6 +79,29 @@
             await sleep(100);
             const r = {page: gaps('on-page'), modal: gaps('in-modal')};
             hostile(false);
+            apply(s => { s.modalOpen = false; });
+            await sleep(400);
+            return r;
+        });
+
+    // Each field's divider: how far inside the label's clip its right edge lies (the clip: the padding box's right
+    // edge, and past it by overflow-clip-margin where the label clips with overflow: clip)
+    function insets(containerId) {
+        return Array.from(document.querySelectorAll('#' + containerId + ' .aui-control-label')).map(label => {
+            const after = getComputedStyle(label, '::after');
+            const ls = getComputedStyle(label);
+            if (ls.overflowX === 'visible') return 'not clipped';
+            const margin = ls.overflowX === 'clip' ? parseFloat(ls.overflowClipMargin) || 0 : 0;
+            return margin + parseFloat(after.right);
+        });
+    }
+
+    T('G5 the divider lies 1px inside the label\'s clip in every field kind (on its edge, a browser\'s rounding at a fractional place cut it away), on the page and inside the modal',
+        {page: [1, 1, 1, 1, 1], modal: [1, 1, 1, 1, 1]},
+        async () => {
+            apply(s => { s.modalOpen = true; });
+            await sleep(600);
+            const r = {page: insets('on-page'), modal: insets('in-modal')};
             apply(s => { s.modalOpen = false; });
             await sleep(400);
             return r;

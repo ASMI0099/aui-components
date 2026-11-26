@@ -1,7 +1,7 @@
 {
   "name": "aui-components",
   "version": "0.1.0",
-  "description": "Modern UI components for AngularJS 1.5+: select, tree select, date picker, input, modal and more.",
+  "description": "Modern UI components for AngularJS 1.5.3: select, tree select, date picker, input, modal and more.",
   "license": "MIT",
   "repository": {
     "type": "git",

@@ -54,7 +54,10 @@
             const scrolls = t.style.overflowY;
             apply(s => { s.m.auto = ''; });
             await sleep(30);
-            return {grows: four > start + 30, capped: Math.abs(ten - (5 * 20 + 4)) <= 1, scrolls, back: Math.abs(rect(t).height - start) <= 1};
+            // five lines and the textarea's own padding (the box's right and bottom padding are the textarea's)
+            const cs = getComputedStyle(t);
+            const pad = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+            return {grows: four > start + 30, capped: Math.abs(ten - (5 * 20 + pad)) <= 1, scrolls, back: Math.abs(rect(t).height - start) <= 1};
         });
 
     T('XT4 aui-textarea with enforce-limits: the textarea\'s own maxlength; label-position="top" with a hint',

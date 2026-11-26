@@ -16,6 +16,11 @@
 
     opacity: 0;
     transform: translateY(12px) scale(0.97);
+    /* Drawn on one layer of its own from its first frame to its close: at the end of the opening the browser dropped
+       the layer of the rise and drew the box straight on the page, rounding its fractional place another way - the
+       whole box, its buttons with it, stepped one row of pixels as it settled (on windows whose size put the centred
+       box on half a pixel). Kept, the settled box is the last frame of the rise, pixel for pixel. */
+    will-change: transform;
 
     /* Closing (is-open taken off): 220 ms, the box fading as it sinks a little (aui-modal--closing), while the page
        lightens a little longer (260 ms, the backdrop below): at 180 ms half of the dimming went in two frames, which

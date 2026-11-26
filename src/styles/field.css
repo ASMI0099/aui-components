@@ -69,6 +69,18 @@ aui-textarea {
     background: var(--aui-control-divider-color);
 }
 
+/* The divider lay on the edge of the label's clip: a browser that rounds the clip and the divider to screen pixels
+   differently (a field at a fractional place, after a dialog's scale-in) cut it away. Where the clip can reach past
+   the box, it reaches 1px past it: the divider is inside it, and no box moves. A clipping box that is no scroll
+   container keeps the smallest size a scroll container had (min-width 0). Elsewhere the label clips as before. */
+@supports (overflow-clip-margin: 1px) {
+    .aui-control-label {
+        min-width: 0;
+        overflow: clip;
+        overflow-clip-margin: 1px;
+    }
+}
+
 .aui-field-item {
     padding: 4px;
     display: flex;

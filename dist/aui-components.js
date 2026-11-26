@@ -1,6 +1,6 @@
 /*!
  * aui-components v0.1.0
- * Modern UI components for AngularJS 1.5+: select, tree select, date picker, input, modal and more.
+ * Modern UI components for AngularJS 1.5.3: select, tree select, date picker, input, modal and more.
  * Copyright (c) The aui-components authors. Released under the MIT License.
  */
 

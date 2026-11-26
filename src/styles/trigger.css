@@ -142,6 +142,8 @@
 .aui-select__placeholder {
     color: var(--aui-control-placeholder-color);
     font-size: var(--aui-control-value-size);
+    /* the line of the field's text, as an input's value and the label in the box have it (see display-text) */
+    line-height: var(--aui-control-inner-height, 24px);
     font-weight: 400;
     flex-grow: 1;
     display: inline-block;
@@ -163,6 +165,11 @@
     user-select: none;
     color: var(--aui-control-value-color);
     font-size: var(--aui-control-value-size);
+    /* The value's line is the field's inner line, as an input's value, a date picker's and the label in the box have
+       it: the same box at the same place, so that their text is drawn on the same row of pixels. With the font's own
+       line height (19px of 24) it sat 2.5px lower in its line, a fractional place that a display scaled 125% rounded
+       otherwise: in one form row a select's text was up to 2px off its neighbours', depending on where the row fell. */
+    line-height: var(--aui-control-inner-height, 24px);
     /* regular, as every field's value (typed or picked): a medium weight is drawn medium by fonts that have it and
        regular by those that do not, so the same value looked bold on one machine and regular on another */
     font-weight: 400;

@@ -1,6 +1,6 @@
 # aui-components
 
-Form and overlay components for AngularJS 1.5+: select, tree select, input, date picker, checkbox, button, popover,
+Form and overlay components for AngularJS 1.5.3: select, tree select, input, date picker, checkbox, button, popover,
 modal and messages. Built for large data, keyboard use and pages with CSS of their own.
 
 * **Large data.** Lists and trees draw only the rows in view; options load from a server page by page, level by
