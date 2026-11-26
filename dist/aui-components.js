@@ -8146,6 +8146,8 @@ angular.module('aui')
                 let input = null;
                 let labelEl = null;
                 let mixed = false;   // indeterminate as the page last set it; the user's click clears it
+                let notify = null;   // on-change, once a deferred model has committed (kit.changeAfterCommit)
+                const own = {};      // the page's own tabindex / aria-labelledby / aria-describedby, moved onto the box
 
                 $ctrl.compId = 'aui-checkbox-' + $scope.$id;
                 $ctrl.field = fieldExtras.create({
@@ -8168,13 +8170,23 @@ angular.module('aui')
                     root = $element[0].firstElementChild.firstElementChild;
                     input = root.querySelector('input');
                     labelEl = root.lastElementChild;
+                    input.addEventListener('click', checkbox.redirectClick);
                     input.addEventListener('change', onUserChange);
                     input.addEventListener('blur', onBlur);
                     kit.followNgFlags($attrs, paint);
+                    // the page's tabindex (one Tab stop: the box, not the element too), aria-labelledby and
+                    // aria-describedby (a name and a description from the page's own text) act on the box
+                    checkbox.forward($element[0], $attrs, own, paint);
+                    // required / ng-required: the box's own too (the browser's check of a native form)
+                    $attrs.$observe('required', paint);
                     // a required one: red once it has been left empty
                     if ($attrs.required !== undefined || $attrs.ngRequired !== undefined) $scope.$watch(invalidShown, paint);
                     paint();
                     checkbox.fitToFont(root);   // the box on the middle of its label's digits, in its font
+                };
+
+                $ctrl.$onDestroy = function () {
+                    checkbox.forget(root);
                 };
 
                 $ctrl.$onChanges = function (changes) {
@@ -8191,11 +8203,18 @@ angular.module('aui')
                 // the box and its label as the model, the bindings and ng-disabled are now
                 function paint() {
                     if (!input) return;
-                    const checked = angular.equals($ctrl.ngModelCtrl.$viewValue, checkbox.values($ctrl).on);
+                    const values = checkbox.values($ctrl);
+                    const checked = angular.equals($ctrl.ngModelCtrl.$viewValue, values.on);
                     const disabled = kit.readFlag($attrs, 'disabled', $ctrl.disabled, false);
                     const text = String($ctrl.label || '').trim();
                     input.checked = checked;
+                    // a native reset of the form puts a box back to its default: the model's state (it unchecked the
+                    // box under a checked look and took it out of the form's data, the model unchanged)
+                    input.defaultChecked = checked;
                     input.indeterminate = mixed && !checked;
+                    // a native form: checked, its true-value is sent ("on" was); required is the box's own too
+                    input.value = checkbox.formText(values.on);
+                    input.required = !!$attrs.required;
                     input.disabled = disabled;
                     labelEl.textContent = text;
                     const border = kit.readFlag($attrs, 'containerBorder', $ctrl.containerBorder, false);
@@ -8206,29 +8225,44 @@ angular.module('aui')
                     // aria-label names it for screen readers, over its label too (a row's number with "select row 3")
                     checkbox.attr(input, 'aria-label', $ctrl.ariaLabel);
                     checkbox.attr(input, 'name', $ctrl.name);
-                    checkbox.attr(input, 'tabindex', $ctrl.tabIndex);
+                    checkbox.attr(input, 'tabindex', $ctrl.tabIndex !== undefined && $ctrl.tabIndex !== '' ? $ctrl.tabIndex : own.tabindex);
+                    checkbox.attr(input, 'aria-labelledby', own.ariaLabelledby);
                     checkbox.attr(input, 'aria-invalid', invalidShown() ? 'true' : null);
-                    checkbox.attr(input, 'aria-describedby', $ctrl.field.messageId());
+                    checkbox.attr(input, 'aria-describedby', checkbox.ids(own.ariaDescribedby, $ctrl.field.messageId()));
                 }
 
                 // the user's click or Space: the box shows its new state at once; the model, ng-change and on-change in
-                // this event, in the component's own digest; the page's digest after (checkbox.act)
+                // this event, in the component's own digest; the page's digest after (checkbox.act). on-change tells the
+                // value chosen; with a deferred model (a debounce, updateOn blur) once the model has it (told at once,
+                // it gave the old value as the new one, and nothing after)
                 function onUserChange() {
                     checkbox.act($scope, function () {
                         const model = $ctrl.ngModelCtrl;
                         const values = checkbox.values($ctrl);
                         const before = model.$viewValue;
+                        const value = input.checked ? values.on : values.off;
                         mixed = false;
-                        model.$setViewValue(input.checked ? values.on : values.off);
+                        model.$setViewValue(value);
                         paint();
-                        kit.reportChange($ctrl.onChange, {value: model.$modelValue, oldValue: before, triggerSource: 'toggle'},
-                            {$checked: input.checked}, null, 'aui-checkbox');
-                    });
+                        if (!notify) {
+                            notify = kit.changeAfterCommit(model, function (now, old) {
+                                kit.reportChange($ctrl.onChange, {value: now, oldValue: old, triggerSource: 'toggle'},
+                                    {$checked: angular.equals(now, checkbox.values($ctrl).on)}, null, 'aui-checkbox');
+                            });
+                        }
+                        notify(value, before);
+                    }, false, $attrs.indeterminate !== undefined);
                 }
 
+                // leaving the box: touched; a value waiting for the blur (updateOn: 'blur') committed, as Angular's own
+                // checkbox does (its blur never reached the element, where ngModel waits for it)
                 function onBlur() {
-                    if ($ctrl.ngModelCtrl.$touched) return;
-                    checkbox.act($scope, function () { $ctrl.ngModelCtrl.$setTouched(); }, true);
+                    const model = $ctrl.ngModelCtrl;
+                    if (model.$touched && !kit.commitPending(model)) return;
+                    checkbox.act($scope, function () {
+                        kit.commitOnLeave(model);
+                        if (!model.$touched) model.$setTouched();
+                    }, true);
                 }
             }
         ]
@@ -8289,6 +8323,11 @@ angular.module('aui')
                 let root = null;
                 let all = null;   // the select-all box
                 let stopFocusLeave = null;
+                let lastModel;    // the model's array at the last look: the same one changed in place is validated again
+                let liveVersion = 0;   // the options' own fields read again: a change inside an option (its label, its lock)
+                let notify = null;     // on-change, once a deferred model has committed (kit.changeAfterCommit)
+                let nativeDue = false;
+                const own = {};        // the page's own aria-labelledby / aria-describedby, moved onto the group
 
                 $ctrl.items = [];
                 $ctrl.compId = 'aui-checkbox-group-' + $scope.$id;
@@ -8296,7 +8335,7 @@ angular.module('aui')
                     ctrl: $ctrl,
                     attrs: $attrs,
                     ngModel: () => $ctrl.ngModelCtrl,
-                    invalidShown: () => !!($ctrl.ngModelCtrl.$invalid && $ctrl.ngModelCtrl.$touched),
+                    invalidShown: invalidShown,
                     limits: () => ({min: limit('min'), max: limit('max')}),
                     id: () => $ctrl.compId
                 });
@@ -8312,25 +8351,43 @@ angular.module('aui')
                 $ctrl.$postLink = function () {
                     root = $element[0].firstElementChild;
                     all = root.firstElementChild;
+                    // (before the box gets it: a click meant for another box beside it goes there)
+                    root.addEventListener('click', checkbox.redirectClick, true);
                     root.addEventListener('change', onUserChange);
+                    // leaving the group: touched; a value waiting for the blur (updateOn: 'blur') committed
                     stopFocusLeave = kit.onFocusLeave(root, function () {
-                        if ($ctrl.ngModelCtrl.$touched) return;
-                        checkbox.act($scope, function () { $ctrl.ngModelCtrl.$setTouched(); }, true);
+                        const model = $ctrl.ngModelCtrl;
+                        if (model.$touched && !kit.commitPending(model)) return;
+                        checkbox.act($scope, function () {
+                            kit.commitOnLeave(model);
+                            if (!model.$touched) model.$setTouched();
+                        }, true);
                     });
                     kit.followNgFlags($attrs, refresh);
+                    // the page's aria-labelledby / aria-describedby name and describe the group itself (role=group)
+                    checkbox.forward($element[0], $attrs, own, refresh, ['ariaLabelledby', 'ariaDescribedby']);
                     checkbox.fitToFont(root);   // every option's box on the middle of its label's digits, in its font
                     // the options and the model's array, changed in place too
                     $scope.$watchCollection(() => $ctrl.options, build);
-                    $scope.$watchCollection(() => $ctrl.ngModelCtrl.$modelValue, refresh);
+                    $scope.$watchCollection(() => $ctrl.ngModelCtrl.$modelValue, followModel);
+                    // a field inside an option changed in place (its label, its lock, its value): the options read again
+                    $scope.$watch(optionsLive, function (now, before) { if (now !== before) build(); });
+                    // the group's look when it turns invalid or valid once left (red boxes, aria-invalid)
+                    $scope.$watch(invalidShown, function (now, before) { if (now !== before) refresh(); });
                 };
 
                 $ctrl.$onChanges = function (changes) {
                     if ((changes.min || changes.max) && $ctrl.ngModelCtrl.$validate) $ctrl.ngModelCtrl.$validate();
-                    if (root && !changes.options) build();
+                    if (!root || changes.options) return;
+                    // the options' fields: their records made again; anything else (a hint, the limits, the look): drawn
+                    // again only (a hint's change remade every option's record)
+                    if (changes.labelField || changes.valueField || changes.disabledField) build();
+                    else refresh();
                 };
 
                 $ctrl.$onDestroy = function () {
                     if (stopFocusLeave) stopFocusLeave();
+                    checkbox.forget(root);
                 };
 
                 function limit(name) {
@@ -8342,23 +8399,66 @@ angular.module('aui')
                     return Array.isArray(value) ? value : [];
                 }
 
-                function has(list, value) {
-                    for (let i = 0; i < list.length; i += 1) {
-                        if (angular.equals(list[i], value)) return true;
+                function invalidShown() {
+                    const model = $ctrl.ngModelCtrl;
+                    return !!(model && model.$invalid && model.$touched);
+                }
+
+                /**
+                 * The model's array seen again: another array is ngModel's (it validates it); the same one changed in
+                 * place (push, splice) is validated here as ngModel's watch does - without writing the model back
+                 * (required, min and max stayed as they were before the change).
+                 */
+                function followModel(value) {
+                    const model = $ctrl.ngModelCtrl;
+                    if (value === lastModel && Array.isArray(value) && typeof model.$$runValidators === 'function') {
+                        model.$$runValidators(model.$modelValue, model.$viewValue, angular.noop);
                     }
-                    return false;
+                    lastModel = value;
+                    refresh();
+                }
+
+                // a value's option field read from an option (its value, label, lock)
+                function optionValue(option) {
+                    const plain = option === null || typeof option !== 'object';
+                    return plain ? option : ($ctrl.valueField ? option[$ctrl.valueField]
+                        : (Object.prototype.hasOwnProperty.call(option, 'value') ? option.value : option));
+                }
+
+                function optionLabel(option) {
+                    const plain = option === null || typeof option !== 'object';
+                    const label = plain ? option : option[$ctrl.labelField || 'label'];
+                    return label === undefined || label === null ? '' : String(label);
+                }
+
+                function optionLocked(option) {
+                    const plain = option === null || typeof option !== 'object';
+                    return !plain && !!$ctrl.disabledField && !!option[$ctrl.disabledField];
+                }
+
+                // each digest: an option whose own label, lock or value differs from its record (a page that edits an
+                // option object in place); only property reads
+                function optionsLive() {
+                    const items = $ctrl.items;
+                    for (let i = 0; i < items.length; i += 1) {
+                        const item = items[i];
+                        const option = item.raw;
+                        if (option === null || typeof option !== 'object') continue;
+                        const value = optionValue(option);
+                        // (NaN as itself: a NaN value differed from itself at every digest)
+                        const sameValue = value === item.value || (value !== value && item.value !== item.value);
+                        if (!sameValue || optionLabel(option) !== item.label || optionLocked(option) !== item.locked) {
+                            liveVersion += 1;
+                            break;
+                        }
+                    }
+                    return liveVersion;
                 }
 
                 function build() {
                     const options = Array.isArray($ctrl.options) ? $ctrl.options : [];
-                    const labelField = $ctrl.labelField || 'label';
                     $ctrl.items = options.map(function (option) {
-                        const plain = option === null || typeof option !== 'object';
-                        const value = plain ? option : ($ctrl.valueField ? option[$ctrl.valueField]
-                            : (Object.prototype.hasOwnProperty.call(option, 'value') ? option.value : option));
-                        const label = plain ? option : option[labelField];
-                        return {raw: option, value: value, label: label === undefined || label === null ? '' : String(label),
-                            locked: !plain && !!$ctrl.disabledField && !!option[$ctrl.disabledField]};
+                        return {raw: option, value: optionValue(option), label: optionLabel(option), locked: optionLocked(option)};
                     });
                     refresh();
                 }
@@ -8367,53 +8467,123 @@ angular.module('aui')
                 function refresh() {
                     if (!root) return;
                     const value = chosen($ctrl.ngModelCtrl.$viewValue);
+                    const picked = checkbox.valueSet(value);
                     const off = kit.readFlag($attrs, 'disabled', $ctrl.disabled, false);
                     const max = limit('max');
-                    const full = max > 0 && $ctrl.items.filter(item => has(value, item.value)).length >= max;
+                    // max counts every value the model holds (a saved one whose option is not loaded, a locked one): the
+                    // model's own count, as its maxItems check (only the options' ones let a click go past max)
+                    const full = max > 0 && value.length >= max;
                     const border = kit.readFlag($attrs, 'containerBorder', $ctrl.containerBorder, false);
+                    const invalid = invalidShown();
                     $ctrl.items.forEach(function (item) {
-                        item.on = has(value, item.value);
+                        item.on = picked.has(item.value);
                         item.off = off || item.locked || (full && !item.on);
-                        item.cls = checkbox.classes($ctrl.size, border, {checked: item.on, disabled: item.off, bare: !item.label});
+                        item.cls = checkbox.classes($ctrl.size, border, {checked: item.on, disabled: item.off, bare: !item.label,
+                            invalid: invalid && !item.off});
                     });
-                    const free = $ctrl.items.filter(item => !off && !item.locked);
+                    // select-all over the options that can change (a disabled group keeps showing what is checked: the
+                    // mark was wiped); it checks them all only when max allows the values that makes, and always clears
+                    const free = $ctrl.items.filter(item => !item.locked);
                     const onCount = free.filter(item => item.on).length;
                     const allBox = all.querySelector('input');
-                    allBox.checked = free.length > 0 && onCount === free.length;
+                    const allOn = free.length > 0 && onCount === free.length;
+                    // the values select-all would leave: the ones it does not touch, and every free option's (once)
+                    const freeSet = checkbox.valueSet(free.map(item => item.value));
+                    const adding = value.filter(each => !freeSet.has(each)).length + freeSet.size;
+                    allBox.checked = allOn;
+                    allBox.defaultChecked = allOn;
                     allBox.indeterminate = onCount > 0 && onCount < free.length;
-                    allBox.disabled = free.length === 0 || (max > 0 && free.length > max);
+                    allBox.disabled = off || free.length === 0 || (!allOn && max > 0 && adding > max);
                     all.className = checkbox.classes($ctrl.size, border, {checked: allBox.checked, mixed: allBox.indeterminate,
-                        disabled: allBox.disabled}) + ' aui-checkbox--select-all';
+                        disabled: allBox.disabled, invalid: invalid && !allBox.disabled}) + ' aui-checkbox--select-all';
                     all.lastElementChild.textContent = $ctrl.selectAllText || texts.list.selectAll;
                     const layout = ['column', 'grid'].indexOf($ctrl.layout) >= 0 ? $ctrl.layout : 'row';
                     root.className = 'aui-checkbox-group aui-checkbox-group--' + layout +
                         (kit.readFlag($attrs, 'showSelectAll', $ctrl.showSelectAll, false) ? ' aui-checkbox-group--all' : '') +
-                        ($ctrl.ngModelCtrl.$invalid && $ctrl.ngModelCtrl.$touched ? ' aui-checkbox-group--invalid' : '');
+                        (invalid ? ' aui-checkbox-group--invalid' : '');
                     root.style.setProperty('--aui-checkbox-group-columns', String(Math.max(1, Number($ctrl.columns) || 3)));
                     checkbox.attr(root, 'aria-label', $ctrl.ariaLabel);
-                    checkbox.attr(root, 'aria-describedby', $ctrl.field.messageId());
+                    checkbox.attr(root, 'aria-labelledby', own.ariaLabelledby);
+                    checkbox.attr(root, 'aria-describedby', checkbox.ids(own.ariaDescribedby, $ctrl.field.messageId()));
+                    checkbox.attr(root, 'aria-invalid', invalid ? 'true' : null);
+                    // the option boxes are drawn by the digest (ng-repeat): their native form parts after it
+                    if (!nativeDue) {
+                        nativeDue = true;
+                        $scope.$$postDigest(writeNative);
+                    }
                 }
 
-                // a box checked or cleared by the user (its own event), or the select-all
+                /**
+                 * A native form: each option box sends its value under the group's name (no entry was made); the
+                 * group's error (required, min, max) is its first enabled box's own, so the browser's check of the form
+                 * stops there too (a native checkbox group has no "at least one" of its own).
+                 */
+                function writeNative() {
+                    nativeDue = false;
+                    if (!root) return;
+                    const inputs = root.querySelectorAll('.aui-checkbox-group__options input.aui-checkbox__native');
+                    const name = $attrs.name ? String($attrs.name) : '';
+                    const model = $ctrl.ngModelCtrl;
+                    const errorKey = Object.keys(model.$error || {}).filter(key => model.$error[key])[0];
+                    let carrier = null;
+                    for (let i = 0; i < inputs.length; i += 1) {
+                        const input = inputs[i];
+                        const item = $ctrl.items[i];
+                        if (!item) continue;
+                        if (name) input.setAttribute('name', name);
+                        else input.removeAttribute('name');
+                        const text = checkbox.formText(item.value);
+                        if (input.value !== text) input.value = text;
+                        if (!carrier && !input.disabled) carrier = input;
+                        if (typeof input.setCustomValidity === 'function') input.setCustomValidity('');
+                    }
+                    if (carrier && errorKey && typeof carrier.setCustomValidity === 'function') {
+                        carrier.setCustomValidity($ctrl.field.textFor(errorKey));
+                    }
+                }
+
+                // a box checked or cleared by the user (its own event), or the select-all. Options of one value are one
+                // choice: they are checked and cleared together, and the value is in the model once (one could not be
+                // cleared while its twin held it; select-all wrote it twice)
                 function onUserChange(event) {
                     const target = event.target;
                     if (!target || !target.classList.contains('aui-checkbox__native')) return;
-                    const before = chosen($ctrl.ngModelCtrl.$viewValue);
+                    const model = $ctrl.ngModelCtrl;
+                    const before = chosen(model.$viewValue);
                     const isAll = all.contains(target);
                     const item = isAll ? null : $ctrl.items[Number(target.getAttribute('data-i'))];
                     if (!isAll && !item) return;
-                    const shown = $ctrl.items.map(item => item.value);
-                    const off = kit.readFlag($attrs, 'disabled', $ctrl.disabled, false);
-                    const after = $ctrl.items.filter(function (each) {
-                        if (isAll) return !off && !each.locked ? target.checked : has(before, each.value);
-                        return each === item ? target.checked : has(before, each.value);
-                    }).map(each => each.value).concat(before.filter(value => !has(shown, value)));
                     const checked = target.checked;
+                    const was = checkbox.valueSet(before);
+                    const shown = checkbox.valueSet($ctrl.items.map(each => each.value));
+                    const toggled = item ? checkbox.valueSet([item.value]) : null;
+                    const taken = checkbox.valueSet([]);
+                    const after = [];
+                    $ctrl.items.forEach(function (each) {
+                        let on;
+                        if (isAll) on = !each.locked ? checked : was.has(each.value);
+                        else on = toggled.has(each.value) ? checked : was.has(each.value);
+                        if (on && !taken.has(each.value)) {
+                            taken.add(each.value);
+                            after.push(each.value);
+                        }
+                    });
+                    before.forEach(function (value) {
+                        if (!shown.has(value) && !taken.has(value)) {
+                            taken.add(value);
+                            after.push(value);
+                        }
+                    });
                     checkbox.act($scope, function () {
-                        $ctrl.ngModelCtrl.$setViewValue(after);
+                        model.$setViewValue(after);
                         refresh();
-                        kit.reportChange($ctrl.onChange, {value: after, oldValue: before, triggerSource: isAll ? 'select-all' : 'toggle'},
-                            {$option: item ? item.raw : undefined, $checked: checked}, null, 'aui-checkbox-group');
+                        if (!notify) {
+                            notify = kit.changeAfterCommit(model, function (now, change, old) {
+                                kit.reportChange($ctrl.onChange, {value: now, oldValue: old, triggerSource: change.source},
+                                    {$option: change.option, $checked: change.checked}, null, 'aui-checkbox-group');
+                            });
+                        }
+                        notify(after, {source: isAll ? 'select-all' : 'toggle', option: item ? item.raw : undefined, checked: checked}, before);
                     });
                 }
             }
@@ -8467,6 +8637,7 @@ angular.module('aui')
             roots.forEach(function (root, i) {
                 const mid = fonts[i] ? digitMiddle(fonts[i].family, fonts[i].weight) : null;
                 if (mid !== null) root.style.setProperty('--aui-checkbox-mid', mid + 'em');
+                if (fonts[i]) fontOf.set(root, fonts[i].weight + ' ' + fonts[i].family);
             });
             // fonts still loading: what was measured may be a fallback's - all of them again once they are in
             if (document.fonts && document.fonts.status === 'loading' && document.fonts.ready) {
@@ -8498,21 +8669,137 @@ angular.module('aui')
             $rootScope.$$postDigest(function () { pageDigestMs = Date.now() - started; });
         }
 
-        // one digest of the whole page owed for every aui-checkbox (a digest of the page is the whole page's). The pause
-        // waits longer on a page whose digest is slow (over 100 ms: 1 s), so that the next click of a row rarely meets it.
-        function owePage(later) {
+        // A page digest this short (the last one measured) is no wait for the next click: the page follows after the next
+        // frame every time
+        const SLOW_MS = 50;
+
+        // one digest of the whole page owed for every aui-checkbox (a digest of the page is the whole page's). After the
+        // next frame - held back only on a page whose digest is slow (over SLOW_MS) for boxes clicked one after another
+        // (and leaving a box), until the clicking pauses (400 ms; 1 s over 100 ms), so that the next click of a row
+        // rarely meets it. Never for a select-all box (master: the page's rows follow it; they came 400 ms to 1 s
+        // late, the same on a fast page).
+        function owePage(later, master) {
             if (!pageDigest) pageDigest = kit.createPageDigest($rootScope, function () { return boxes; }, timeDigest);
             const now = Date.now();
             const inRow = now - lastChange < ROW_MS;
             if (!later) lastChange = now;
-            if (later || inRow) pageDigest.oweAfterPause(pageDigestMs > 100 ? 1000 : 400);
+            if (!master && pageDigestMs > SLOW_MS && (later || inRow)) pageDigest.oweAfterPause(pageDigestMs > 100 ? 1000 : 400);
             else pageDigest.owe();
+        }
+
+        /**
+         * A value's key: values angular.equals takes as one have one key (an object's own fields in name order, without
+         * the $-named ones and functions; a Date by its time). Lookups by it (a Set): a group of 800 checked values
+         * compared every option with every value (320,000 comparisons a drawing).
+         */
+        function keyOf(value) {
+            if (value === null) return 'null';
+            const type = typeof value;
+            if (type === 'number') return value !== value ? 'n:NaN' : 'n:' + value;
+            if (type === 'string') return 's:' + value;
+            if (type === 'boolean') return 'b:' + value;
+            if (type === 'undefined') return 'u';
+            if (type === 'function') return 'f';
+            if (value instanceof Date) return 'd:' + value.getTime();
+            if (value instanceof RegExp) return 'r:' + String(value);
+            if (Array.isArray(value)) return '[' + value.map(keyOf).join(',') + ']';
+            return '{' + Object.keys(value).filter(name => name.charAt(0) !== '$' && typeof value[name] !== 'function').sort()
+                .map(name => JSON.stringify(name) + ':' + keyOf(value[name])).join(',') + '}';
+        }
+
+        // the page's tabindex, aria-labelledby and aria-describedby on the element: kept for the box, taken off the
+        // element (now and when they change)
+        const FORWARDED = ['tabindex', 'ariaLabelledby', 'ariaDescribedby'];
+
+        // a ResizeObserver over the components' roots: a label that changes its size (the page's font changed) has its
+        // box fitted again in its font (it kept the old font's middle)
+        let sizeWatch = null;
+        const fontOf = new WeakMap();
+        let refitDue = [];
+
+        function refitChanged() {
+            const roots = refitDue;
+            refitDue = [];
+            const fonts = roots.map(function (root) {
+                if (!root.isConnected) return null;
+                const style = window.getComputedStyle(root);
+                return style.fontFamily ? {family: style.fontFamily, weight: style.fontWeight || '400'} : null;
+            });
+            roots.forEach(function (root, i) {
+                const font = fonts[i];
+                if (!font) return;
+                const key = font.weight + ' ' + font.family;
+                if (fontOf.get(root) === key) return;
+                fontOf.set(root, key);
+                const mid = digitMiddle(font.family, font.weight);
+                if (mid !== null) root.style.setProperty('--aui-checkbox-mid', mid + 'em');
+            });
+        }
+
+        function watchSize(root) {
+            if (typeof window.ResizeObserver !== 'function') return;
+            if (!sizeWatch) {
+                sizeWatch = new window.ResizeObserver(function (entries) {
+                    const first = refitDue.length === 0;
+                    entries.forEach(function (entry) { if (refitDue.indexOf(entry.target) < 0) refitDue.push(entry.target); });
+                    // on the next frame: a box moved inside the observer would be a loop of it (an error of the page)
+                    if (first && refitDue.length) window.requestAnimationFrame(refitChanged);
+                });
+            }
+            sizeWatch.observe(root);
+        }
+
+        // a component gone: its root no longer watched (an observed element is kept by the observer)
+        function unwatchSize(root) {
+            if (sizeWatch && root) sizeWatch.unobserve(root);
+            const at = refitDue.indexOf(root);
+            if (at >= 0) refitDue.splice(at, 1);
         }
 
         return {
             // true-value / false-value (true and false by default)
             values: $ctrl => ({on: $ctrl.trueValue !== undefined ? $ctrl.trueValue : true,
                 off: $ctrl.falseValue !== undefined ? $ctrl.falseValue : false}),
+            /** A set of values by keyOf: has(value), add(value), size. */
+            valueSet: function (list) {
+                const keys = new Set();
+                (list || []).forEach(function (value) { keys.add(keyOf(value)); });
+                return {
+                    has: value => keys.has(keyOf(value)),
+                    add: function (value) { keys.add(keyOf(value)); },
+                    get size() { return keys.size; }
+                };
+            },
+            /** A value as a native form sends it: a text as it is, a number or a boolean as text, an object as JSON. */
+            formText: function (value) {
+                if (value === undefined || value === null) return 'on';
+                if (typeof value === 'object') return angular.toJson(value);
+                return String(value);
+            },
+            /** ids joined for aria-describedby (the page's own, the message line's). */
+            ids: function () {
+                const list = [];
+                Array.prototype.forEach.call(arguments, function (part) {
+                    String(part || '').split(/\s+/).forEach(function (id) { if (id && list.indexOf(id) < 0) list.push(id); });
+                });
+                return list.join(' ');
+            },
+            /** The page's tabindex / aria-labelledby / aria-describedby on the element into own (its names camel-cased),
+             * taken off the element; changed() when one changes ({{ }}, ng-attr-). names: some of them only. */
+            forward: function (host, attrs, own, changed, names) {
+                (names || FORWARDED).forEach(function (name) {
+                    if (!attrs.$attr[name]) return;
+                    const htmlName = attrs.$attr[name];
+                    const take = function (value) {
+                        own[name] = value === undefined || value === null ? undefined : String(value);
+                        host.removeAttribute(htmlName);
+                        if (changed) changed();
+                    };
+                    own[name] = attrs[name] === undefined || attrs[name] === null ? undefined : String(attrs[name]);
+                    host.removeAttribute(htmlName);
+                    attrs.$observe(name, take);
+                });
+            },
             // a box's classes: its size (md: normal), its field's box, its state
             classes: function (size, border, state) {
                 const word = String(size || '').trim().toLowerCase();
@@ -8540,15 +8827,49 @@ angular.module('aui')
                 if (!root) return;
                 fitQueue.push(root);
                 if (fitQueue.length === 1) $rootScope.$$postDigest(fitQueued);
+                watchSize(root);
             },
-            act: function (scope, fn, later) {
+            /**
+             * A pointer's click on a box's 24px target (a box without a label reaches past its box) that lands on the
+             * box of another checkbox drawn beside it: that one is clicked, this one not (two compact boxes side by side
+             * shared 12px, and a click on the first one's box checked the second). A click outside every box, the
+             * keyboard's Space (no pointer) and a click on its own box are left as they are.
+             */
+            redirectClick: function (event) {
+                const input = event.target;
+                if (!event.detail || !input || !input.classList || !input.classList.contains('aui-checkbox__native') ||
+                    typeof document.elementsFromPoint !== 'function') return;
+                const x = event.clientX;
+                const y = event.clientY;
+                const on = function (el) {
+                    const box = el.nextElementSibling;
+                    if (!box) return false;
+                    const r = box.getBoundingClientRect();
+                    return x >= r.left && x < r.right && y >= r.top && y < r.bottom;
+                };
+                if (on(input)) return;
+                const other = document.elementsFromPoint(x, y).filter(function (el) {
+                    return el !== input && el.classList && el.classList.contains('aui-checkbox__native') && on(el);
+                })[0];
+                if (!other) return;
+                event.preventDefault();
+                event.stopPropagation();
+                if (!other.disabled) other.click();
+            },
+            /** A component's root gone (its $onDestroy). */
+            forget: function (root) {
+                unwatchSize(root);
+                const at = fitQueue.indexOf(root);
+                if (at >= 0) fitQueue.splice(at, 1);
+            },
+            act: function (scope, fn, later, master) {
                 if (scope.$root.$$phase) {
                     fn();
                     return;
                 }
                 scope.$evalAsync(fn);
                 kit.digestOwn(scope);
-                owePage(!!later);
+                owePage(!!later, !!master);
             }
         };
     }]);

@@ -27,6 +27,8 @@ default, never an unreadable field.
 | `--aui-control-value-color` | `#1f2328` | the value: in the field, typed, in the rows of a list and its search box |
 | `--aui-control-label-color` | `#64748b` | the label in the box and above it |
 | `--aui-control-placeholder-color` | `#abb6c4` | the placeholders of the fields and of their search boxes, and a date picker's preview in its box: a light hint |
+| `--aui-checkbox-border-color` | `#8792a2` | the unchecked checkbox's border (3:1 on white) |
+| `--aui-checkbox-mark-color` | `#ffffff` | the check and the mixed bar on the accent: with a light accent (on a dark surface) a dark colour that keeps 3:1 against it |
 | `--aui-calendar-muted-color` | `#9aa8b8` | the date picker's days and units outside the month or page shown, its edge cells and week numbers (not set: this value) |
 | `--aui-control-muted-color` | `#64748b` | second texts: counts, readonly values, empty and loading texts of a list, the password eye |
 | `--aui-control-disabled-color` | `#a8abb2` | the text of a disabled field or option |

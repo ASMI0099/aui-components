@@ -144,7 +144,7 @@ aui-checkbox-group {
     box-sizing: border-box;
     margin: 0 !important;
     padding: 0 !important;
-    border: 1px solid #8792a2;
+    border: 1px solid var(--aui-checkbox-border-color, #8792a2);
     border-radius: calc(var(--aui-checkbox-size) * 0.2);
     background-color: var(--aui-control-background-color);
     pointer-events: none;
@@ -160,7 +160,7 @@ aui-checkbox-group {
     content: '';
     position: absolute;
     inset: 0;
-    background-color: #ffffff;
+    background-color: var(--aui-checkbox-mark-color, #ffffff);
     opacity: 0;
     transition: opacity 0.12s ease-out;
 }
@@ -212,6 +212,13 @@ aui-checkbox-group {
     box-shadow: 0 0 0 3px var(--aui-control-invalid-a16);
 }
 
+/* checked or mixed, the box is the accent already: the keyboard's focus is a ring in the accent around a gap (also in a
+   group shown invalid; the button's ring; the light halo alone was 1.39:1 against white) */
+.aui-checkbox--checked .aui-checkbox__native:focus-visible + .aui-checkbox__box,
+.aui-checkbox--indeterminate .aui-checkbox__native:focus-visible + .aui-checkbox__box {
+    box-shadow: 0 0 0 2px var(--aui-control-background-color), 0 0 0 4px var(--aui-control-accent-color);
+}
+
 .aui-checkbox--disabled {
     color: var(--aui-control-disabled-color);
     cursor: not-allowed;
@@ -229,6 +236,30 @@ aui-checkbox-group {
 }
 
 .aui-checkbox--disabled .aui-checkbox__native {
+    cursor: not-allowed;
+}
+
+/* disabled by a disabled fieldset around it (the browser's, no class): the same look (it looked active) */
+.aui-checkbox:has(> .aui-checkbox__control > .aui-checkbox__native:disabled) {
+    color: var(--aui-control-disabled-color);
+    cursor: not-allowed;
+}
+
+.aui-checkbox:has(> .aui-checkbox__control > .aui-checkbox__native:disabled) .aui-checkbox__box,
+.aui-checkbox:has(> .aui-checkbox__control > .aui-checkbox__native:disabled):hover .aui-checkbox__box {
+    border-color: #cbd5e1;
+    background-color: #f1f5f9;
+}
+
+.aui-checkbox--checked:has(> .aui-checkbox__control > .aui-checkbox__native:disabled) .aui-checkbox__box,
+.aui-checkbox--indeterminate:has(> .aui-checkbox__control > .aui-checkbox__native:disabled) .aui-checkbox__box,
+.aui-checkbox--checked:has(> .aui-checkbox__control > .aui-checkbox__native:disabled):hover .aui-checkbox__box,
+.aui-checkbox--indeterminate:has(> .aui-checkbox__control > .aui-checkbox__native:disabled):hover .aui-checkbox__box {
+    border-color: #b8c2cf;
+    background-color: #b8c2cf;
+}
+
+.aui-checkbox .aui-checkbox__native:disabled {
     cursor: not-allowed;
 }
 
@@ -345,6 +376,17 @@ aui-checkbox-group {
 
     .aui-checkbox--disabled .aui-checkbox__box {
         border-color: GrayText;
+    }
+
+    .aui-checkbox--disabled.aui-checkbox--checked .aui-checkbox__box,
+    .aui-checkbox--disabled.aui-checkbox--indeterminate .aui-checkbox__box {
+        border-color: GrayText;
+        background-color: GrayText;
+    }
+
+    .aui-checkbox--disabled .aui-checkbox__box::before,
+    .aui-checkbox--disabled .aui-checkbox__box::after {
+        background-color: Canvas;
     }
 
     .aui-checkbox .aui-checkbox__native:focus-visible + .aui-checkbox__box {

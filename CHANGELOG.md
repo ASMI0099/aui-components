@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `aui-checkbox`, `aui-checkbox-group` in a native form: a named box sends its `true-value`, a named group each checked
+  value; `required` (and a group's `min` / `max`) hold for the browser's check of the form; a native reset leaves the
+  boxes as the model is. `aria-labelledby`, `aria-describedby` and `tabindex` on the element act on the box (one Tab
+  stop). Theming tokens `--aui-checkbox-border-color` and `--aui-checkbox-mark-color`.
 - `aui-date-picker` in a native form: a named field's value goes with the form's own data (hidden inputs: a date, a
   range's two ends, each date); `required` is the boxes' own too (the browser's check of the form stops at an empty
   required field); a native reset shows the model's value again.
@@ -66,6 +70,22 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `aui-checkbox-group`: `max` counts every value the model holds (a click could go past it with a saved value not
+  shown); select-all checks only within `max` and always clears; a model changed in place is validated at once; a
+  disabled group keeps its select-all mark; an option edited in place is followed; options of one value are one
+  choice (one could not be cleared, select-all wrote the value twice); an invalid group shows red boxes and
+  `aria-invalid` as soon as it is left.
+- `aui-checkbox`: a select-all box's rows follow it at once (they came 400ms to 1s late when it was clicked soon after
+  a row); the page's bindings are held back after a click only on a page whose digest is slow.
+- `aui-checkbox`, `aui-checkbox-group`: `ng-model-options` `updateOn: 'blur'` commits when the box is left; `on-change`
+  tells the value chosen, after a debounced commit (it gave the old value as the new one).
+- `aui-checkbox`: the keyboard focus on a checked box is a ring in the accent (the halo alone was 1.39:1); in high
+  contrast mode a disabled checked or mixed box keeps its mark; inside a disabled fieldset the boxes look disabled; a
+  click on a compact box beside another goes to that box (it could check its neighbour); a font changed later fits
+  the boxes again.
+- `aui-checkbox-group`: a large group looks its values up (800 checked values made 320,400 comparisons a drawing); a
+  hint's change no longer remakes every option's record.
+- Checkbox example: the two tables stand one under the other on a phone (they overlapped).
 - `aui-date-picker` dates and times: a date-time typed with its own offset (`Z`, `-05:00`) is that instant; an offset's
   minutes over 59 and fixed-offset values outside the years 1 to 9999 are refused; the later of a local hour that comes
   twice keeps its instant; a time skipped by a clock change is shown as the time it becomes at entry; the 24-hour

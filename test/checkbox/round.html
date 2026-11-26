@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: aui-checkbox, round checks</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #ffffff; color: #222; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .row { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; margin: 8px 0; }
+        .tight { display: flex; gap: 0; align-items: center; }
+        .font-a { font-family: Arial, sans-serif; }
+        .font-b { font-family: "Courier New", monospace; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="round.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="round.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="RoundCtrl">
+<h1>aui-checkbox and aui-checkbox-group: round checks</h1>
+
+<form name="f" novalidate>
+    <div class="row">
+        <aui-checkbox-group id="g-limited" name="limited" ng-model="m.limited" options="abc" max="2"></aui-checkbox-group>
+        <aui-checkbox-group id="g-overfull" name="overfull" ng-model="m.overfull" options="abc" max="2" show-select-all="true"></aui-checkbox-group>
+        <aui-checkbox-group id="g-locked" name="lockedAll" ng-model="m.lockedAll" options="withLocked" disabled-field="off" max="2" show-select-all="true"></aui-checkbox-group>
+    </div>
+    <div class="row">
+        <aui-checkbox-group id="g-inplace" name="inPlace" ng-model="m.inPlace" options="abc" required min="2" max="2"></aui-checkbox-group>
+        <aui-checkbox-group id="g-disabled" name="disabledGroup" ng-model="m.disabledGroup" options="abc" show-select-all="true" ng-disabled="off.group"></aui-checkbox-group>
+        <aui-checkbox-group id="g-live" name="live" ng-model="m.live" options="liveOptions" disabled-field="off"></aui-checkbox-group>
+        <aui-checkbox-group id="g-twins" name="twins" ng-model="m.twins" options="twinOptions" show-select-all="true"></aui-checkbox-group>
+    </div>
+    <div class="row">
+        <aui-checkbox-group id="g-invalid" name="invalid" ng-model="m.invalid" options="abc" required show-errors="true"></aui-checkbox-group>
+        <aui-checkbox id="c-debounced" name="debounced" ng-model="m.debounced" ng-model-options="{debounce: 120}" label="Debounced"
+                      on-change="changed('debounced', $value, $oldValue)"></aui-checkbox>
+        <aui-checkbox id="c-blur" name="blurSingle" ng-model="m.blurSingle" ng-model-options="{updateOn: 'blur'}" label="On blur"></aui-checkbox>
+        <aui-checkbox-group id="g-blur" name="blurGroup" ng-model="m.blurGroup" options="abc" ng-model-options="{updateOn: 'blur'}"></aui-checkbox-group>
+        <aui-checkbox id="c-required" name="required" ng-model="m.required" ng-required="true" label="Required"
+                      on-change="changed('required', $value, $oldValue)"></aui-checkbox>
+    </div>
+    <div class="row">
+        <aui-checkbox-group id="g-hint" name="hinted" ng-model="m.many" options="manyOptions" hint-text="{{ hint }}" layout="grid" columns="8" size="compact"></aui-checkbox-group>
+    </div>
+</form>
+
+<form id="native-form" name="nativeForm">
+    <div class="row">
+        <aui-checkbox id="c-named" name="named" ng-model="m.named" true-value="'YES'" false-value="'NO'" label="Named"></aui-checkbox>
+        <aui-checkbox-group id="g-named" name="namedGroup" ng-model="m.namedGroup" options="perms"></aui-checkbox-group>
+        <aui-checkbox id="c-reset" name="resetMe" ng-model="m.resetMe" true-value="'YES'" false-value="'NO'" label="Reset me"></aui-checkbox>
+    </div>
+</form>
+<form id="need-form" name="needForm">
+    <aui-checkbox-group id="g-need" name="needGroup" ng-model="m.needGroup" options="abc" required></aui-checkbox-group>
+</form>
+<form id="need-one" name="needOne">
+    <aui-checkbox id="c-need" name="needOne" ng-model="m.needOneValue" required label="Needed"></aui-checkbox>
+</form>
+
+<div class="row">
+    <span id="ext-label">Receive the newsletter</span><span id="ext-help">Once a week</span>
+    <aui-checkbox id="c-labelled" ng-model="m.labelled" aria-labelledby="ext-label" aria-describedby="ext-help"></aui-checkbox>
+    <button type="button" id="before-tab">before</button>
+    <aui-checkbox id="c-tabbed" ng-model="m.tabbed" tabindex="0" label="Tab once"></aui-checkbox>
+    <button type="button" id="after-tab">after</button>
+    <aui-checkbox id="c-checked-focus" ng-model="m.checkedFocus" label="Checked focus"></aui-checkbox>
+</div>
+<div class="tight" id="tight">
+    <aui-checkbox id="c-left" ng-model="m.left" size="compact" aria-label="Left"></aui-checkbox><aui-checkbox id="c-right" ng-model="m.right" size="compact" aria-label="Right"></aui-checkbox>
+</div>
+<div class="row font-a" id="font-box">
+    <aui-checkbox id="c-font" ng-model="m.font" label="0123456789"></aui-checkbox>
+</div>
+<fieldset id="fs" ng-disabled="off.fieldset">
+    <aui-checkbox id="c-fieldset" ng-model="m.fieldset" label="In a fieldset"></aui-checkbox>
+    <aui-checkbox-group id="g-fieldset" ng-model="m.fieldsetGroup" options="abc"></aui-checkbox-group>
+</fieldset>
+</body>
+</html>

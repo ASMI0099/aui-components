@@ -225,26 +225,69 @@
             return {inClick, model, after: window.__digests.length - before};
         });
 
-    T('K2 boxes clicked one after another (rows of a table): no digest of the page between them (no click waits for one); one once the clicking pauses; a press elsewhere runs an owed one first',
+    T('K2 on a slow page (its digest 70 ms a pass): boxes clicked one after another (rows of a table) get no digest of the page between them (no click waits for one); one once the clicking pauses; a press elsewhere runs an owed one first',
         {first: 1, between: 0, paused: 1, byPress: 1},
         async () => {
+            apply(s => { s.heavy = true; });
             await sleep(1100);
             const at = window.__digests.length;
             box('c-row1').click();
-            await sleep(60);
+            await sleep(400);
             const first = window.__digests.length - at;
             box('c-row2').click();
             await sleep(150);
             box('c-row1').click();
             await sleep(150);
             const between = window.__digests.length - at - first;
-            await sleep(450);
+            await sleep(1400);
             const paused = window.__digests.length - at - first;
+            // two more in a row: the second one's digest held back, then a press elsewhere
+            box('c-row1').click();
+            await sleep(400);
             box('c-row2').click();
             await sleep(50);
             const owed = window.__digests.length;
             document.body.dispatchEvent(new PointerEvent('pointerdown', {bubbles: true, cancelable: true}));
-            return {first, between, paused, byPress: window.__digests.length - owed};
+            const byPress = window.__digests.length - owed;
+            apply(s => { s.heavy = false; });
+            return {first, between, paused, byPress};
+        });
+
+    T('K7 on a fast page: boxes clicked one after another each get the page\'s digest after the next frame (nothing held back: the page\'s other bindings never lag)',
+        {second: 1, third: 1},
+        async () => {
+            await sleep(1100);
+            box('c-row1').click();
+            await sleep(120);
+            let at = window.__digests.length;
+            box('c-row2').click();
+            await sleep(120);
+            const second = window.__digests.length - at;
+            at = window.__digests.length;
+            box('c-row1').click();
+            await sleep(120);
+            const third = window.__digests.length - at;
+            return {second, third};
+        });
+
+    T('K8 a select-all box (indeterminate) clicked right after the rows, on a slow page: the page follows after the next frame (its rows came 400 ms to 1 s late)',
+        {rowHeld: 0, selectAll: 1},
+        async () => {
+            apply(s => { s.heavy = true; });
+            await sleep(1100);
+            box('c-row1').click();
+            await sleep(400);
+            const at = window.__digests.length;
+            box('c-row2').click();
+            await sleep(120);
+            const rowHeld = window.__digests.length - at;
+            const before = window.__digests.length;
+            box('c-all').click();
+            await sleep(300);
+            const selectAll = Math.min(1, window.__digests.length - before);
+            apply(s => { s.heavy = false; s.m.all = false; s.m.part = true; });
+            await sleep(1200);
+            return {rowHeld, selectAll};
         });
 
     T('K3 the box changes at once and never moves (no colour fade: one on the main thread froze near white under a long digest of the page; no press scale); the check only fades in',

@@ -19,6 +19,11 @@
         .cb-value { margin: 8px 0 0; font: 12px/1.5 ui-monospace, Consolas, monospace; color: #475569; }
         .cb-log { max-height: 160px; overflow: auto; font: 12px/1.6 ui-monospace, Consolas, monospace; color: #334155;
                   background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 10px; }
+        /* a phone: the two tables one under the other (side by side they overlapped), the form in one column */
+        @media (max-width: 720px) {
+            .cb-tables { grid-template-columns: minmax(0, 1fr); }
+            .cb-form { grid-template-columns: minmax(0, 1fr); }
+        }
     </style>
     <script src="../../vendor/jquery.min.js"></script>
     <script src="../../vendor/angular.js"></script>

@@ -35,4 +35,13 @@ angular.module('auiTest', ['aui'])
         $scope.letters = [{label: 'A', value: 'a'}, {label: 'B', value: 'b'}, {label: 'C', value: 'c'}, {label: 'D', value: 'd'}];
         $scope.flags = {groupOff: false};
         $scope.layout = {name: 'row', columns: 3};
+        // a slow page: while heavy, each pass of the page's digest takes 70 ms (a large page)
+        $scope.heavy = false;
+        $scope.$watch(function () {
+            if ($scope.heavy) {
+                const until = performance.now() + 70;
+                while (performance.now() < until) { /* the page's own work */ }
+            }
+            return 0;
+        });
     }]);
