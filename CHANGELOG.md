@@ -23,6 +23,7 @@ All notable changes to this project are documented here. The format follows
 
 - The package description and the README name the AngularJS version the library is made and tested for: 1.5.3
   (they said 1.5+).
+- `aui-button` guide: how to give the buttons a dark surface's colours.
 - `aui-modal`: `aria-describedby` describes the dialog itself; the header and footer slots take the height they need
   (they were cut at 80px and 100px).
 - AuiMessageBox: a box with neither button shows its OK (it could not be closed); without a title it is named by its
@@ -58,6 +59,21 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `aui-button`: an icon alone whose label shows nothing (an empty `{{ }}`, an empty styled span) has its icon in the
+  middle (it sat 2.5 to 4.5px aside); a text hidden by the page's own CSS (a class, an inline style, a narrow-screen
+  rule) leaves an icon alone, square and named by its icon (it was a wide, unnamed button), and the text shown again
+  a text button.
+- `aui-button`: a page rule such as `.toolbar span { display: inline-block }` no longer takes its icon and text out of
+  their row.
+- `aui-button`: a loading text shorter than the label keeps the button's width (in a content-sized button it shrank and
+  moved its neighbours); a block button still never grows past its place.
+- `aui-button` elevated: keyboard focus under the pointer keeps its focus ring, hovered and pressed.
+- `aui-button`: the space between two words written in markup (`<b>Save</b> <em>draft</em>`) is kept, shown and read.
+- `aui-button`: `copy-feedback="none"` holds no room for a `done-text` that never shows.
+- `aui-button`: buttons that start loading together no longer lay the page out once each (96 buttons: one layout).
+- `aui-button`: a disclosure does not write its unchanged `data-expand` again at each drawing.
+- `aui-button`: in a row aligned by the text's baseline, a button with an icon or a spinner before its text sits on the
+  line of the others (it was about 3px higher).
 - `aui-select`, `aui-tree-select`: the value text sits on the same line as an input's in a form row (it could be up to
   2 device pixels apart at 125% display scaling).
 - `aui-modal`: no one-row step at the end of the opening animation (seen at 125% scaling and at odd window heights).

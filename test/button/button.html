@@ -12,6 +12,14 @@
         /* a page's general span rules (padding, size, weight, colour) */
         .hostile span { padding: 0 10px; font-size: 20px; font-weight: 700; color: red; line-height: 30px; }
         .accent-green { --aui-control-accent-color: #198754; }
+        /* the 2026-11-24 retest: a page's span display rule, text hidden by the page's CSS, a centred footer, a row
+           lined up by the text's baseline */
+        .span-display span { display: inline-block; }
+        .page-hidden { display: none; }
+        .page-styled { padding: 0 6px; }
+        .r-words-off .r-words { display: none; }
+        .r-footer { display: flex; justify-content: center; gap: 8px; width: 600px; }
+        .r-base { display: flex; align-items: baseline; gap: 8px; margin: 8px 0; }
     </style>
     <link rel="stylesheet" href="../../dist/aui-components.css"/>
     <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
@@ -130,6 +138,25 @@
 <div style="width: 90px">
     <aui-button id="b-narrow" block="true">A label far longer than its place</aui-button>
 </div>
+
+<div class="row" id="retest-1124">
+    <aui-button id="r-empty-dyn" icon="add">{{ state.none }}</aui-button>
+    <aui-button id="r-empty-styled" icon="add" size="lg"><span class="page-styled">{{ state.none }}</span></aui-button>
+    <aui-button id="r-empty-plain" icon="add"></aui-button>
+    <aui-button id="r-words"><b>Save</b> <em>draft</em></aui-button>
+    <aui-button id="r-words-spans"><span>Save</span> <span>draft</span></aui-button>
+    <aui-button id="r-css-hidden" icon="download"><span class="page-hidden">Download file</span></aui-button>
+    <aui-button id="r-inline-hidden" icon="download"><span style="display: none">Download file</span></aui-button>
+    <span id="r-words-box"><aui-button id="r-narrow" icon="download"><span class="r-words">Download file</span></aui-button></span>
+    <aui-button id="r-silent" copy-text="x" copy-feedback="none" done-text="Saved in current workspace">Copy</aui-button>
+    <aui-button id="r-silent-plain" copy-text="x" copy-feedback="none">Copy</aui-button>
+    <aui-button id="r-disc" expanded="state.discOpen" title="{{ state.discTitle }}">Rows</aui-button>
+</div>
+<div class="span-display" style="width: 220px"><aui-button id="r-span-rule" block="true" icon="add">Label</aui-button></div>
+<div style="width: 220px"><aui-button id="r-span-clean" block="true" icon="add">Label</aui-button></div>
+<div class="r-footer"><aui-button id="r-short" loading="state.short" loading-text="OK">Approve settlement</aui-button><aui-button id="r-short-next" variant="outline">Cancel</aui-button></div>
+<div id="r-batch"><aui-button ng-repeat="b in batch track by $index" icon="add" loading="state.batch" loading-text="Saving item {{ $index }}...">Save {{ $index }}</aui-button></div>
+<div class="r-base"><aui-button id="r-base-plain">Review</aui-button><aui-button id="r-base-icon" icon="add">Review</aui-button><aui-button id="r-base-spin" loading="state.baseSpin" loading-text="Review">Review</aui-button><aui-button id="r-base-alone" icon="add"></aui-button><aui-button id="r-base-end" icon="add" icon-position="right">Review</aui-button></div>
 
 <div id="many" style="display: none"><aui-button ng-repeat="b in many track by $index" variant="outline" size="sm">B</aui-button></div>
 </body>

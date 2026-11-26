@@ -15,6 +15,9 @@ angular.module('auiTest', ['aui'])
         $scope.log = [];
         $scope.state = {off: true, loading: false, submitting: false, lt: false};
         $scope.many = new Array(100);
+        // the 2026-11-24 retest: 24 buttons that start loading together; an empty {{ }} label; a disclosure's title
+        $scope.batch = new Array(24);
+        angular.extend($scope.state, {none: '', short: false, batch: false, baseSpin: false, discOpen: false, discTitle: 't0'});
         $scope.note = function (what) { $scope.log.push(what); };
         // on-click: a save that takes 300 ms
         // expanded: rows' variant lists; loadVariants answers after 150 ms (fails while variantFails)

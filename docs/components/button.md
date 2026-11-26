@@ -21,20 +21,24 @@ a class on `<aui-button>` works. Drawn without watchers.
 | `type` | `button` (default: it never submits a form by itself), `submit`, `reset`. A `submit` button's form is sent by the browser at the click, as a native button's: it does not wait for `on-click`'s promise (a save that must finish first is started from `on-click` on a `button`, or from the form's `ng-submit`). |
 | `icon` | An icon by name: `add`, `edit`, `pencil`, `square-pen`, `delete`, `copy`, `check`, `close`, `circle-check`, `circle-close`, `search`, `refresh`, `download`, `upload`, `filter`, `settings`, `more`, `info`, `help` (the same line icons as aui-popover's trigger). Or the classes of an icon font: `icon="fa fa-plus"`. |
 | `icon-position` | `right` (or `end`): after the text. Default: before it. |
-| `aria-label`, `title` | The button's name and tooltip (set on the native button). An icon alone without them is named, and has its tooltip, by the icon's name (`auiTexts.icons`); with only a `title`, the title names it. A label that shows nothing (an empty `{{ }}`, an empty styled `<span>`, a text hidden by `ng-show`) leaves an icon alone, named so. |
+| `aria-label`, `title` | The button's name and tooltip (set on the native button). An icon alone without them is named, and has its tooltip, by the icon's name (`auiTexts.icons`); with only a `title`, the title names it. A label that shows nothing (an empty `{{ }}`, an empty styled `<span>`, a text hidden by `ng-show`, `[hidden]` or the page's own CSS - a class, an inline style, a rule for narrow screens) leaves an icon alone, named so and square, its icon in the middle; when the text shows again it is a text button again. |
 | `aria-labelledby`, `aria-describedby`, `aria-haspopup`, `aria-pressed`, `tabindex` | Moved onto the native button (written with `{{ }}` or `ng-attr-` too, also when they start out unset), where they act: a name from text elsewhere on the page, a description, a menu button, a toggle button, a toolbar's tab order. |
 | `disabled` | The native disabled button (a bare `disabled` counts too, and `ng-disabled` on the element). It keeps the pointer: its "not allowed" cursor and its tooltip show, and a click on it reaches nothing behind it (a clickable row). |
 | `loading` | Its spinner over the icon (or over the text, hidden meanwhile): the width stays. It keeps the focus and its name, and takes no click (`aria-disabled`, `aria-busy`): not ng-click, not a form's submit, not a row behind it. |
-| `loading-text` | A text for the time it loads, e.g. `loading-text="Saving..."`: meanwhile the spinner (at the icon, or before the text) and this text in place of the label, with `loading` or with `on-click`'s promise (no page flag or `{{ }}` switch needed). The width never shrinks meanwhile; a longer text widens it. An icon alone keeps its square (no text). Without it: as `loading`. |
+| `loading-text` | A text for the time it loads, e.g. `loading-text="Saving..."`: meanwhile the spinner (at the icon, or before the text) and this text in place of the label, with `loading` or with `on-click`'s promise (no page flag or `{{ }}` switch needed). The width never shrinks meanwhile (a shorter text, `OK` for `Approve settlement`, keeps the button as wide as before, so nothing beside it moves); a longer text widens it; a `block` button never grows past its place. An icon alone keeps its square (no text). Without it: as `loading`. |
 | `expanded` | A button that opens and closes something, e.g. a row's list of variants: `expanded="row.variantsOpen"`. The chevron points right while closed and turns down when open (as aui-tree-select's rows); `aria-expanded`. A click flips the value itself; `on-click` gets `$expanded` (the state asked for), and a promise it returns (the variants from the server) shows the spinner in the chevron's place and opens only once it resolves (on a failure it stays closed: the page says why). The page may set the value too (expand all). An expression that cannot be written to only shows the state. An icon alone is named Expand / Collapse; with text, the chevron comes before it. Usually `variant="ghost" intent="neutral" size="sm"`. |
 | `controls` | With `expanded`: the id of what it opens (`aria-controls`). |
 | `expand-icon` | With `expanded`, its look: `chevron` (the default: before the text, right turning down, as aui-tree-select), `show-more` (after the text, down turning up: more shown right below), `show-more-double` (as `show-more`, with two chevrons: more of a whole section), `caret` (a filled triangle, right turning down), `plus` (a box with a plus that becomes a minus; no turn). |
 | `on-click` | Called with `$event`. A promise it returns (`$q`'s or the browser's own) keeps the button loading until it settles: no second click, no double submit. `ng-click` on the element works too (and gets no click while disabled or loading). |
 | `copy-text` | A click copies this text to the clipboard, then for a moment shows "Copied" in place of its text, and with an icon a ring with a check that draws itself in, in place of the icon ("Copy failed" and a ring with a cross when the browser refused), read out to screen readers. After several quick clicks the latest copy's outcome shows. The button keeps its width for either text. See [copy buttons](#copy-buttons). |
-| `copy-feedback` | `none`: `copy-text` copies, and the button's look and name stay as they are (the page confirms in its own way). |
+| `copy-feedback` | `none`: `copy-text` copies, and the button's look and name stay as they are (the page confirms in its own way); no room is held for a `done-text` then. |
 | `on-copy` | After every copy: `$success` (`true` or `false`) and `$text`. |
 | `done-text` | After `on-click`'s promise resolves, this text for a moment (`done-text="Saved"`), and on a button with an icon the drawn check in place of the icon. A new click ends it at once (a failed retry never shows the earlier success). Without it nothing changes after a click. |
 | `done-duration` | How long the feedback shows, in ms: 2000 by default, held between 300 and 10000. |
+
+Words written in markup keep the space between them (`<b>Save</b> <em>draft</em>` reads "Save draft"). In a row that
+aligns its items by their text (`align-items: baseline`) every button sits on the text's line, with or without an icon
+or a spinner before its text.
 
 The space between buttons is the page's layout (the button has no margin of its own). Leave at least 6px between
 small icon buttons (`xs`, `link`) placed side by side, so that their centres stay 24px apart at every supported text
@@ -83,4 +87,15 @@ The text is in the page's own font. Hover and press change colour at once (a col
 frame) and nothing moves: no press scale, no hover lift (either redrew the text and the icon at a fractional size, and
 the icon hopped about a pixel against its text). The keyboard's focus shows a 2px ring in the accent around a 2px gap,
 on every variant and intent (in high contrast mode an outline in the system's highlight colour). A page's span rules (padding,
-size, weight, colour) do not reach its text.
+size, weight, colour, display) do not reach its text and its parts.
+
+The colours are made for light surfaces. On a dark surface of the page, the variants without a fill of their own
+(`ghost`, `link`, and the text of `outline`, `dashed` and `soft`) would keep their dark text: give them the
+surface's colours on a container, for example
+
+```css
+.dark-panel .aui-button[data-intent] { --aui-button-fg: #e2e8f0; --aui-button-soft: rgba(255, 255, 255, 0.08); --aui-button-soft-hover: rgba(255, 255, 255, 0.14); }
+```
+
+(the attribute makes the rule as strong as the intents' own), and check each variant you use there against the
+surface (4.5:1 for the text): the neutral ones set some of their greys directly and may need a rule of their own.

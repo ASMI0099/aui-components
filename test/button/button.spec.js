@@ -767,5 +767,137 @@
             return {fits};
         });
 
+    // ------------------------------------------------------------------ the 2026-11-24 retest
+    const cx = el => { const r = rect(el); return r.left + r.width / 2; };
+
+    T('B47 an icon alone whose label shows nothing (an empty {{ }}, an empty styled span): the icon in the middle of its square, as with no label at all',
+        {dyn: {dx: 0, square: true, name: 'Add'}, styled: {dx: 0, square: true, name: 'Add'}, plain: {dx: 0, square: true, name: 'Add'}},
+        async () => {
+            await AuiTest.frames(2);
+            const look = id => { const b = btn(id); return {dx: Math.round((cx(b.querySelector('svg')) - cx(b)) * 100) / 100,
+                square: near(rect(b).width, rect(b).height, 0.5), name: b.getAttribute('aria-label')}; };
+            return {dyn: look('r-empty-dyn'), styled: look('r-empty-styled'), plain: look('r-empty-plain')};
+        });
+
+    T('B48 a page rule span { display: inline-block } around a button: its icon and text keep their row (in the middle, the gap), as without the rule',
+        {display: 'flex', same: true},
+        async () => {
+            const parts = id => { const b = btn(id), r = rect(b); return ['.aui-button__icon', '.aui-button__label'].map(sel => {
+                const x = rect(b.querySelector(sel)); return [x.left - r.left, x.top - r.top, x.width, x.height].map(v => Math.round(v * 100) / 100).join(','); }).join(' '); };
+            return {display: getComputedStyle(btn('r-span-rule').querySelector('.aui-button__inner')).display,
+                same: parts('r-span-rule') === parts('r-span-clean')};
+        });
+
+    T('B49 a loading text shorter than the label ("OK" for "Approve settlement") in a centred footer: the button keeps its width, its neighbour stays',
+        {width: true, neighbour: true, after: true},
+        async () => {
+            const w0 = rect(btn('r-short')).width, n0 = rect(btn('r-short-next')).left;
+            apply(s => { s.state.short = true; });
+            await AuiTest.frames(2);
+            const out = {width: near(rect(btn('r-short')).width, w0, 0.5), neighbour: near(rect(btn('r-short-next')).left, n0, 0.5)};
+            apply(s => { s.state.short = false; });
+            await AuiTest.frames(2);
+            out.after = near(rect(btn('r-short')).width, w0, 0.5) && btn('r-short').style.minWidth === '';
+            return out;
+        });
+
+    T('B50 elevated, focused by the keyboard under the pointer: its hover and its pressed shadow keep the focus ring (a stronger rule for each, with the ring)',
+        {hover: true, active: true},
+        async () => {
+            const ringRule = state => {
+                for (const sheet of document.styleSheets) {
+                    let rules; try { rules = sheet.cssRules; } catch (e) { continue; }
+                    for (const r of rules) if (r.selectorText && r.selectorText.indexOf('[data-variant="elevated"]:focus-visible:' + state) >= 0 &&
+                        r.style.getPropertyValue('box-shadow').indexOf('--aui-button-focus-ring') >= 0) return true;
+                }
+                return false;
+            };
+            return {hover: ringRule('hover'), active: ringRule('active')};
+        });
+
+    T('B51 two words written in markup (<b>Save</b> <em>draft</em>, two spans): the space between them is kept - shown and read',
+        {b: 'Save draft', spans: 'Save draft'},
+        async () => ({b: btn('r-words').querySelector('.aui-button__label').textContent, spans: btn('r-words-spans').querySelector('.aui-button__label').textContent}));
+
+    T('B52 a text hidden by the page\'s CSS (a class, an inline style): an icon alone, named by its icon; a page class that hides and shows the words on the way: the same, then a text button again (no observer error)',
+        {css: {alone: true, name: 'Download'}, inline: {alone: true, name: 'Download'}, hidden: {alone: true, name: 'Download'}, shown: {alone: false, name: null}, errors: []},
+        async () => {
+            const errors = [];
+            const onError = e => { errors.push(String(e.message)); };
+            window.addEventListener('error', onError);
+            try {
+                const look = id => ({alone: btn(id).classList.contains('aui-button--icon-only'), name: btn(id).getAttribute('aria-label')});
+                const out = {css: look('r-css-hidden'), inline: look('r-inline-hidden')};
+                host('r-words-box').classList.add('r-words-off');
+                await until(() => btn('r-narrow').classList.contains('aui-button--icon-only'), 1000);
+                out.hidden = look('r-narrow');
+                host('r-words-box').classList.remove('r-words-off');
+                await until(() => !btn('r-narrow').classList.contains('aui-button--icon-only'), 1000);
+                await AuiTest.frames(2);
+                out.shown = look('r-narrow');
+                out.errors = errors;
+                return out;
+            } finally {
+                window.removeEventListener('error', onError);
+            }
+        });
+
+    T('B53 copy-feedback="none" with a done-text: no room held for a text that never shows (as wide as the same button without it)',
+        {same: true},
+        async () => ({same: near(rect(btn('r-silent')).width, rect(btn('r-silent-plain')).width, 0.5)}));
+
+    T('B54 24 buttons that start loading in one digest: no size read per button (the width from their last layout), none narrower',
+        {reads: 0, kept: true},
+        async () => {
+            const buttons = Array.prototype.slice.call(host('r-batch').querySelectorAll('button'));
+            const before = buttons.map(b => rect(b).width);
+            const own = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth');
+            let reads = 0;
+            Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {configurable: true, get: function () {
+                if (this.classList && this.classList.contains('aui-button') && host('r-batch').contains(this)) reads += 1;
+                return own.get.call(this);
+            }});
+            try {
+                apply(s => { s.state.batch = true; });
+            } finally {
+                Object.defineProperty(HTMLElement.prototype, 'offsetWidth', own);
+            }
+            await AuiTest.frames(2);
+            // (never narrower: a longer loading text widens it)
+            const kept = buttons.every((b, i) => rect(b).width >= before[i] - 0.5);
+            apply(s => { s.state.batch = false; });
+            await AuiTest.frames(2);
+            return {reads, kept};
+        });
+
+    T('B55 a disclosure drawn again (its title changed 12 times): its icon\'s data-expand is not written again; opened, it still turns',
+        {writes: 0, expanded: 'true'},
+        async () => {
+            const box = btn('r-disc').querySelector('.aui-button__icon');
+            let writes = 0;
+            const watch = new MutationObserver(list => { list.forEach(m => { if (m.attributeName === 'data-expand') writes += 1; }); });
+            watch.observe(box, {attributes: true});
+            for (let i = 1; i <= 12; i++) apply(s => { s.state.discTitle = 't' + i; });
+            await sleep(20);
+            watch.disconnect();
+            apply(s => { s.state.discOpen = true; });
+            const expanded = btn('r-disc').getAttribute('aria-expanded');
+            apply(s => { s.state.discOpen = false; });
+            return {writes, expanded};
+        });
+
+    T('B56 a row lined up by the text\'s baseline: a button with an icon before its text, an icon alone and a leading spinner sit on the line of a plain one',
+        {icon: true, alone: true, end: true, spinner: true},
+        async () => {
+            const top = id => rect(btn(id)).top;
+            const p = top('r-base-plain');
+            const out = {icon: near(top('r-base-icon'), p, 0.1), alone: near(top('r-base-alone'), p, 0.1), end: near(top('r-base-end'), p, 0.1)};
+            apply(s => { s.state.baseSpin = true; });
+            await AuiTest.frames(2);
+            out.spinner = near(top('r-base-spin'), p, 0.1);
+            apply(s => { s.state.baseSpin = false; });
+            return out;
+        });
+
     AuiTest.run('aui-* family: aui-button', tests);
 })();

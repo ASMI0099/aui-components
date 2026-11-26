@@ -1042,6 +1042,14 @@ aui-button {
 .aui-button[data-variant="elevated"]:focus-visible {
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), var(--aui-button-focus-ring) !important;
 }
+/* focused by the keyboard under the pointer: its hover / pressed shadow with the focus ring (the hover's shadow, the
+   stronger rule, took the ring away: a keyboard user lost the focus) */
+.aui-button[data-variant="elevated"]:focus-visible:hover:not(:disabled):not([aria-disabled="true"]) {
+    box-shadow: 0 3px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px rgba(15, 23, 42, 0.08), var(--aui-button-focus-ring) !important;
+}
+.aui-button[data-variant="elevated"]:focus-visible:active:not(:disabled):not([aria-disabled="true"]) {
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08), var(--aui-button-focus-ring) !important;
+}
 
 .aui-button[data-variant="dashed"] {
     background: var(--aui-button-gray-0);
@@ -1088,28 +1096,38 @@ aui-button {
     vertical-align: baseline !important;
 }
 
+/* its layout held against a page's span rules too (.toolbar span { display: inline-block } took the row apart: the
+   icon and the text rose 6.5px and lost their gap) */
 .aui-button__inner {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--aui-button-gap);
-    width: 100%;
-    min-width: 0;
-    height: 100%;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: var(--aui-button-gap) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 100% !important;
     pointer-events: none;
 }
 
 /* the text: one line, cut with an ellipsis when its place is narrower */
 .aui-button__label {
-    display: block;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    line-height: normal;
+    display: block !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    line-height: normal !important;
 }
 .aui-button__label:empty {
-    display: none;
+    display: none !important;
+}
+/* an icon alone whose label has nothing to show (a {{ }} left empty, an empty span, a text the page hides): the label
+   out of the row, so that no gap is held for it and the icon is in the middle (it stayed in the row and pulled the
+   icon 2.5 to 4.5px aside); laid out still, so that the button notices when its text shows again */
+.aui-button--icon-only .aui-button__label:not(.aui-button__label--loading) {
+    position: absolute !important;
+    top: 0;
+    left: 0;
 }
 
 .aui-button__icon {
@@ -1119,6 +1137,20 @@ aui-button {
     align-items: center;
     justify-content: center;
     line-height: 1;
+}
+/* the icon's box gives the text's baseline (an empty line of the text's font and line height, in its middle as the
+   text is in the button's): a row that lines its buttons up by their text (align-items: baseline) keeps a button with
+   an icon - or its spinner - before the text on the line of the others (it took the icon's bottom edge and sat 3.25px
+   higher). The icon stays in the box's middle, and the box keeps its size: the line takes no room (its half above and
+   below given back; a browser without the lh unit grows the box to the text's line, an icon alone link 1px taller). */
+.aui-button__icon::before {
+    content: '\200b' !important;
+    display: block !important;
+    width: 0 !important;
+    margin: -0.5lh 0 !important;
+    font-family: inherit !important;
+    font-size: inherit !important;
+    line-height: normal !important;
 }
 .aui-button__icon > i {
     font-size: 1.17em;
@@ -1309,7 +1341,7 @@ aui-button {
     height: 1.25em;
 }
 .aui-button--loading-text .aui-button__label:not(.aui-button__label--loading) {
-    display: none;
+    display: none !important;
 }
 
 @keyframes aui-button-spin {

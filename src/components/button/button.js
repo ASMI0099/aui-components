@@ -3,6 +3,41 @@
  */
 angular.module('aui')
     /**
+     * The buttons' sizes, followed by one ResizeObserver for all of them: watch(el, fn) calls fn(width) after each
+     * layout that changed el's box (its border-box width, untransformed: the browser's layout is done then, reading it
+     * costs nothing); unwatch(el). fn only reads: a change of a box there would be a loop of the observer (the browser
+     * reports it as an error of the page). Without ResizeObserver (older browsers) nothing is called.
+     */
+    .factory('auiButtonSizes', [function () {
+        // (by element, weakly: a button taken off the page without its scope's end holds nothing here)
+        const callbacks = new WeakMap();
+        let observer = null;
+        return {
+            watch: function (el, fn) {
+                if (typeof window.ResizeObserver !== 'function' || !el) return;
+                if (!observer) {
+                    observer = new window.ResizeObserver(function (entries) {
+                        entries.forEach(function (entry) {
+                            const fn2 = callbacks.get(entry.target);
+                            if (!fn2) return;
+                            const box = entry.borderBoxSize;
+                            const size = box && (box[0] || box);
+                            fn2(size && typeof size.inlineSize === 'number' ? size.inlineSize : entry.target.offsetWidth);
+                        });
+                    });
+                }
+                callbacks.set(el, fn);
+                observer.observe(el);
+            },
+            unwatch: function (el) {
+                if (!observer || !el || !callbacks.has(el)) return;
+                callbacks.delete(el);
+                observer.unobserve(el);
+            }
+        };
+    }])
+
+    /**
      * aui-button: the family's button (a native <button> inside; the element itself is its place on the page: a
      * margin, a width or a class of the page work on it).
      * - variant: solid (default), soft, outline, elevated, dashed, ghost, link; intent: brand (default, the family's
@@ -69,8 +104,8 @@ angular.module('aui')
             doneDuration: '@?'
         },
         template: '<button class="aui-button"><span class="aui-button__inner"><span class="aui-button__label" ng-transclude></span></span></button>',
-        controller: ['$element', '$scope', '$attrs', '$parse', '$q', '$exceptionHandler', 'auiControlKit', 'auiTexts', 'auiIcons',
-            function ($element, $scope, $attrs, $parse, $q, $exceptionHandler, kit, texts, icons) {
+        controller: ['$element', '$scope', '$attrs', '$parse', '$q', '$exceptionHandler', 'auiControlKit', 'auiTexts', 'auiIcons', 'auiButtonSizes',
+            function ($element, $scope, $attrs, $parse, $q, $exceptionHandler, kit, texts, icons, sizes) {
                 const $ctrl = this;
                 const VARIANTS = ['solid', 'soft', 'outline', 'elevated', 'dashed', 'ghost', 'link'];
                 const INTENTS = ['neutral', 'brand', 'success', 'warning', 'danger'];
@@ -98,6 +133,8 @@ angular.module('aui')
                 let announced = 0;       // the feedback read out so far (only the latest one's text is read)
                 let labelShown = null;   // the label had something to show at the last drawing
                 let labelWatch = null;   // follows the label's text (a {{ }} in it can become empty, or come back)
+                let lastWidth = 0;       // the button's width at its last layout (auiButtonSizes): 0 not known yet
+                let labelFrame = 0;      // a check of the label on the next frame, asked by a change of the button's size
                 // expanded: a disclosure button; the page's value written through its expression (null: not writable)
                 const disclosure = $attrs.expanded !== undefined;
                 const writeExpanded = disclosure ? ($parse($attrs.expanded).assign || null) : null;
@@ -113,10 +150,17 @@ angular.module('aui')
                     label = inner.firstElementChild;
                     // a text of nothing but spaces and line breaks (an icon written over lines) leaves no label; the
                     // <span> Angular wraps a text in (no attribute but its ng- classes) is marked: a page's span rules are
-                    // kept off it (a span of the page's own keeps them)
-                    Array.prototype.slice.call(label.childNodes).forEach(function (node) {
-                        if (node.nodeType === 3 && !node.nodeValue.trim()) label.removeChild(node);
-                        else if (node.nodeName === 'SPAN' && Array.prototype.every.call(node.attributes, function (a) {
+                    // kept off it (a span of the page's own keeps them). A space between two words written in markup
+                    // (<b>Save</b> <em>draft</em>) is the space between them: kept, one space (it was taken out with the
+                    // others, and the button read "Savedraft"); the spaces at the label's ends and beside an icon go.
+                    const nodes = Array.prototype.slice.call(label.childNodes);
+                    const worded = node => !!node && ((node.nodeType === 3 && !!node.nodeValue.trim()) ||
+                        (node.nodeType === 1 && !!String(node.textContent || '').trim()));
+                    nodes.forEach(function (node, i) {
+                        if (node.nodeType === 3 && !node.nodeValue.trim()) {
+                            if (worded(nodes[i - 1]) && worded(nodes[i + 1])) node.nodeValue = ' ';
+                            else label.removeChild(node);
+                        } else if (node.nodeName === 'SPAN' && Array.prototype.every.call(node.attributes, function (a) {
                             return a.name === 'class' && /^\s*(ng-[\w-]+\s*)*$/.test(a.value);
                         })) node.classList.add('aui-button__text');
                     });
@@ -125,14 +169,30 @@ angular.module('aui')
                     // again when it starts or stops having something to show (an icon with an empty label is an icon alone)
                     if (typeof MutationObserver === 'function') {
                         labelWatch = new MutationObserver(function () {
-                            if (hasLabel() !== labelShown) render();
+                            if (destroyed) return;
+                            const shown = hasLabel();
+                            if (shown !== labelShown) {
+                                labelShown = shown;
+                                render();
+                            }
                         });
-                        // (ng-show / ng-hide and [hidden] inside it too: a text hidden there shows nothing)
+                        // (ng-show / ng-hide, [hidden] and an inline style inside it too: a text hidden there shows nothing)
                         labelWatch.observe(label, {childList: true, characterData: true, subtree: true,
-                            attributes: true, attributeFilter: ['class', 'hidden']});
+                            attributes: true, attributeFilter: ['class', 'hidden', 'style']});
                     }
+                    // after each layout that changed the button's box: its width (the one a loading text holds; read
+                    // at that moment, a page whose buttons started loading at once laid itself out once per button);
+                    // after one that changed the button's or the label's box: whether the label still shows - the
+                    // page's own CSS can hide or show its words without a change in it (a toolbar that hides them on a
+                    // narrow screen; a block button keeps its width then, its label does not)
+                    sizes.watch(button, function (width) {
+                        lastWidth = width;
+                        checkLabelSoon();
+                    });
+                    sizes.watch(label, checkLabelSoon);
                     button.addEventListener('click', onClick);
                     kit.followNgFlags($attrs, render);
+                    labelShown = hasLabel();
                     render();
                 };
 
@@ -144,6 +204,9 @@ angular.module('aui')
                     destroyed = true;
                     clearTimeout(feedbackTimer);
                     if (labelWatch) labelWatch.disconnect();
+                    if (labelFrame) window.cancelAnimationFrame(labelFrame);
+                    sizes.unwatch(button);
+                    sizes.unwatch(label);
                     if (button) button.removeEventListener('click', onClick);
                 };
 
@@ -162,21 +225,49 @@ angular.module('aui')
 
                 /**
                  * The label has something to show: a text (not only spaces), or a picture (an image, a drawing, an icon
-                 * font's element) - not inside a part the page hides (ng-show / ng-hide, [hidden]). An element of the
-                 * page's own counts by what it holds: a styled <span> left empty by its {{ }} is nothing, and an icon
-                 * with nothing else is an icon alone, named by its icon.
+                 * font's element) - not inside a part the page hides (ng-show / ng-hide, [hidden], or its own CSS: a
+                 * class or an inline style with display: none / visibility: hidden - an icon with such a text was left
+                 * a wide, unnamed button). An element of the page's own counts by what it holds: a styled <span> left
+                 * empty by its {{ }} is nothing, and an icon with nothing else is an icon alone, named by its icon.
+                 * Asked when the label changes and after a change of the button's size, not at each drawing (the page's
+                 * styles read for it would be worked out again for each button of a page drawn at once).
                  */
                 function hasLabel() {
-                    return shows(label);
+                    // hidden all together (a page's part hidden with visibility while it gets ready): nothing of its
+                    // own counts as hidden then (it shows when the part shows, without a change of the button's size)
+                    const look = window.getComputedStyle(label);
+                    return shows(label, look.visibility === 'hidden');
                 }
 
-                function shows(node) {
+                /**
+                 * Inside the observer of sizes (the layout done: the label's look costs nothing to read): when the label
+                 * starts or stops showing, drawn again on the next frame - drawn inside the observer, the button's new
+                 * size would be a loop of the observer (an error of the page).
+                 */
+                function checkLabelSoon() {
+                    if (destroyed || labelFrame || hasLabel() === labelShown) return;
+                    labelFrame = window.requestAnimationFrame(function () {
+                        labelFrame = 0;
+                        if (destroyed) return;
+                        const shown = hasLabel();
+                        if (shown !== labelShown) {
+                            labelShown = shown;
+                            render();
+                        }
+                    });
+                }
+
+                function shows(node, allHidden) {
                     for (let child = node.firstChild; child; child = child.nextSibling) {
                         if (child.nodeType === 3) {
                             if (child.nodeValue.trim()) return true;
                         } else if (child.nodeType === 1) {
                             if (child.classList.contains('ng-hide') || child.hasAttribute('hidden')) continue;
-                            if (/^(img|svg|i|canvas|picture|video|object)$/i.test(child.nodeName) || shows(child)) return true;
+                            if (!/^(img|svg|i|canvas|picture|video|object)$/i.test(child.nodeName) && !shows(child, allHidden)) continue;
+                            // something to show in it: shown unless the page's CSS hides it (looked at only then)
+                            const look = window.getComputedStyle(child);
+                            if (look.display === 'none' || (!allHidden && look.visibility === 'hidden')) continue;
+                            return true;
                         }
                     }
                     return false;
@@ -206,7 +297,8 @@ angular.module('aui')
                     const shownFeedback = loading ? '' : feedback;
                     set('data-feedback', shownFeedback || null);
                     drawIcon(shownFeedback);
-                    labelShown = hasLabel();
+                    // (followed by the label's observer; a browser without one asks at each drawing)
+                    if (!labelWatch) labelShown = hasLabel();
                     // copy-text / done-text on a text button: the room of the feedback's texts ("Copied" and, for a copy,
                     // "Copy failed") held from the start, so that the button keeps its width whichever shows (setRoom)
                     const room = labelShown && feedbackOn() ? feedbackText('done') : '';
@@ -220,10 +312,15 @@ angular.module('aui')
                     const swapText = !labelShown ? '' :
                         (loading && loadingText ? loadingText : (shownFeedback ? feedbackText(shownFeedback) : ''));
                     const withText = !!swapText;
-                    // (held as the least, but never more than its place: a block button whose place narrows meanwhile
-                    // narrows with it; a browser without min() holds nothing)
-                    if (withText && !textShown) button.style.minWidth = 'min(' + button.offsetWidth + 'px, 100%)';
-                    else if (!withText && textShown) button.style.minWidth = '';
+                    // held as the least: a button as wide as its text keeps its width in pixels (in min(.., 100%) the
+                    // percentage is of a place its own width makes, and it shrank: "Approve settlement" with "OK" lost
+                    // 82px, its neighbours moved); a block button never more than its place (whose place narrows
+                    // meanwhile narrows with it; a browser without min() holds nothing). The width is the one kept after
+                    // the last layout (read here, each button of a page that starts loading at once laid the page out)
+                    if (withText && !textShown) {
+                        const width = lastWidth || button.offsetWidth;
+                        button.style.minWidth = block ? 'min(' + width + 'px, 100%)' : width + 'px';
+                    } else if (!withText && textShown) button.style.minWidth = '';
                     textShown = withText;
                     showLoadingText(swapText, loading);
                     // the spinner over the icon, or over the text (hidden meanwhile): the width stays
@@ -374,8 +471,12 @@ angular.module('aui')
                             !!(side & (after ? Node.DOCUMENT_POSITION_FOLLOWING : Node.DOCUMENT_POSITION_PRECEDING));
                         if (!placed) inner.insertBefore(iconBox, after ? label.nextSibling : label);
                         iconBox.classList.toggle('aui-button__icon--disclosure', turning());
-                        if (turning()) iconBox.setAttribute('data-expand', expandLook());
-                        else iconBox.removeAttribute('data-expand');
+                        // written only when it changes (each drawing wrote it again, for the page's observers to read)
+                        const look = turning() ? expandLook() : null;
+                        if (look !== iconBox.getAttribute('data-expand')) {
+                            if (look) iconBox.setAttribute('data-expand', look);
+                            else iconBox.removeAttribute('data-expand');
+                        }
                     }
                 }
 
@@ -429,8 +530,11 @@ angular.module('aui')
 
                 // ------------------------------------------------------------------ copy-text, done-text
 
+                // a feedback that shows: a copy's outcome unless copy-feedback="none" (its done-text never shows then: no
+                // room held for it - a silent Copy was as wide as its done-text); done-text after on-click's promise
                 function feedbackOn() {
-                    return ($attrs.copyText !== undefined && toToken($ctrl.copyFeedback) !== 'none') || $attrs.doneText !== undefined;
+                    if ($attrs.copyText !== undefined) return toToken($ctrl.copyFeedback) !== 'none';
+                    return $attrs.doneText !== undefined;
                 }
 
                 function feedbackText(kind) {
