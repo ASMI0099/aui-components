@@ -24,11 +24,14 @@ for (let ms = start; ms <= end && failures.length < 5; ms += 7 * 3600 * 1000) {
     const p = E.fromTimestamp(ms);
     const local = [date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds()];
     if (!p || [p.y, p.M, p.d, p.h, p.m, p.s].join() !== local.join()) failures.push('fromTimestamp ' + ms);
-    // back from the wall-clock time: the same instant (a time that exists twice, at the end of daylight saving, may
-    // give the other of its two instants, as Date does)
+    // back from the wall-clock time: the same instant, also the later of a time that exists twice (the clock set back
+    // at the end of daylight saving): the parts read from an instant give that instant while they are unchanged
     const back = E.toTimestamp(p);
+    if (back !== ms) failures.push('toTimestamp ' + ms + ' ' + back);
+    // the same parts made anew (typed, picked): the instant Date gives them (of a time that exists twice, the one Date picks)
+    const fresh = E.toTimestamp(E.make(p.y, p.M, p.d, p.h, p.m, p.s));
     const again = new Date(date.getFullYear(), date.getMonth(), date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds()).getTime();
-    if (back !== again) failures.push('toTimestamp ' + ms + ' ' + back + ' ' + again);
+    if (fresh !== again) failures.push('toTimestamp of new parts ' + ms + ' ' + fresh + ' ' + again);
 }
 // a wall-clock day keeps its date at local midnight in every zone (the one-day-off bug of UTC parsing)
 const midnight = E.toTimestamp(E.make(2026, 11, 6));

@@ -5434,9 +5434,10 @@ aui-button {
 
 /* a day of the next or the last month: the value and a range drawn on it as on any day, lighter (its number stays
    muted); in a range's two months, the days one month shows of the other are left out (each date once, the place kept) */
+/* (lighter: the accent's text colour on its tint, about 5:1 - white on the light accent was 2.07:1) */
 .aui-date-picker__panel .aui-date-picker__day--outside.aui-date-picker__day--selected > span {
-    background-color: var(--aui-control-accent-soft);
-    color: #ffffff;
+    background-color: var(--aui-control-accent-a15);
+    color: var(--aui-control-accent-text);
 }
 
 .aui-date-picker__panel .aui-date-picker__day--outside.aui-date-picker__day--in-range > span {
@@ -5504,6 +5505,11 @@ aui-button {
 
 .aui-date-picker__panel .aui-date-picker__cell:disabled {
     color: var(--aui-control-disabled-color);
+}
+
+/* the keyboard's month or year in the lists the title opens (one Tab stop, the arrows move it) */
+.aui-date-picker__panel .aui-date-picker__cell:focus-visible {
+    box-shadow: inset 0 0 0 2px var(--aui-control-accent-a45) !important;
 }
 
 .aui-date-picker__footer {
@@ -5709,6 +5715,14 @@ aui-button {
 
 .aui-date-picker__panel .aui-date-picker__time:focus-visible {
     box-shadow: inset 0 0 0 2px var(--aui-control-accent-a45) !important;
+}
+
+/* the shortcuts, the duration chips, Today and Now: stops of the keyboard's Tab (they were left out, and a shortcut or a
+   duration could not be chosen without a pointer), with the panel's focus ring */
+.aui-date-picker__panel .aui-date-picker__shortcut:focus-visible,
+.aui-date-picker__panel .aui-date-picker__duration:focus-visible,
+.aui-date-picker__panel .aui-date-picker__link:focus-visible {
+    box-shadow: 0 0 0 2px var(--aui-control-accent-a45) !important;
 }
 
 /* a date-time range: its start and end above the months, the one the time columns set marked */
@@ -6066,8 +6080,8 @@ aui-button {
 }
 
 .aui-date-picker__panel .aui-date-picker__unit--outside.aui-date-picker__unit--selected > .aui-date-picker__unit-in {
-    background-color: var(--aui-control-accent-soft);
-    color: #ffffff;
+    background-color: var(--aui-control-accent-a15);
+    color: var(--aui-control-accent-text);
 }
 
 .aui-date-picker__panel .aui-date-picker__unit--outside.aui-date-picker__unit--in-range > .aui-date-picker__unit-in {
@@ -6177,6 +6191,24 @@ aui-button {
     .aui-date-picker__panel .aui-date-picker__time {
         height: 36px;
     }
+
+    /* never wider than the window: a time range's two sets of columns one under the other (side by side the panel ran
+       75px past a 320px window, OK out of reach), and the panel no wider than the window less its margins */
+    .aui-select__panel.aui-date-picker__panel {
+        max-width: calc(100vw - 16px);
+    }
+
+    .aui-date-picker__clock {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .aui-date-picker__time-group + .aui-date-picker__time-group {
+        padding-top: 8px;
+        padding-left: 0;
+        border-top: 1px solid #eef1f5;
+        border-left: 0;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6197,6 +6229,35 @@ aui-button {
 
     .aui-date-picker__clock--step .aui-date-picker__columns {
         animation: none !important;
+    }
+}
+
+/* High contrast (forced colours): the shadows that mark the keyboard's focus are dropped there - an outline in the
+   system's highlight colour instead (the focus moved, and nothing showed where); the drawn marks (the month arrows,
+   the range's "to", the calendar icon) are painted with a mask over a background the browser turns into the button's
+   background (they vanished): in the system's text colour */
+@media (forced-colors: active) {
+    .aui-date-picker__day:focus-visible > span,
+    .aui-date-picker__unit:focus-visible > .aui-date-picker__unit-in,
+    .aui-date-picker__panel .aui-date-picker__time:focus-visible,
+    .aui-date-picker__panel .aui-date-picker__cell:focus-visible,
+    .aui-date-picker__panel .aui-date-picker__ok:focus-visible,
+    .aui-date-picker__panel .aui-date-picker__shortcut:focus-visible,
+    .aui-date-picker__panel .aui-date-picker__duration:focus-visible,
+    .aui-date-picker__panel .aui-date-picker__link:focus-visible,
+    .aui-date-picker__panel .aui-date-picker__arrow:focus-visible,
+    .aui-date-picker__panel .aui-date-picker__title-part:focus-visible {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
+    .aui-date-picker__arrow::before,
+    .aui-date-picker__to,
+    .aui-date-picker .aui-select__chevron.aui-date-picker__icon {
+        forced-color-adjust: none;
+        background-color: ButtonText !important;
+    }
+    .aui-date-picker__panel .aui-date-picker__arrow:disabled::before {
+        background-color: GrayText !important;
     }
 }
 

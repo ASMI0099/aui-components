@@ -8,6 +8,11 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `aui-date-picker` in a native form: a named field's value goes with the form's own data (hidden inputs: a date, a
+  range's two ends, each date); `required` is the boxes' own too (the browser's check of the form stops at an empty
+  required field); a native reset shows the model's value again.
+- `aui-date-picker`: the shortcuts, duration chips, Today and Now are Tab stops; the month and year lists the title
+  opens take the keyboard (one Tab stop, arrows, Enter).
 - `aui-modal`: `on-open`, called once per opening as the dialog opens (before its first frame); `AuiModal.open`
   takes `onOpen` (a dialog that waits its turn: when it opens). Each `on-open` is followed by one `on-close`.
 - `aui-button`: `aria-describedby`, `aria-haspopup`, `aria-pressed` and `tabindex` on the element are moved onto the
@@ -61,6 +66,34 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `aui-date-picker` dates and times: a date-time typed with its own offset (`Z`, `-05:00`) is that instant; an offset's
+  minutes over 59 and fixed-offset values outside the years 1 to 9999 are refused; the later of a local hour that comes
+  twice keeps its instant; a time skipped by a clock change is shown as the time it becomes at entry; the 24-hour
+  shortcuts and hour-based range limits count hours that pass (a clock change day has 23 or 25); fixed and callback
+  date-time shortcuts keep their time, a Date value works as one, and Date objects from a frame are read.
+- `aui-date-picker` limits: a range over a disabled day is caught however far off (it was missed past ten years, and
+  a day past a blocker over 400 days away could be picked); month, quarter and year ranges check the units inside;
+  an end-only range checks its time with the end's rule; an hour or minute the time rule turns off cannot be typed;
+  a time range's duration chip past midnight is off; Now never sets a time below `min`; shortcuts and time slots
+  follow limits changed while open, and a pick is checked again when made; a rule that throws refuses and reports to
+  `$exceptionHandler` (it allowed everything, unseen).
+- `aui-date-picker` values and settings: a malformed range model (not a list, more than two ends) is a `date` error; a
+  model equal to `empty-value` is empty; a page change of the value updates an open draft; `utc-offset`, `format`,
+  placeholders, week start and steps changed later take effect; a disabled fieldset disables the field; a field
+  disabled or made read-only while open closes without taking the draft; `ng-model-options` `updateOn: 'blur'`
+  commits when the field is left; one `change` event per edit; `on-change` after a debounced commit; time slots are
+  not cut at 288, and a malformed slot definition is left out; week text in ISO form is read with any week start.
+- `aui-date-picker` accessibility: the keyboard's focus and the month arrows show in high contrast mode; ArrowRight
+  in the time columns moves to an option that can be chosen; the month, quarter and year lists are listboxes of
+  options with `aria-current` for this one; a required range's end box is required and described; a time range's
+  columns are grouped by their captions; the dates grid is multi-selectable; the range preview under the pointer is
+  not announced as selected; a selected day of the next or last month is readable (it was 2.07:1).
+- `aui-date-picker` on small windows: under 640px a time range's two sets of columns stand one under the other and
+  the panel stays inside the window (it ran up to 75px past a 320px window, OK out of reach); a panel taller than the
+  room on its side scrolls (its header, the focused day or OK were off the screen).
+- `aui-date-picker` work: an open range's footer no longer re-checks the whole range at each digest; each day asks the
+  page's rule once per digest (it asked twice); a long list of dates is looked up (it was searched per day); an `api`
+  object replaced or kept after the field is gone no longer drives it or keeps it alive.
 - `aui-button`: an icon alone whose label shows nothing (an empty `{{ }}`, an empty styled span) has its icon in the
   middle (it sat 2.5 to 4.5px aside); a text hidden by the page's own CSS (a class, an inline style, a narrow-screen
   rule) leaves an icon alone, square and named by its icon (it was a wide, unnamed button), and the text shown again

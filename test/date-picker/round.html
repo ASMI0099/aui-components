@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-date-picker: round checks (forms, ranges, rules, keyboard, states)</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <style>
+        .dp-test { display: grid; grid-template-columns: repeat(3, 320px); gap: 12px 16px; padding: 12px; }
+        .dp-test .dp-wide { grid-column: span 2; }
+    </style>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="round.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="round.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="RoundCtrl">
+<h1>aui-date-picker: round checks</h1>
+
+<!-- native forms: names, required, reset -->
+<form id="native" name="nativeForm" class="dp-test">
+    <aui-date-picker id="r-day" name="day" ng-model="f.day"></aui-date-picker>
+    <aui-date-picker id="r-range" class="dp-wide" type="daterange" name="range" ng-model="f.range"></aui-date-picker>
+    <aui-date-picker id="r-dates" type="dates" name="dates" ng-model="f.dates"></aui-date-picker>
+    <aui-date-picker id="r-reset" name="again" ng-model="f.reset"></aui-date-picker>
+</form>
+<form id="needs" name="needForm" class="dp-test">
+    <aui-date-picker id="r-need" name="need" ng-model="f.need" required></aui-date-picker>
+</form>
+
+<form name="pageForm" novalidate class="dp-test">
+    <!-- ranges over disabled days and units -->
+    <aui-date-picker id="r-far" class="dp-wide" type="daterange" name="far" ng-model="f.far" range-crosses-disabled="false"
+                     disabled-date="blocked($text, $unit)"></aui-date-picker>
+    <aui-date-picker id="r-pickfar" class="dp-wide" type="daterange" name="pickFar" ng-model="f.pickFar" range-crosses-disabled="false"
+                     disabled-date="blocked($text, $unit)"></aui-date-picker>
+    <aui-date-picker id="r-months" class="dp-wide" type="monthrange" name="months" ng-model="f.months" range-crosses-disabled="false"
+                     disabled-date="blocked($text, $unit)"></aui-date-picker>
+    <aui-date-picker id="r-quarters" class="dp-wide" type="quarterrange" name="quarters" ng-model="f.quarters" range-crosses-disabled="false"
+                     disabled-date="blocked($text, $unit)"></aui-date-picker>
+    <aui-date-picker id="r-years" class="dp-wide" type="yearrange" name="years" ng-model="f.years" range-crosses-disabled="false"
+                     disabled-date="blocked($text, $unit)"></aui-date-picker>
+
+    <!-- time rules -->
+    <aui-date-picker id="r-endonly" class="dp-wide" type="timerange" name="endOnly" ng-model="f.endOnly"
+                     disabled-time="endEvening($hour, $end)"></aui-date-picker>
+    <aui-date-picker id="r-hour" type="time" name="hourOff" ng-model="f.hourOff" disabled-time="noonOff($hour, $minute)"></aui-date-picker>
+    <aui-date-picker id="r-night" class="dp-wide" type="timerange" name="night" ng-model="f.night" durations="['2h', '30min']"></aui-date-picker>
+    <aui-date-picker id="r-zero" type="time" name="clock" ng-model="f.clock" disabled-time="noZero($hour, $minute)"></aui-date-picker>
+
+    <!-- rules that fail -->
+    <aui-date-picker id="r-failday" name="throwsDay" ng-model="f.throwsDay" disabled-date="failDay()"></aui-date-picker>
+    <aui-date-picker id="r-failtime" type="time" name="throwsTime" ng-model="f.throwsTime" disabled-time="failTime()"></aui-date-picker>
+
+    <!-- the api object replaced -->
+    <aui-date-picker id="r-api" name="apiDay" ng-model="f.apiDay" api="useA ? api.a : api.b"></aui-date-picker>
+
+    <!-- keyboard and screen-reader states -->
+    <aui-date-picker id="r-kbd" name="kbd" ng-model="f.kbd" shortcuts="true"></aui-date-picker>
+    <aui-date-picker id="r-shortcut" type="datetime" name="shortcuts" ng-model="f.shortcuts" shortcuts="shortcutItems"></aui-date-picker>
+    <aui-date-picker id="r-multi" type="dates" name="multi" ng-model="f.multi"></aui-date-picker>
+    <aui-date-picker id="r-hover" class="dp-wide" type="daterange" name="hover" ng-model="f.hover"></aui-date-picker>
+    <aui-date-picker id="r-month" type="month" name="month" ng-model="f.month"></aui-date-picker>
+    <aui-date-picker id="r-reqrange" class="dp-wide" type="daterange" name="reqRange" ng-model="f.reqRange" required show-errors="true"></aui-date-picker>
+    <aui-date-picker id="r-times" class="dp-wide" type="timerange" name="times" ng-model="f.times"></aui-date-picker>
+    <aui-date-picker id="r-outside" name="outside" ng-model="f.outside"></aui-date-picker>
+
+    <!-- the work of a digest -->
+    <aui-date-picker id="r-count" name="count" ng-model="f.count" disabled-date="countDay()"></aui-date-picker>
+    <aui-date-picker id="r-many" type="dates" name="many" ng-model="f.many"></aui-date-picker>
+
+    <!-- offsets, weeks, slots -->
+    <aui-date-picker id="r-offset" type="datetime" name="offset" ng-model="f.offset" utc-offset="+00:00"></aui-date-picker>
+    <aui-date-picker id="r-week" type="week" week-start="0" name="week" ng-model="f.week"></aui-date-picker>
+    <aui-date-picker id="r-slots" type="time" name="slots" ng-model="f.slots" time-slots="00:00-23:59/1m"></aui-date-picker>
+    <aui-date-picker id="r-badslots" type="time" name="badSlots" ng-model="f.badSlots" time-slots="09:00-08:00/30m"></aui-date-picker>
+</form>
+</body>
+</html>

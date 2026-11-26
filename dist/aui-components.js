@@ -1522,7 +1522,8 @@ angular.module('aui')
          *       ownWidth?(): boolean (the panel keeps the width of its content, its left edge on the trigger's: a
          *       calendar), onPlaced?() (after each placement, the side classes set: a panel of its own width
          *       measures where its edges meet the trigger's), onListLimited?() (the open list was given another
-         *       height to fit its side: a short viewport; the field keeps its active row in view)}
+         *       height to fit its side: a short viewport; the field keeps its active row in view), fitPanel?: true (a
+         *       panel without a list - a calendar - is itself never taller than the room on its side: it scrolls)}
          *
          * Placement: the side of the trigger (below or above) is chosen when the panel opens, by the height it will
          * need, and kept while it stays open: content that changes (data arriving, a search narrowing the list, nodes
@@ -1659,6 +1660,10 @@ angular.module('aui')
              * variable LIST_MAX_VAR) is that room less the rest of the panel and the list's own padding and border.
              */
             function limitList(available) {
+                if (cfg.fitPanel) {
+                    fitPanel(available);
+                    return;
+                }
                 const list = panel.querySelector('.aui-select__options');
                 const around = list ? heightAroundList(list) : null;
                 if (around === null) return;   // not shown (yet): measured at the next position
@@ -1669,6 +1674,26 @@ angular.module('aui')
                 // height is fitted at the next one, after the field brought its selected row into view for the list's
                 // full height - in a short viewport (a high zoom) that row was then below the list's end.
                 if (cfg.onListLimited) cfg.onListLimited();
+            }
+
+            /**
+             * fitPanel: a panel taller than the room on its side (a short window, a high zoom) gets that room as its
+             * height and scrolls (its top - a calendar's header, the focused day - was off the screen, with no way to
+             * reach it); a panel that fits is left as it is. Its height is read once it is shown.
+             */
+            function fitPanel(available) {
+                const room = Math.max(MIN_LIST_PX, Math.floor(available));
+                const wasLimited = !!panel.style.maxHeight;
+                if (wasLimited) {
+                    panel.style.maxHeight = '';
+                    panel.style.overflowY = '';
+                }
+                const needed = panel.scrollHeight;
+                if (!needed) return;                // not shown (yet): fitted at the next placement
+                if (needed <= room) return;
+                panel.style.maxHeight = room + 'px';
+                panel.style.overflowY = 'auto';
+                if (!wasLimited && cfg.onListLimited) cfg.onListLimited();
             }
 
             // Panel width follows the trigger, never narrower than cfg.minWidth(). The width is
@@ -16654,8 +16679,11 @@ angular.module('aui')
             return {y: y, M: M, d: d, h: h || 0, m: m || 0, s: s || 0};
         }
 
+        // a copy keeps the instant of parts read from one (see fromTimestamp: given only while the parts are its own)
         function copy(p) {
-            return make(p.y, p.M, p.d, p.h, p.m, p.s);
+            const q = make(p.y, p.M, p.d, p.h, p.m, p.s);
+            if (typeof p.t === 'number') q.t = p.t;
+            return q;
         }
 
         function isInt(value, min, max) {
@@ -16871,7 +16899,8 @@ angular.module('aui')
 
         function parseOffset(text) {
             const match = /^([+-])(\d{2}):?(\d{2})$/.exec(String(text || '').trim());
-            if (!match) return null;
+            // the minutes of an offset are below 60 (+01:99 was read as +02:39, another real offset)
+            if (!match || Number(match[3]) > 59) return null;
             const minutes = Number(match[2]) * 60 + Number(match[3]);
             return minutes > 18 * 60 ? null : (match[1] === '-' ? -minutes : minutes);
         }
@@ -17001,9 +17030,19 @@ angular.module('aui')
             return new Date(ms);
         }
 
-        /** Milliseconds of the wall-clock parts: in local time, or at offset (minutes east of UTC) when given. */
+        // a Date, also one made in another window (a frame: instanceof Date is false for it)
+        function isDate(value) {
+            return Object.prototype.toString.call(value) === '[object Date]';
+        }
+
+        /** Milliseconds of the wall-clock parts: in local time, or at offset (minutes east of UTC) when given. Parts read
+         * from an instant they do not give back (see fromTimestamp) give that instant while they are still its parts. */
         function toTimestamp(p, offset) {
             if (!isValid(p)) return NaN;
+            if (typeof p.t === 'number') {
+                const own = fromTimestamp(p.t, offset);
+                if (own && own.y === p.y && own.M === p.M && own.d === p.d && own.h === p.h && own.m === p.m && own.s === p.s) return p.t;
+            }
             if (typeof offset === 'number' && isFinite(offset)) {
                 return seconds(p) * 1000 - offset * 60000;
             }
@@ -17013,14 +17052,25 @@ angular.module('aui')
             return date.getTime();
         }
 
+        /**
+         * The wall-clock parts of an instant: in local time, or at offset. When the parts do not give the instant back -
+         * a fraction of a second, the later of a local hour that comes twice (the clock set back) - the instant is kept
+         * with them (t): toTimestamp gives it while they are still its parts (written back, an unchanged value moved an
+         * hour or lost its milliseconds). A copy keeps it; parts changed are timed by their numbers again.
+         */
         function fromTimestamp(ms, offset) {
             if (typeof ms !== 'number' || !isFinite(ms)) return null;
+            let p;
             if (typeof offset === 'number' && isFinite(offset)) {
-                return fromSeconds(Math.floor((ms + offset * 60000) / 1000));
+                // inside years 1 to 9999, as in local time (a year 0 or 10000 was shown, with no timestamp back)
+                p = fromSeconds(Math.floor((ms + offset * 60000) / 1000));
+            } else {
+                const date = newDate(ms);
+                p = make(date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds());
             }
-            const date = newDate(ms);
-            const p = make(date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds());
-            return isValid(p) ? p : null;
+            if (!isValid(p)) return null;
+            if (toTimestamp(p, offset) !== ms) p.t = ms;
+            return p;
         }
 
         function now(offset) {
@@ -17050,6 +17100,7 @@ angular.module('aui')
             make: make,
             copy: copy,
             isValid: isValid,
+            isDate: isDate,
             weekday: weekday,
             compare: compare,
             compareDay: compareDay,
@@ -17098,7 +17149,7 @@ angular.module('aui')
             if (value === null || value === undefined || value === '') return null;
             const offset = offsetOf(options);
             if (typeof value === 'number') return E.fromTimestamp(value, offset);
-            if (value instanceof Date) return E.fromTimestamp(value.getTime(), offset);
+            if (E.isDate(value)) return E.fromTimestamp(value.getTime(), offset);
             if (typeof value === 'object') return E.isValid(value) ? E.copy(value) : null;
             // in the format given; else (none, or a text of another form: a date-time where a date is asked for) read
             // as a date or date-time, which must then be at least a whole date (its time may be left out)
@@ -17129,9 +17180,11 @@ angular.module('aui')
                 const p = E.fromTimestamp(ms, offsetOf(options));
                 return p ? E.format(p, fmt || TEXT_FORMAT) : '';
             },
+            // a result outside years 1 to 9999 is no date: '' (as for a value that is none)
             add: function (value, n, unit, fmt) {
                 const p = read(value, fmt);
-                return p ? E.format(E.add(p, n, unit), fmt || TEXT_FORMAT) : '';
+                const q = p ? E.add(p, n, unit) : null;
+                return q && E.isValid(q) ? E.format(q, fmt || TEXT_FORMAT) : '';
             },
             diff: function (a, b, unit, fmt) {
                 const pa = read(a, fmt);
@@ -17140,11 +17193,13 @@ angular.module('aui')
             },
             startOf: function (value, unit, fmt, weekStart) {
                 const p = read(value, fmt);
-                return p ? E.format(E.startOf(p, unit, weekStart), fmt || TEXT_FORMAT) : '';
+                const q = p ? E.startOf(p, unit, weekStart) : null;
+                return q && E.isValid(q) ? E.format(q, fmt || TEXT_FORMAT) : '';
             },
             endOf: function (value, unit, fmt, weekStart) {
                 const p = read(value, fmt);
-                return p ? E.format(E.endOf(p, unit, weekStart), fmt || TEXT_FORMAT) : '';
+                const q = p ? E.endOf(p, unit, weekStart) : null;
+                return q && E.isValid(q) ? E.format(q, fmt || TEXT_FORMAT) : '';
             },
             compare: function (a, b, fmt) {
                 const pa = read(a, fmt);
@@ -17211,7 +17266,7 @@ angular.module('aui')
         const PANEL_BODY = `
                             <div class="aui-date-picker__body" aui-if="$ctrl.panelReady">
                                 <div class="aui-date-picker__shortcuts" aui-if="$ctrl.shortcutItems.length > 0" role="group">
-                                    <button type="button" class="aui-date-picker__shortcut" tabindex="-1"
+                                    <button type="button" class="aui-date-picker__shortcut"
                                             ng-repeat="s in $ctrl.shortcutItems track by $index"
                                             data-shortcut="{{ $index }}" ng-disabled="s.disabled"
                                             title="{{ s.disabled ? $ctrl.texts.shortcutOutside : '' }}">{{ s.label }}</button>
@@ -17253,7 +17308,8 @@ angular.module('aui')
                                                                 aui-if="cal.last" data-act="next-year" aria-label="{{ $ctrl.texts.nextYear }}"></button>
                                                     </span>
                                                 </div>
-                                                <table class="aui-date-picker__grid" role="grid" aria-label="{{ cal.title }}">
+                                                <table class="aui-date-picker__grid" role="grid" aria-label="{{ cal.title }}"
+                                                       ng-attr-aria-multiselectable="{{ $ctrl.isDates() ? 'true' : undefined }}">
                                                     <thead><tr>
                                                         <th class="aui-date-picker__week-head" aui-if="$ctrl.weekNumbers()" scope="col"
                                                             abbr="{{ $ctrl.texts.weekNumber }}">{{ $ctrl.texts.weekShort }}</th>
@@ -17269,7 +17325,7 @@ angular.module('aui')
                                                             <button type="button" class="aui-date-picker__day {{ $ctrl.dayClass(c) }}"
                                                                     data-day="{{ c.key }}" tabindex="{{ $ctrl.dayTab(c) }}"
                                                                     aria-label="{{ c.label }}"
-                                                                    aria-disabled="{{ $ctrl.dayDisabled(c) }}"
+                                                                    aria-disabled="{{ c.noPick ? 'true' : 'false' }}"
                                                                     ng-attr-aria-current="{{ c.inMonth && $ctrl.isToday(c) ? 'date' : undefined }}"><span>{{ c.d }}</span></button>
                                                         </td>
                                                     </tr>
@@ -17292,10 +17348,11 @@ angular.module('aui')
                                                             data-act="next-year" aria-label="{{ $ctrl.texts.nextYear }}"></button>
                                                 </span>
                                             </div>
-                                            <div class="aui-date-picker__cells" role="grid">
-                                                <button type="button" class="aui-date-picker__cell" tabindex="-1"
+                                            <div class="aui-date-picker__cells" role="listbox" aria-label="{{ $ctrl.texts.chooseMonth }}">
+                                                <button type="button" class="aui-date-picker__cell" tabindex="{{ m.tab ? 0 : -1 }}" role="option"
                                                         ng-repeat="m in $ctrl.monthList track by m.key"
                                                         ng-class="{'aui-date-picker__cell--current': m.current, 'aui-date-picker__cell--selected': m.selected}"
+                                                        aria-selected="{{ m.selected ? 'true' : 'false' }}" ng-attr-aria-current="{{ m.current ? 'date' : undefined }}"
                                                         ng-disabled="m.disabled" data-act="pick-month" data-value="{{ m.key }}">{{ m.label }}</button>
                                             </div>
                                         </div>
@@ -17311,10 +17368,11 @@ angular.module('aui')
                                                             data-act="next-years" aria-label="{{ $ctrl.texts.nextYears }}"></button>
                                                 </span>
                                             </div>
-                                            <div class="aui-date-picker__cells" role="grid">
-                                                <button type="button" class="aui-date-picker__cell" tabindex="-1"
+                                            <div class="aui-date-picker__cells" role="listbox" aria-label="{{ $ctrl.texts.chooseYear }}">
+                                                <button type="button" class="aui-date-picker__cell" tabindex="{{ y.tab ? 0 : -1 }}" role="option"
                                                         ng-repeat="y in $ctrl.yearList track by y.key"
                                                         ng-class="{'aui-date-picker__cell--current': y.current, 'aui-date-picker__cell--selected': y.selected, 'aui-date-picker__cell--edge': y.edge}"
+                                                        aria-selected="{{ y.selected ? 'true' : 'false' }}" ng-attr-aria-current="{{ y.current ? 'date' : undefined }}"
                                                         ng-disabled="y.disabled" data-act="pick-year" data-value="{{ y.key }}">{{ y.label }}</button>
                                             </div>
                                         </div>
@@ -17338,14 +17396,15 @@ angular.module('aui')
                                                                 aria-label="{{ page.unit === 'year' ? $ctrl.texts.nextYears : $ctrl.texts.nextYear }}"></button>
                                                     </span>
                                                 </div>
-                                                <div class="aui-date-picker__unit-cells aui-date-picker__unit-cells--{{ page.unit }}" role="grid"
-                                                     aria-label="{{ page.title }}">
+                                                <div class="aui-date-picker__unit-cells aui-date-picker__unit-cells--{{ page.unit }}" role="listbox"
+                                                     aria-label="{{ page.title }}" ng-attr-aria-multiselectable="{{ $ctrl.isRange() ? 'true' : undefined }}">
                                                     <button type="button" class="aui-date-picker__unit {{ $ctrl.unitClass(cell) }}"
                                                             ng-repeat="cell in page.cells track by cell.key"
                                                             data-y="{{ cell.y }}" data-m="{{ cell.M }}" tabindex="{{ $ctrl.unitTab(cell) }}"
-                                                            role="gridcell" aria-label="{{ cell.long }}" ng-attr-aria-hidden="{{ cell.hidden ? 'true' : undefined }}"
+                                                            role="option" aria-label="{{ cell.long }}" ng-attr-aria-hidden="{{ cell.hidden ? 'true' : undefined }}"
                                                             aria-selected="{{ $ctrl.unitIsSelected(cell) }}"
-                                                            aria-disabled="{{ $ctrl.unitDisabled(cell) }}"><span class="aui-date-picker__unit-in"><span
+                                                            aria-disabled="{{ $ctrl.unitDisabled(cell) }}"
+                                                            ng-attr-aria-current="{{ $ctrl.isCurrentUnit(cell) ? 'date' : undefined }}"><span class="aui-date-picker__unit-in"><span
                                                             class="aui-date-picker__unit-label">{{ cell.label }}</span><span
                                                             class="aui-date-picker__unit-sub" aui-if="cell.sub">{{ cell.sub }}</span></span></button>
                                                 </div>
@@ -17354,8 +17413,10 @@ angular.module('aui')
                                         <!-- the time columns (or the list of time-slots) -->
                                         <div class="aui-date-picker__tip" aria-hidden="true" aui-if="$ctrl.tip" ng-style="$ctrl.tip.style">{{ $ctrl.tip.text }}</div>
                                         <div class="aui-date-picker__clock" aui-if="$ctrl.hasClock()" ng-class="$ctrl.clockClass()">
-                                            <div class="aui-date-picker__time-group" ng-repeat="g in $ctrl.timeGroups track by g.key">
-                                                <div class="aui-date-picker__time-title" aui-if="g.title">{{ g.title }}</div>
+                                            <div class="aui-date-picker__time-group" ng-repeat="g in $ctrl.timeGroups track by g.key"
+                                                 ng-attr-role="{{ g.title ? 'group' : undefined }}"
+                                                 ng-attr-aria-labelledby="{{ g.title ? $ctrl.compId + '-time-' + g.end : undefined }}">
+                                                <div class="aui-date-picker__time-title" aui-if="g.title" id="{{ $ctrl.compId }}-time-{{ g.end }}">{{ g.title }}</div>
                                                 <div class="aui-date-picker__columns">
                                                     <div class="aui-date-picker__column" ng-repeat="col in g.columns track by col.unit"
                                                          role="listbox" aria-label="{{ col.label }}" data-unit="{{ col.unit }}" data-group="{{ g.end }}">
@@ -17382,7 +17443,7 @@ angular.module('aui')
                                     <!-- a range of days or units: duration chips, what to choose next (or its length), OK -->
                                     <div class="aui-date-picker__footer aui-date-picker__footer--range" aui-if="$ctrl.isRange() && !$ctrl.hasClock()">
                                         <span class="aui-date-picker__durations" aui-if="$ctrl.durationList.length > 0">
-                                            <button type="button" class="aui-date-picker__duration" tabindex="-1"
+                                            <button type="button" class="aui-date-picker__duration"
                                                     ng-repeat="d in $ctrl.durationList track by d.spec"
                                                     data-act="duration" data-spec="{{ d.spec }}" ng-disabled="d.disabled">+{{ d.label }}</button>
                                         </span>
@@ -17394,7 +17455,7 @@ angular.module('aui')
                                                 ng-disabled="!$ctrl.canTake()">{{ $ctrl.texts.ok }}</button>
                                     </div>
                                     <div class="aui-date-picker__footer" aui-if="$ctrl.showToday()">
-                                        <button type="button" class="aui-date-picker__link" tabindex="-1" data-act="today">{{ $ctrl.texts.today }}</button>
+                                        <button type="button" class="aui-date-picker__link" data-act="today">{{ $ctrl.texts.today }}</button>
                                     </div>
                                     <!-- dates: how many are checked; OK closes (each check is taken as it is made) -->
                                     <div class="aui-date-picker__footer aui-date-picker__footer--dates" aui-if="$ctrl.isDates()">
@@ -17404,10 +17465,10 @@ angular.module('aui')
                                         <button type="button" class="aui-date-picker__ok" data-act="done">{{ $ctrl.texts.ok }}</button>
                                     </div>
                                     <div class="aui-date-picker__footer aui-date-picker__footer--time" aui-if="$ctrl.hasClock() && !$ctrl.usesSlots()">
-                                        <button type="button" class="aui-date-picker__link" tabindex="-1" data-act="now"
+                                        <button type="button" class="aui-date-picker__link" data-act="now"
                                                 aui-if="!$ctrl.isRange()" ng-disabled="!$ctrl.nowAllowed()">{{ $ctrl.texts.now }}</button>
                                         <span class="aui-date-picker__durations" aui-if="$ctrl.durationList.length > 0">
-                                            <button type="button" class="aui-date-picker__duration" tabindex="-1"
+                                            <button type="button" class="aui-date-picker__duration"
                                                     ng-repeat="d in $ctrl.durationList track by d.spec"
                                                     data-act="duration" data-spec="{{ d.spec }}" ng-disabled="d.disabled">+{{ d.label }}</button>
                                         </span>
@@ -17552,8 +17613,8 @@ angular.module('aui')
             onViewChange: '&?'           // on-view-change="vm.load($year, $month)": the month shown changed
         },
         controller: ['$scope', '$element', '$attrs', '$timeout', 'auiControlKit', 'auiDropdownPanel', 'auiFieldExtras',
-            'auiDateEngine', 'auiTexts', '$compile',
-            function ($scope, $element, $attrs, $timeout, kit, dropdownPanel, fieldExtras, E, allTexts, $compile) {
+            'auiDateEngine', 'auiTexts', '$compile', '$exceptionHandler',
+            function ($scope, $element, $attrs, $timeout, kit, dropdownPanel, fieldExtras, E, allTexts, $compile, $exceptionHandler) {
             const $ctrl = this;
             const texts = allTexts.date;
             // the kind of each type: what it picks (date: days; datetime: days and times; time: times; month, quarter,
@@ -17731,6 +17792,10 @@ angular.module('aui')
             // into a text) - shown empty, never invalid
             const blankValue = x => x === null || x === undefined || (typeof x === 'number' && isNaN(x)) ||
                 (typeof x === 'string' && /^\s*(null|undefined)?\s*$/i.test(x));
+            // the page's empty-value (or one end of it) read back: empty (an empty-value [] or ['', ''] is blank anyway)
+            const isEmptyMarker = x => $attrs.hasOwnProperty('emptyValue') && !blankValue(x) &&
+                (angular.equals(x, $ctrl.emptyValue) ||
+                    (Array.isArray($ctrl.emptyValue) && $ctrl.emptyValue.some(e => !blankValue(e) && angular.equals(x, e))));
             let todayDay = null;
             const today = () => todayDay || (todayDay = E.startOf(E.now(offset), 'day'));
             const freshToday = () => { todayDay = null; return today(); };
@@ -17803,7 +17868,9 @@ angular.module('aui')
              * its last day's end (a range's end: 23:59:59). Other values as they are. */
             function snap(p, end) {
                 if (!unit() || !p || isBad(p)) return p;
-                return end ? unitEnd(p) : unitStart(p);
+                const q = end ? unitEnd(p) : unitStart(p);
+                // a week at the edge of the calendar (its first day before year 1, its last after 9999): no value
+                return E.isValid(q) ? q : {bad: E.format(p, displayFormat())};
             }
 
             // the parts a text must have for a value of this type (a year: its year; a month, a quarter: also its month)
@@ -17816,9 +17883,10 @@ angular.module('aui')
 
             /** The page's value as parts (a range end filled with the end of its units), {bad: text}, or null. */
             function readValue(raw, end) {
-                if (blankValue(raw)) return null;
+                // an end equal to empty-value (EMPTY, 0) is empty: it read as an error or as the epoch's day
+                if (blankValue(raw) || isEmptyMarker(raw)) return null;
                 if (kind() === 'time') {
-                    if (typeof raw === 'number' || raw instanceof Date) {
+                    if (typeof raw === 'number' || E.isDate(raw)) {
                         const p = E.fromTimestamp(typeof raw === 'number' ? raw : raw.getTime(), offset);
                         return p ? onTimeDay(p) : {bad: String(raw)};
                     }
@@ -17832,7 +17900,8 @@ angular.module('aui')
                     const p = E.fromTimestamp(stampMs(raw), offset);
                     return p ? snap(p, end) : {bad: String(raw)};
                 }
-                if (raw instanceof Date) {
+                // a Date (also one from another window: a frame's)
+                if (E.isDate(raw)) {
                     const p = E.fromTimestamp(raw.getTime(), offset);
                     return p ? snap(p, end) : {bad: ''};
                 }
@@ -17880,6 +17949,9 @@ angular.module('aui')
             function refreshLimits() {
                 freshToday();
                 limits = {min: resolveLimit($ctrl.min, false), max: resolveLimit($ctrl.max, true)};
+                // what was found against the old limits and rules is looked at again
+                crossings.clear();
+                blocks = {key: '', after: null, reached: null};
             }
 
             // a value against min / max: date-times and times to the second; a day, month, quarter, year or week by any
@@ -17898,11 +17970,28 @@ angular.module('aui')
             function pageRefuses(p) {
                 if (!($ctrl.disabledDate instanceof Function) || kind() === 'time') return false;
                 const first = E.startOf(unitStart(p), 'day');
+                return askRule('date', () => $ctrl.disabledDate({$text: E.format(first, valueFormat()),
+                    $parts: {year: first.y, month: first.M, day: first.d, y: first.y, M: first.M, d: first.d},
+                    $timestamp: E.toTimestamp(first, offset), $unit: unit() || 'day'}));
+            }
+
+            /**
+             * One answer of the page's disabled-date / disabled-time. A rule that fails refuses (a failure took the day
+             * or time as allowed: a broken rule let every value through, unseen); its error goes to $exceptionHandler,
+             * once until the rule answers again (it is asked for every cell).
+             */
+            const ruleFailing = {date: false, time: false};
+            function askRule(which, ask) {
                 try {
-                    return !!$ctrl.disabledDate({$text: E.format(first, valueFormat()), $parts: {year: first.y, month: first.M, day: first.d, y: first.y, M: first.M, d: first.d},
-                        $timestamp: E.toTimestamp(first, offset), $unit: unit() || 'day'});
+                    const answer = !!ask();
+                    ruleFailing[which] = false;
+                    return answer;
                 } catch (e) {
-                    return false;
+                    if (!ruleFailing[which]) {
+                        ruleFailing[which] = true;
+                        $exceptionHandler(e);
+                    }
+                    return true;
                 }
             }
 
@@ -17919,11 +18008,13 @@ angular.module('aui')
             // a time the page's disabled-time refuses (minute and second null for an hour, second null for a minute)
             function timeRefused(h, m, s, end) {
                 if (!($ctrl.disabledTime instanceof Function)) return false;
-                try {
-                    return !!$ctrl.disabledTime({$hour: h, $minute: m, $second: s, $end: !!end});
-                } catch (e) {
-                    return false;
-                }
+                return askRule('time', () => $ctrl.disabledTime({$hour: h, $minute: m, $second: s, $end: !!end}));
+            }
+
+            // a value's time refused, as the panel refuses it: its hour (minute and second null), its minute (second
+            // null) or the time itself - an hour the panel turns off could be typed
+            function timeOff(p, end) {
+                return timeRefused(p.h, null, null, end) || timeRefused(p.h, p.m, null, end) || timeRefused(p.h, p.m, p.s, end);
             }
 
             /** A value that can be taken: in the limits, its day and time not refused. */
@@ -17939,7 +18030,17 @@ angular.module('aui')
                 const kept = givenEnd(p);
                 if (!kept && !inLimits(p)) return false;
                 if (kind() !== 'time' && (kept ? pageRefuses(p) : dayDisabled(p))) return false;
-                return !$ctrl.hasClock() || !timeRefused(p.h, p.m, p.s, end);
+                return !$ctrl.hasClock() || !timeOff(p, end);
+            }
+
+            /** n hours, minutes or seconds on as time that passes - in local time a day of a clock change has 23 or 25
+             * hours (by the wall clock last24Hours and a 24h max-range spanned 25 of them); days and longer by the
+             * calendar, as E.add. */
+            function addTime(p, n, u) {
+                const ms = {hour: 3600000, minute: 60000, second: 1000}[E.unitOf(u)];
+                if (!ms || typeof offset === 'number' || !good(p)) return E.add(p, n, u);
+                const q = E.fromTimestamp(E.toTimestamp(p, offset) + Math.trunc(n) * ms, offset);
+                return q || E.add(p, n, u);
             }
 
             // date ranges: the day a span reaches from a range's first day, both ends counted (31d from the 1st: the 31st)
@@ -17952,35 +18053,59 @@ angular.module('aui')
 
             const crossesAllowed = () => $ctrl.rangeCrossesDisabled !== false && $ctrl.rangeCrossesDisabled !== 'false';
 
-            // the disabled days nearest to a range's first day, before and after it (range-crosses-disabled false)
-            let blocks = {key: '', before: null, after: null};
+            // a range's steps for range-crosses-disabled: its days, or its months, quarters, years (the first day of each)
+            const stepStart = p => E.startOf(unitStart(p), 'day');
+            const nextStep = p => (unit() ? E.startOf(E.add(stepStart(p), 1, unit()), 'day') : E.addDays(E.startOf(p, 'day'), 1));
+            const crossChecked = () => !crossesAllowed() && kind() !== 'time' && $ctrl.disabledDate instanceof Function;
 
-            function blocksOf(from) {
-                const key = from.y + '-' + from.M + '-' + from.d;
-                if (blocks.key !== key) blocks = {key: key, before: nearestDisabled(from, -1), after: nearestDisabled(from, 1)};
-                return blocks;
-            }
+            // range-crosses-disabled false, while a range's end is set: the first disabled day (unit) after its first
+            // one, looked for as far as a cell asks (the cells come in order: each day looked at once; it stopped at
+            // 400 days, and a day past a blocker further off could be picked). Anew for each opening and start.
+            let blocks = {key: '', after: null, reached: null};
 
-            function nearestDisabled(from, direction) {
-                if (!($ctrl.disabledDate instanceof Function)) return null;
-                let day = E.addDays(from, direction);
-                for (let n = 0; n < SEARCH_LIMIT; n += 1) {
-                    if (dayDisabled(day)) return day;
-                    day = E.addDays(day, direction);
+            function blockAfter(from, upto) {
+                if (!crossChecked()) return null;
+                const first = stepStart(from);
+                const key = first.y + '-' + first.M + '-' + first.d + '|' + kind();
+                if (blocks.key !== key) blocks = {key: key, after: null, reached: first};
+                if (blocks.after) return blocks.after;
+                const last = stepStart(upto);
+                for (let day = nextStep(blocks.reached); E.compareDay(day, last) <= 0; day = nextStep(day)) {
+                    if (dayDisabled(day)) {
+                        blocks.after = day;
+                        return day;
+                    }
+                    blocks.reached = day;
                 }
                 return null;
             }
 
-            /** No disabled day between a range's two ends (both ends not counted; up to ten years looked at). */
+            // what clearBetween found, by range: the panel's footer and its OK button ask at each digest of the page (a
+            // range of years asked the page's rule for each of its days every time); emptied for each opening, a change
+            // of the limits or the rule, and before a value is taken (taken, the rule's answers of that moment count)
+            const crossings = new Map();
+
+            /**
+             * No disabled day between a range's two ends (both ends not counted) - for month, quarter and year ranges no
+             * disabled month, quarter or year (they were not looked at). The whole range is looked at (it stopped after
+             * ten years, and a range past that passed).
+             */
             function clearBetween(a, b) {
-                if (crossesAllowed() || unit() || !($ctrl.disabledDate instanceof Function) || !good(a) || !good(b)) return true;
-                const last = E.startOf(b, 'day');
-                let day = E.addDays(E.startOf(a, 'day'), 1);
-                for (let n = 0; n < 3660 && E.compareDay(day, last) < 0; n += 1) {
-                    if (dayDisabled(day)) return false;
-                    day = E.addDays(day, 1);
+                if (!crossChecked() || !good(a) || !good(b)) return true;
+                const first = stepStart(a);
+                const last = stepStart(b);
+                const key = E.format(first, 'YYYY-MM-DD') + '|' + E.format(last, 'YYYY-MM-DD') + '|' + kind();
+                if (crossings.has(key)) return crossings.get(key);
+                let clear = true;
+                for (let day = nextStep(first); E.compareDay(day, last) < 0; day = nextStep(day)) {
+                    if (dayDisabled(day)) {
+                        clear = false;
+                        break;
+                    }
                 }
-                return true;
+                if (crossings.size >= 64) crossings.clear();
+                crossings.set(key, clear);
+                return clear;
             }
 
             // a date-time range: each end set day, then time (Next, or a day from the start's on, goes on to the end)
@@ -18029,10 +18154,9 @@ angular.module('aui')
                 if (!anchor) return false;
                 const from = E.startOf(unitStart(anchor), 'day');
                 if (E.compareDay(day, from) < 0) return false;
-                if (!crossesAllowed() && !unit()) {
-                    const block = blocksOf(from).after;
-                    if (block && E.compareDay(day, block) > 0) return true;
-                }
+                // past a disabled day (a month, quarter, year of a range of those too)
+                const block = blockAfter(from, day);
+                if (block && E.compareDay(day, block) > 0) return true;
                 if ($ctrl.hasClock()) return kind() === 'datetime' && !dayFits(day, anchor);
                 const reach = unitEnd(day);
                 const farthest = spanLimit(from, $ctrl.maxRange, true);
@@ -18041,9 +18165,21 @@ angular.module('aui')
                 return !!(nearest && E.compareDay(reach, nearest) < 0);
             }
 
+            // type dates: the days checked, by day (a Set of the value's days: each cell searched the whole list, twice
+            // per digest - 1000 dates made over half a million comparisons); made anew when the value is another list
+            let checked = {list: null, n: -1, keys: null};
+            const dayKey = d => d.y + '-' + d.M + '-' + d.d;
+            function checkedKeys() {
+                const list = datesOf(value);
+                if (checked.list !== list || checked.n !== list.length) {
+                    checked = {list: list, n: list.length, keys: new Set(list.filter(good).map(dayKey))};
+                }
+                return checked.keys;
+            }
+            const isChecked = c => !!c && !isBad(c) && checkedKeys().has(dayKey(c));
+
             // type dates with max-count reached: the days not checked cannot be
-            const countFull = day => $ctrl.isDates() && maxCount() > 0 && datesOf(value).length >= maxCount() &&
-                !datesOf(value).some(d => E.compareDay(d, day) === 0);
+            const countFull = day => $ctrl.isDates() && maxCount() > 0 && datesOf(value).length >= maxCount() && !isChecked(day);
             const pickable = day => !dayDisabled(day) && !outOfSpan(day) && !countFull(day);
 
             /**
@@ -18055,7 +18191,7 @@ angular.module('aui')
             function reachFrom(other, end) {
                 const max = E.parseDuration($ctrl.maxRange);
                 const min = E.parseDuration($ctrl.minRange);
-                const shift = (d, sign) => E.add(other, sign * d.n, d.unit);
+                const shift = (d, sign) => addTime(other, sign * d.n, d.unit);
                 if (end) return {lo: min ? finish(shift(min, 1), false) : other, hi: max ? finish(shift(max, 1), true) : null};
                 return {lo: max ? finish(shift(max, -1), false) : null, hi: min ? finish(shift(min, -1), true) : other};
             }
@@ -18100,7 +18236,7 @@ angular.module('aui')
                     const limit = spanLimit(start, spec, true);
                     return least ? E.compareDay(end, limit) >= 0 : E.compareDay(end, limit) <= 0;
                 }
-                const reach = E.add(start, duration.n, duration.unit);
+                const reach = addTime(start, duration.n, duration.unit);
                 return least ? E.compare(end, finish(reach, false)) >= 0 : E.compare(end, finish(reach, true)) <= 0;
             }
 
@@ -18126,7 +18262,7 @@ angular.module('aui')
                     if (!insideMin(p)) return 'min';
                     if (!insideMax(p)) return 'max';
                     if (kind() !== 'time' && pageRefuses(p)) return 'disabledDate';
-                    if ($ctrl.hasClock() && timeRefused(p.h, p.m, p.s, list.length === 2 ? i === 1 : end)) return 'disabledTime';
+                    if ($ctrl.hasClock() && timeOff(p, list.length === 2 ? i === 1 : end)) return 'disabledTime';
                 }
                 return '';
             }
@@ -18168,8 +18304,13 @@ angular.module('aui')
                 m.$validators.max = () => ends().every(insideMax) && typedOk('max');
                 m.$validators.disabledDate = () => (kind() === 'time' || !($ctrl.disabledDate instanceof Function) || ends().every(p => !pageRefuses(p))) &&
                     typedOk('disabledDate');
-                m.$validators.disabledTime = () => (!$ctrl.hasClock() || !($ctrl.disabledTime instanceof Function) ||
-                    ends().every((p, i) => !timeRefused(p.h, p.m, p.s, $ctrl.isRange() && i === 1))) && typedOk('disabledTime');
+                // each end with its own flag: an end without a start is still the end (filtered first, it was asked as
+                // the start)
+                m.$validators.disabledTime = () => {
+                    if (!$ctrl.hasClock() || !($ctrl.disabledTime instanceof Function)) return typedOk('disabledTime');
+                    const list = $ctrl.isRange() ? [rangeParts().start, rangeParts().end] : [value];
+                    return list.every((p, i) => !good(p) || !timeOff(p, $ctrl.isRange() && i === 1)) && typedOk('disabledTime');
+                };
                 m.$validators.maxCount = () => !$ctrl.isDates() || !maxCount() || datesOf(value).length <= maxCount();
                 m.$validators.rangeOrder = () => {
                     const r = rangeParts();
@@ -18182,7 +18323,12 @@ angular.module('aui')
                 };
                 m.$validators.rangeMax = () => !$ctrl.isRange() || spanOk(rangeParts().start, rangeParts().end, $ctrl.maxRange, false);
                 m.$validators.rangeMin = () => !$ctrl.isRange() || spanOk(rangeParts().start, rangeParts().end, $ctrl.minRange, true);
-                m.$validators.rangeCrossesDisabled = () => !$ctrl.isRange() || kind() === 'time' || clearBetween(rangeParts().start, rangeParts().end);
+                // (the page's rule asked anew: the value is checked as it is now)
+                m.$validators.rangeCrossesDisabled = () => {
+                    if (!$ctrl.isRange() || kind() === 'time') return true;
+                    crossings.clear();
+                    return clearBetween(rangeParts().start, rangeParts().end);
+                };
             }
 
             // type dates: its days (a value that is not a list: none)
@@ -18211,6 +18357,8 @@ angular.module('aui')
             }
 
             function viewOf(modelValue) {
+                // the field's own empty-value given back (a cleared field saved and loaded again): empty
+                if (isEmptyMarker(modelValue)) return null;
                 if (!$ctrl.isRange() && !$ctrl.isDates()) return readValue(modelValue, singleEnd());
                 if ($ctrl.isDates()) {
                     if (!Array.isArray(modelValue) && blankValue(modelValue)) return null;
@@ -18225,8 +18373,14 @@ angular.module('aui')
                     }
                     return list.length ? sortDays(list) : null;
                 }
-                if (!$ctrl.isRange()) return readValue(modelValue, false);
-                const list = Array.isArray(modelValue) ? modelValue : [];
+                // a range: a list of its two ends; another value (a text, an object, more than two ends) is no range -
+                // shown as it is, the field invalid (an optional field passed it, its boxes empty or one end left out)
+                if (!Array.isArray(modelValue)) {
+                    return blankValue(modelValue) || isEmptyMarker(modelValue) ? null
+                        : {bad: typeof modelValue === 'string' ? modelValue : ''};
+                }
+                if (modelValue.slice(2).some(x => !blankValue(x))) return {bad: modelValue.join(', ')};
+                const list = modelValue;
                 const start = readValue(list[0], false);
                 const end = readValue(list[1], true);
                 return start || end ? {start: start, end: end} : null;
@@ -18245,6 +18399,7 @@ angular.module('aui')
                 });
                 m.$render = function () {
                     value = m.$viewValue === undefined ? null : m.$viewValue;
+                    followDraft();
                     paintBoxes();
                 };
             }
@@ -18258,7 +18413,12 @@ angular.module('aui')
                     $ctrl.startModel = Array.isArray(next) ? next[0] : emptyOne();
                     $ctrl.endModel = Array.isArray(next) ? next[1] : emptyOne();
                 } else if ($attrs.ngModel) {
-                    $scope.$parent.$eval($attrs.ngModel + ' = $auiValue', {$auiValue: next});
+                    // a getter/setter model (ng-model-options getterSetter): the value given to its function - an
+                    // assignment replaced the function itself with the text
+                    const m = model();
+                    const target = $scope.$parent.$eval($attrs.ngModel);
+                    if (m && m.$options && m.$options.getterSetter && typeof target === 'function') target(next);
+                    else $scope.$parent.$eval($attrs.ngModel + ' = $auiValue', {$auiValue: next});
                 }
             }
 
@@ -18285,19 +18445,66 @@ angular.module('aui')
                 $ctrl.mirrorValue = blankValue($ctrl.startModel) && blankValue($ctrl.endModel) ? emptyValue() : [$ctrl.startModel, $ctrl.endModel];
             }
 
+            /**
+             * The page changed the value while the panel is open (its model, api.setValue): the draft is that value -
+             * OK took the old draft back (a cleared or replaced value came back).
+             */
+            function followDraft() {
+                if (!$ctrl.isOpen || !drafts()) return;
+                const next = copyValue(value);
+                // the field's own commit coming back (two models: through their watch): the draft is it already
+                if (angular.equals(next, draft)) return;
+                draft = next;
+                if ($ctrl.hasClock()) buildTime();
+            }
+
+            /**
+             * A value saved as an instant (timestamp, seconds, Date) in local time: a time the clock skips (set forward:
+             * 02:30) taken as the time it is (03:30) - the box showed 02:30 as valid while its instant was 03:30, and the
+             * record opened again showed 03:30. Texts stay the wall-clock texts they are.
+             */
+            function realTime(p) {
+                if (!good(p) || typeof offset === 'number' || valueType() === 'text' || kind() === 'time') return p;
+                const q = E.fromTimestamp(E.toTimestamp(p, offset), offset);
+                return q && E.compare(q, p) !== 0 ? q : p;
+            }
+
+            function realValue(v) {
+                if (!v || isBad(v)) return v;
+                if ($ctrl.isDates()) return datesOf(v).map(realTime);
+                if ($ctrl.isRange()) return {start: realTime(rangeOf(v).start), end: realTime(rangeOf(v).end)};
+                return realTime(v);
+            }
+
             /** A new value from the user: the page's model, on-change. source: pick, input, shortcut, now, clear, api. */
             function commit(next, source) {
                 const m = model();
                 const before = m ? m.$modelValue : undefined;
+                next = realValue(next);
                 value = next;
+                if (source === 'api') followDraft();
                 if (m) {
                     m.$setViewValue(next, source);
                     m.$validate();
                 }
                 paintBoxes();
+                // a deferred model (ng-model-options debounce, updateOn): on-change once Angular commits it - compared
+                // at once, the model was still the old one, and the change was never told
+                if (m && kit.commitPending(m)) {
+                    if (!notifyLater) {
+                        notifyLater = kit.changeAfterCommit(m, (src, old) => {
+                            const now = m.$modelValue;
+                            if (!angular.equals(old, now)) reportChange(now, old, src);
+                        });
+                    }
+                    notifyLater(source, before);
+                    return;
+                }
                 const after = m ? m.$modelValue : modelOf(next);
                 if (!angular.equals(before, after)) reportChange(after, before, source);
             }
+
+            let notifyLater = null;   // on-change after a deferred commit (kit.changeAfterCommit), made at the first
 
             const dayText = p => (good(p) ? E.format(p, 'YYYY-MM-DD') : null);
 
@@ -18332,6 +18539,8 @@ angular.module('aui')
             function textsOf(v) {
                 if ($ctrl.isDates()) return [isBad(v) ? v.bad : datesOf(v).map(text).join(', '), ''];
                 const r = rangeOf(v);
+                // a range that is no range (see viewOf): its text in the first box
+                if ($ctrl.isRange() && isBad(v)) return [v.bad, ''];
                 return $ctrl.isRange() ? [text(r.start), text(r.end)] : [text(v), ''];
             }
 
@@ -18347,6 +18556,45 @@ angular.module('aui')
                 if ($ctrl.isRange() && isBad(value)) $ctrl.boxBad = [true, false];
                 writeBoxes($ctrl.boxTexts);
                 setTextValidity();
+                writeFormValue();
+            }
+
+            /**
+             * name: the value in the page's native form - hidden inputs of that name (the boxes show it in the display
+             * format, and had no name: a form sent without Angular, FormData, lost the field). The text of what the
+             * model holds: a text value as it is, a timestamp its number, a Date its text in value-format; a range two
+             * (start, end: '' for an end not set), dates one each. Disabled with the field (a native form leaves it out).
+             */
+            function writeFormValue() {
+                const holder = $element[0].querySelector('.aui-date-picker__form-value');
+                if (!holder) return;
+                const name = $ctrl.name ? String($ctrl.name) : '';
+                const one = p => {
+                    if (isBad(p)) return String(p.bad);
+                    if (!good(p)) return '';
+                    const v = writeValue(p);
+                    if (typeof v === 'number') return String(v);
+                    if (E.isDate(v)) return E.format(p, valueFormat());
+                    return v === null || v === undefined ? '' : String(v);
+                };
+                let texts;
+                if (!name) texts = [];
+                else if ($ctrl.isDates()) texts = isBad(value) ? [String(value.bad)] : datesOf(value).filter(good).map(one);
+                else if ($ctrl.isRange()) texts = isBad(value) ? [String(value.bad), ''] : [one(rangeParts().start), one(rangeParts().end)];
+                else texts = [one(value)];
+                while (holder.children.length > texts.length) holder.removeChild(holder.lastChild);
+                while (holder.children.length < texts.length) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    holder.appendChild(input);
+                }
+                const off = $ctrl.isDisabled();
+                texts.forEach((text, i) => {
+                    const input = holder.children[i];
+                    if (input.name !== name) input.name = name;
+                    if (input.value !== text) input.value = text;
+                    if (input.disabled !== off) input.disabled = off;
+                });
             }
 
             // the texts this field put in the boxes: a box holding another text was typed in
@@ -18592,11 +18840,19 @@ angular.module('aui')
             // month, quarter, year or week: the one it is in)
             function readOne(t, end) {
                 const typed = kind() === 'quarter' || kind() === 'week' ? t.toUpperCase() : (kind() === 'datetime' ? oneDigitHour(t) : t);
-                const read = E.parse(typed, displayFormat()) || E.parse(typed, valueFormat()) || E.parse(typed, FORMATS.datetime);
+                // a week: also its ISO text (2020-W53), whatever the week start (its value format is a day then)
+                const read = E.parse(typed, displayFormat()) || E.parse(typed, valueFormat()) || E.parse(typed, FORMATS.datetime) ||
+                    (kind() === 'week' ? E.parse(typed, 'GGGG-[W]WW') : null);
                 const parsed = kind() === 'datetime' ? keepHalf(read, end) : read;
                 if (!parsed || !whole(parsed.parts)) return null;
-                const p = E.complete(parsed.parts, end ? 'end' : 'start');
+                let p = E.complete(parsed.parts, end ? 'end' : 'start');
                 if (!p) return null;
+                // a text with an offset (Z, -05:00) is that instant, in the field's time (as the page's values and
+                // api.setValue read it): its wall-clock numbers were taken, another instant
+                if (parsed.offset !== undefined) {
+                    p = E.fromTimestamp(E.toTimestamp(p, parsed.offset), offset);
+                    if (!p) return null;
+                }
                 if (unit()) return snap(p, end);
                 if (kind() !== 'datetime') return dayValue(p, end);
                 // a date-time typed without its time: the picked day's default time
@@ -18745,10 +19001,12 @@ angular.module('aui')
             }
 
             function setView(y, M) {
-                const p = E.make(y, M, 1);
-                if (p.y < 1 || p.y > 9999) return;
-                viewY = p.y;
-                viewM = p.M;
+                // every month shown inside years 1 to 9999: two months from December 9999 showed a January 10000, and a
+                // range's end in January 0001 (its month the second shown) asked for December 0000 and showed none
+                const last = 9999 * 12 + 12 - (Math.max(1, $ctrl.calendarCount()) - 1);
+                const index = Math.min(Math.max(y * 12 + M, 1 * 12 + 1), last);
+                viewY = Math.floor((index - 1) / 12);
+                viewM = index - viewY * 12;
                 buildCalendars();
             }
 
@@ -18817,7 +19075,6 @@ angular.module('aui')
                 return list.map(name => 'aui-date-picker__day--' + name);
             }
 
-            const isChecked = c => datesOf(value).some(d => sameDay(c, d));
 
             /** The classes of a day: today, the value, a range's band and ends, the preview, disabled, the keyboard's. A
              * day of the last or next month is drawn as any day (lighter); one the other month shows is left out. */
@@ -18826,7 +19083,10 @@ angular.module('aui')
                 const classes = [];
                 if (!c.inMonth) classes.push('aui-date-picker__day--outside');
                 if (sameDay(c, today())) classes.push('aui-date-picker__day--today');
-                if (!pickable(c)) classes.push('aui-date-picker__day--disabled');
+                // asked once per drawing: aria-disabled reads it (each asked the page's rule: twice per day and digest);
+                // it changes with the disabled class, so the digest goes round once more and aria-disabled follows
+                c.noPick = !pickable(c);
+                if (c.noPick) classes.push('aui-date-picker__day--disabled');
                 if (sameDay(c, activeDay)) classes.push('aui-date-picker__day--active');
                 if ($ctrl.isDates()) {
                     if (isChecked(c)) classes.push('aui-date-picker__day--selected');
@@ -18846,7 +19106,8 @@ angular.module('aui')
                 if ($ctrl.isDates()) return isChecked(c);
                 if ($ctrl.isWeek()) return good(value) && sameDay(E.startOf(value, 'week', weekStart()), E.startOf(c, 'week', weekStart()));
                 if (!$ctrl.isRange()) return sameDay(c, shown);
-                const r = previewRange() || rangeOf(shown);
+                // the range as set (the preview under the pointer is drawn, not selected: it was announced as chosen)
+                const r = rangeOf(shown);
                 return sameDay(c, r.start) || sameDay(c, r.end);
             };
             $ctrl.dayTab = c => (sameDay(c, activeDay) && c.inMonth ? 0 : -1);
@@ -18858,8 +19119,46 @@ angular.module('aui')
             $ctrl.yearList = [];
 
             function buildPickerLists() {
-                if ($ctrl.mode === 'month') $ctrl.monthList = monthCells();
-                if ($ctrl.mode === 'year') $ctrl.yearList = yearCells();
+                if ($ctrl.mode === 'month') $ctrl.monthList = withTabStop(monthCells());
+                if ($ctrl.mode === 'year') $ctrl.yearList = withTabStop(yearCells());
+            }
+
+            // one stop of the keyboard's Tab in a list of months or years (the arrows move in it): the chosen one, else
+            // this one, else the first that can be chosen (they all were out of the Tab order: the keyboard could not
+            // reach them)
+            function withTabStop(list) {
+                const stop = list.filter(c => c.selected && !c.disabled)[0] || list.filter(c => c.current && !c.disabled)[0] ||
+                    list.filter(c => !c.disabled)[0];
+                list.forEach(c => { c.tab = c === stop; });
+                return list;
+            }
+
+            /** The arrows in a list of months or years: to the next one that can be chosen (left, right; up and down by
+             * a row), Home and End; Enter and Space choose it (the button's own click). */
+            function onCellKeydown(event, cell) {
+                const cells = Array.prototype.slice.call(cell.parentNode.querySelectorAll('.aui-date-picker__cell'));
+                const at = cells.indexOf(cell);
+                const top = cells.length ? cells[0].getBoundingClientRect().top : 0;
+                const perRow = Math.max(1, cells.filter(c => Math.abs(c.getBoundingClientRect().top - top) < 2).length);
+                const step = {ArrowLeft: -1, ArrowRight: 1, ArrowUp: -perRow, ArrowDown: perRow}[event.key];
+                let next = -1;
+                if (step) {
+                    for (let i = at + step; i >= 0 && i < cells.length; i += step) {
+                        if (!cells[i].disabled) {
+                            next = i;
+                            break;
+                        }
+                    }
+                } else if (event.key === 'Home' || event.key === 'End') {
+                    const order = event.key === 'Home' ? cells : cells.slice().reverse();
+                    next = cells.indexOf(order.filter(c => !c.disabled)[0]);
+                } else {
+                    return;
+                }
+                event.preventDefault();
+                if (next < 0 || next === at) return;
+                cells.forEach((c, i) => c.setAttribute('tabindex', i === next ? '0' : '-1'));
+                kit.focusQuietly(cells[next]);
             }
 
             function monthCells() {
@@ -18940,7 +19239,12 @@ angular.module('aui')
 
             // the first page shown: a year (months, quarters) or a decade (years)
             function setUnitView(y) {
-                viewY = kind() === 'year' ? Math.floor(y / 10) * 10 : y;
+                const years = kind() === 'year';
+                const step = years ? 10 : 1;
+                const page = years ? Math.floor(y / 10) * 10 : y;
+                // every page shown inside years 1 to 9999 (a range's second page past 9999 had nothing to pick)
+                const lastPage = (years ? 9990 : 9999) - (Math.max(1, $ctrl.unitCount()) - 1) * step;
+                viewY = Math.min(Math.max(page, years ? 0 : 1), lastPage);
                 buildUnits();
             }
 
@@ -18999,9 +19303,11 @@ angular.module('aui')
             $ctrl.unitIsSelected = function (cell) {
                 if (cell.hidden) return false;
                 if (!$ctrl.isRange()) return sameUnit(cell, value);
-                const r = previewRange() || rangeOf(marked());
+                const r = rangeOf(marked());
                 return sameUnit(cell, r.start) || sameUnit(cell, r.end);
             };
+            // this month, quarter, year (as today's day): aria-current, not only its look
+            $ctrl.isCurrentUnit = cell => !cell.hidden && sameUnit(cell, today());
             $ctrl.unitTab = cell => (sameUnit(cell, activeDay) && cell.inPage ? 0 : -1);
             $ctrl.unitDisabled = cell => !unitPickable(cell);
 
@@ -19149,7 +19455,8 @@ angular.module('aui')
                 paintDraft();
             }
 
-            // time-slots="09:00-18:00/30m": the times of the list
+            // time-slots="09:00-18:00/30m": the times of the list - within one day, its first not after its last (hours
+            // 0 to 23, minutes 0 to 59); another text is no list (the clock's columns are shown: see the docs)
             function parseSlots() {
                 const match = /^\s*(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})\s*\/\s*(\d+)\s*(min|m|h)\s*$/.exec($ctrl.timeSlots || '');
                 if (!match) return null;
@@ -19157,15 +19464,19 @@ angular.module('aui')
                 const from = at(match[1]);
                 const to = at(match[2]);
                 const step = Number(match[3]) * (match[4] === 'h' ? 60 : 1);
-                if (!step) return null;
-                return {from: from[0] * 60 + from[1], to: to[0] * 60 + to[1], step: step};
+                const inDay = t => t[0] <= 23 && t[1] <= 59;
+                if (!step || !inDay(from) || !inDay(to)) return null;
+                const first = from[0] * 60 + from[1];
+                const last = to[0] * 60 + to[1];
+                return first <= last ? {from: first, to: last, step: step} : null;
             }
 
             function buildSlots() {
                 const slots = parseSlots();
                 const list = [];
                 const current = good(draft) ? draft : null;
-                for (let minutes = slots.from; minutes <= slots.to && list.length < 288; minutes += slots.step) {
+                // every time of the list (at most a day's minutes: it stopped at 288, the later times out of reach)
+                for (let minutes = slots.from; minutes <= slots.to; minutes += slots.step) {
                     const p = onTimeDay(E.make(2000, 1, 1, Math.floor(minutes / 60) % 24, minutes % 60, 0));
                     list.push({value: minutes, label: E.format(p, displayFormat()), parts: p,
                         selected: !!(current && current.h === p.h && current.m === p.m),
@@ -19243,7 +19554,24 @@ angular.module('aui')
                 (maxCount() ? ' / ' + maxCount() : '');
             $ctrl.showToday = () => kind() === 'date' && !$ctrl.isRange();
 
-            $ctrl.nowAllowed = () => !$ctrl.isRange() && allowed(kind() === 'time' ? onTimeDay(E.now(offset)) : E.now(offset), false);
+            /**
+             * Now as the field takes it (its hidden units their least: HH:mm drops the seconds), or null when it cannot be
+             * taken. Below min only by those units (min="now" a moment ago: 12:17:30, Now 12:17:00), it is the next shown
+             * moment (12:18:00) - the one the button gave was below min, the form invalid at once.
+             */
+            function nowValue() {
+                if ($ctrl.isRange()) return null;
+                const now = E.now(offset);
+                const at = kind() === 'time' ? onTimeDay(now) : now;
+                let p = finish(at, false);
+                if (limits.min && E.compare(p, limits.min) < 0 && E.compare(at, limits.min) >= 0) {
+                    const shows = shownUnits();
+                    p = finish(E.add(p, 1, shows.s ? 'second' : (shows.m ? 'minute' : 'hour')), false);
+                }
+                return allowed(p, false) ? p : null;
+            }
+
+            $ctrl.nowAllowed = () => !!nowValue();
 
             // ------------------------------------------------------------------------------------- shortcuts
 
@@ -19294,8 +19622,8 @@ angular.module('aui')
                     last5Years: n => [E.make(n.y - 4, 1, 1), n],
                     last10Years: n => [E.make(n.y - 9, 1, 1), n],
                     // to the second (date-time ranges)
-                    last24Hours: (n, ws, now) => [E.add(now, -24, 'hour'), now, true],
-                    next24Hours: (n, ws, now) => [now, E.add(now, 24, 'hour'), true]
+                    last24Hours: (n, ws, now) => [addTime(now, -24, 'hour'), now, true],
+                    next24Hours: (n, ws, now) => [now, addTime(now, 24, 'hour'), true]
                 }
             };
             // the last k months: a month range's units (this month and the k - 1 before), else the days from the day after
@@ -19335,26 +19663,42 @@ angular.module('aui')
                 const ws = weekStart();
                 let v = null;
                 let exact = false;
+                let custom = false;
                 try {
                     if (item.name) {
                         v = CATALOGUE[$ctrl.isRange() ? 'range' : 'day'][item.name](day, ws, now);
                         exact = EXACT[item.name] === true;
-                    } else if (item.value instanceof Function) v = item.value(day);
-                    else if (item.value && typeof item.value === 'object' && !Array.isArray(item.value) && item.value.y === undefined) v = fromRule(item.value, day, ws);
-                    else v = item.value;
+                    } else if (item.value instanceof Function) {
+                        // ($now) => value, as documented: now to the second (a day's type takes its day)
+                        v = item.value(now);
+                        custom = true;
+                    } else if (item.value && typeof item.value === 'object' && !Array.isArray(item.value) && item.value.y === undefined &&
+                        !E.isDate(item.value)) {
+                        v = fromRule(item.value, day, ws);
+                    } else {
+                        // a fixed value (a text, a Date, a number, parts)
+                        v = item.value;
+                        custom = true;
+                    }
                 } catch (e) {
                     v = null;
                 }
                 const read = (x, end) => (x && typeof x === 'object' && x.y !== undefined ? x : readValue(x, end));
-                const asValue = (p, end) => (exact ? finish(E.copy(p), end) : (unit() ? snap(p, end) : dayValue(E.startOf(p, 'day'), end)));
+                // a date-time shortcut of the page's whose value has its own time keeps it (it was set to the picked
+                // day's time: 18:45:15 became 00:00:00); a date alone takes the day's time (default-time) as before
+                const timed = x => E.isDate(x) || typeof x === 'number' || (x && typeof x === 'object' && x.h !== undefined) ||
+                    (typeof x === 'string' && /\d{1,2}:\d{2}/.test(x));
+                const asValue = (p, end, x) => (exact || (custom && $ctrl.hasClock() && !unit() && timed(x)) ? finish(E.copy(p), end)
+                    : (unit() ? snap(p, end) : dayValue(E.startOf(p, 'day'), end)));
                 if ($ctrl.isRange()) {
                     if (!Array.isArray(v) || v.length < 2) return null;
                     const s = read(v[0], false);
                     const e = read(v[1], true);
-                    return good(s) && good(e) ? {start: asValue(s, false), end: asValue(e, true)} : null;
+                    return good(s) && good(e) ? {start: asValue(s, false, v[0]), end: asValue(e, true, v[1])} : null;
                 }
-                const d = read(Array.isArray(v) ? v[0] : v, singleEnd());
-                return good(d) ? asValue(d, singleEnd()) : null;
+                const x = Array.isArray(v) ? v[0] : v;
+                const d = read(x, singleEnd());
+                return good(d) ? asValue(d, singleEnd(), x) : null;
             }
 
             function buildShortcuts() {
@@ -19373,31 +19717,40 @@ angular.module('aui')
                     return item && typeof item === 'object' && item.label ? {label: String(item.label), value: item.value} : null;
                 }).filter(Boolean);
                 // outside the limits (or a max-range): shown disabled, with the reason
-                $ctrl.shortcutItems.forEach(item => {
-                    const v = shortcutValue(item);
-                    if (!v) {
-                        item.disabled = true;
-                    } else if ($ctrl.isRange()) {
-                        item.disabled = !allowed(v.start, false) || !allowed(v.end, true) || E.compare(v.start, v.end) > 0 ||
-                            !spanOk(v.start, v.end, $ctrl.maxRange, false) || !spanOk(v.start, v.end, $ctrl.minRange, true) ||
-                            !clearBetween(v.start, v.end);
-                    } else {
-                        item.disabled = !allowed(v, false);
-                    }
-                });
+                refreshShortcuts();
+            }
+
+            /** A shortcut's value is one the field cannot take now (outside the limits, a max-range, a disabled day). */
+            function shortcutRefused(item) {
+                const v = shortcutValue(item);
+                if (!v) return true;
+                if ($ctrl.isRange()) {
+                    return !allowed(v.start, false) || !allowed(v.end, true) || E.compare(v.start, v.end) > 0 ||
+                        !spanOk(v.start, v.end, $ctrl.maxRange, false) || !spanOk(v.start, v.end, $ctrl.minRange, true) ||
+                        !clearBetween(v.start, v.end);
+                }
+                return !allowed(v, false);
+            }
+
+            // the shortcuts' states again (the limits changed while the panel is open)
+            function refreshShortcuts() {
+                $ctrl.shortcutItems.forEach(item => { item.disabled = shortcutRefused(item); });
             }
 
             // ------------------------------------------------------------------------------------- open, close, pick
 
             function canInput() {
-                return !$ctrl.isDisabled() && !$ctrl.isReadonly();
+                if ($ctrl.isDisabled() || $ctrl.isReadonly()) return false;
+                // inside a disabled fieldset the browser disables the boxes: the trigger, Clear and the panel are off
+                // too (they opened and cleared the field)
+                const box = triggerEl ? triggerEl.querySelector('input.aui-date-picker__input') : null;
+                return !(box && typeof box.matches === 'function' && box.matches(':disabled'));
             }
 
             function openPanel(focusInside) {
                 if ($ctrl.isOpen || !canInput()) return;
                 closeFinishing = false;
                 refreshLimits();
-                blocks = {key: '', before: null, after: null};
                 buildWeekdays();
                 draft = copyValue(value);
                 const r = rangeParts();
@@ -19606,6 +19959,8 @@ angular.module('aui')
 
             /** The draft taken (OK, Enter, a close that keeps it): when it is whole and allowed. */
             function takeDraft(source, restoreFocus) {
+                // the page's rule asked anew for the range taken (the footer's answer may be from before a change of it)
+                crossings.clear();
                 if (!$ctrl.canTake()) return false;
                 const next = copyValue(draft);
                 if ($ctrl.isRange()) {
@@ -19970,10 +20325,8 @@ angular.module('aui')
                 if (!anchor || dayDisabled(day) || countFull(day)) return '';
                 const from = E.startOf(unitStart(anchor), 'day');
                 if (E.compareDay(day, from) < 0) return '';
-                if (!crossesAllowed() && !unit()) {
-                    const block = blocksOf(from).after;
-                    if (block && E.compareDay(day, block) > 0) return '';
-                }
+                const block = blockAfter(from, day);
+                if (block && E.compareDay(day, block) > 0) return '';
                 let far = false;
                 let near = false;
                 if ($ctrl.hasClock()) {
@@ -20034,11 +20387,15 @@ angular.module('aui')
             $ctrl.durationList = [];
 
             // the end a duration gives from the start: a range of days or units, both ends counted (7d from the 1st:
-            // the 7th); a date-time or time range, that time on (at the shown precision)
+            // the 7th); a date-time or time range, that time on (at the shown precision). A time range is of one day:
+            // a duration that passes midnight gives no end (+2 h from 23:15 gave 01:15, a range read back as reversed)
             function durationEnd(start, spec) {
                 const d = E.parseDuration(spec);
                 if (!d) return null;
-                if ($ctrl.hasClock()) return finish(E.add(start, d.n, d.unit), true);
+                if ($ctrl.hasClock()) {
+                    const end = finish(E.add(start, d.n, d.unit), true);
+                    return kind() === 'time' && end && E.compareDay(end, start) !== 0 ? null : end;
+                }
                 const last = spanLimit(E.startOf(unitStart(start), 'day'), spec, true);
                 return last ? endValue(last, true) : null;
             }
@@ -20113,16 +20470,16 @@ angular.module('aui')
             }
 
             function applyShortcut(item) {
-                if (!item || item.disabled) return;
+                // checked again at the click: the limits may have changed since the list was drawn
+                if (!item || item.disabled || !canInput() || shortcutRefused(item)) return;
                 const v = shortcutValue(item);
                 if (!v) return;
                 closeFromInput(true, () => commit(v, 'shortcut'));
             }
 
             function takeNow() {
-                if (!$ctrl.nowAllowed()) return;
-                const now = E.now(offset);
-                const p = finish(kind() === 'time' ? onTimeDay(now) : now, false);
+                const p = nowValue();
+                if (!canInput() || !p) return;
                 closeFromInput(true, () => commit(p, 'now'));
             }
 
@@ -20145,7 +20502,8 @@ angular.module('aui')
             function focusInsideSoon() {
                 $timeout(() => {
                     if (!$ctrl.isOpen || !panelEl) return;
-                    const target = panelEl.querySelector('.aui-date-picker__day[tabindex="0"]') ||
+                    const target = panelEl.querySelector('.aui-date-picker__cell[tabindex="0"]') ||
+                        panelEl.querySelector('.aui-date-picker__day[tabindex="0"]') ||
                         panelEl.querySelector('.aui-date-picker__unit[tabindex="0"]') ||
                         panelEl.querySelector('.aui-date-picker__time[tabindex="0"]');
                     if (target) kit.focusQuietly(target);
@@ -20286,8 +20644,14 @@ angular.module('aui')
                     case 'End': next = items[items.length - 1]; break;
                     case 'ArrowLeft':
                     case 'ArrowRight': {
+                        // the next column's chosen option, or its first one that can be chosen (its first one stayed, and when
+                        // it was disabled the focus did not move)
                         const other = columns[col + (event.key === 'ArrowLeft' ? -1 : 1)];
-                        if (other) kit.focusQuietly(other.querySelector('.aui-date-picker__time--selected') || other.querySelector('.aui-date-picker__time'));
+                        if (other) {
+                            const enabled = other.querySelector('.aui-date-picker__time--selected:not(:disabled)') ||
+                                other.querySelector('.aui-date-picker__time:not(:disabled)');
+                            if (enabled) kit.focusQuietly(enabled);
+                        }
                         event.preventDefault();
                         return;
                     }
@@ -20322,7 +20686,8 @@ angular.module('aui')
 
             function pickSlot(button) {
                 const item = $ctrl.slotItems[Number(button.getAttribute('data-index'))];
-                if (!item || item.disabled) return;
+                // checked again at the click: the limits may have changed since the list was drawn
+                if (!item || item.disabled || !canInput() || !allowed(item.parts, false)) return;
                 closeFromInput(true, () => commit(item.parts, 'pick'));
             }
 
@@ -20360,6 +20725,11 @@ angular.module('aui')
                     }
                     return;
                 }
+                // a field locked while open (disabled, readonly): its panel's keys take nothing
+                if (inPanel && !canInput() && event.key !== 'Tab') {
+                    event.preventDefault();
+                    return;
+                }
                 if (inPanel && target.classList.contains('aui-date-picker__day')) {
                     settle(false, () => onGridKeydown(event));
                     if (MOVE_KEYS[event.key]) focusActiveNow();
@@ -20372,6 +20742,10 @@ angular.module('aui')
                 }
                 if (inPanel && target.classList.contains('aui-date-picker__time')) {
                     settle(false, () => onColumnKeydown(event, target));
+                    return;
+                }
+                if (inPanel && target.classList.contains('aui-date-picker__cell')) {
+                    onCellKeydown(event, target);
                     return;
                 }
                 if (!inBox) return;
@@ -20442,8 +20816,9 @@ angular.module('aui')
             }
 
             function onPanelClick(event) {
-                // a panel still fading out after its close: nothing (the picker is closed)
-                if (!$ctrl.isOpen) return;
+                // a panel still fading out after its close: nothing (the picker is closed); a field locked while open
+                // (disabled, readonly) takes nothing
+                if (!$ctrl.isOpen || !canInput()) return;
                 const target = event.target;
                 const time = target && target.closest ? target.closest('.aui-date-picker__time') : null;
                 if (time) {
@@ -20561,6 +20936,8 @@ angular.module('aui')
                     case 'prev-years': yearPageStart -= 10; break;
                     case 'next-years': yearPageStart += 10; break;
                     case 'pick-month': {
+                        // chosen with the keyboard: the focus on to the view it opens (its button is gone)
+                        if (el === document.activeElement) focusInsideSoon();
                         const cal = $ctrl.calendars[modeTarget] || {y: viewY};
                         const back = E.addMonths(E.make(cal.y, Number(el.getAttribute('data-value')), 1), -modeTarget);
                         $ctrl.mode = 'day';
@@ -20568,6 +20945,7 @@ angular.module('aui')
                         break;
                     }
                     case 'pick-year': {
+                        if (el === document.activeElement) focusInsideSoon();
                         const y = Number(el.getAttribute('data-value'));
                         if ($ctrl.hasUnits()) {
                             // months, quarters: back to their pages, the year chosen where it was opened
@@ -20636,21 +21014,7 @@ angular.module('aui')
                 if ($ctrl.ngModelCtrl && ($attrs.hasOwnProperty('startModel') || $attrs.hasOwnProperty('endModel'))) {
                     console.warn('aui-date-picker: ng-model and start-model / end-model together: ng-model is used');
                 }
-                const holders = {time: texts.timePlaceholder, datetime: texts.datetimePlaceholder, month: texts.monthPlaceholder,
-                    quarter: texts.quarterPlaceholder, year: texts.yearPlaceholder, week: texts.weekPlaceholder, dates: texts.datesPlaceholder};
-                const ends = {date: ['startPlaceholder', 'endPlaceholder'], datetime: ['startTime', 'endTime'], time: ['startTime', 'endTime'],
-                    month: ['startMonth', 'endMonth'], quarter: ['startQuarter', 'endQuarter'], year: ['startYear', 'endYear']};
-                const endNames = ends[kind()] || ends.date;
-                // The hints in the boxes: the page's, else the built-in ones ("" too: server-side templates often write
-                // these attributes empty when a field has none); show-placeholder="false" shows none. The boxes keep their
-                // names for screen readers either way.
-                $ctrl.nameText = $ctrl.placeholder || holders[kind()] || texts.placeholder;
-                $ctrl.startName = $ctrl.startPlaceholder || texts[endNames[0]];
-                $ctrl.endName = $ctrl.endPlaceholder || texts[endNames[1]];
-                const hints = kit.readFlag($attrs, 'showPlaceholder', $ctrl.showPlaceholder, true);
-                $ctrl.placeholderText = hints ? $ctrl.nameText : '';
-                $ctrl.startText = hints ? $ctrl.startName : '';
-                $ctrl.endTextHolder = hints ? $ctrl.endName : '';
+                setHints();
                 refreshLimits();
                 buildWeekdays();
                 if ($ctrl.ngModelCtrl) attachModel($ctrl.ngModelCtrl);
@@ -20662,15 +21026,74 @@ angular.module('aui')
                     });
                 }
                 $scope.$watch(() => $ctrl.api, bindApi);
+                // locked while open (ng-disabled, ng-readonly, a disabled fieldset): the panel closes, taking nothing
+                $scope.$watch(() => $ctrl.isOpen && !canInput(), locked => {
+                    if (!locked) return;
+                    closePanel(false);
+                    // the boxes showed the draft: the value again
+                    paintBoxes();
+                });
             };
 
+            /**
+             * The hints in the boxes: the page's, else the built-in ones ("" too: server-side templates often write these
+             * attributes empty when a field has none); show-placeholder="false" shows none. The boxes keep their names
+             * for screen readers either way. Again when the page changes them.
+             */
+            function setHints() {
+                const holders = {time: texts.timePlaceholder, datetime: texts.datetimePlaceholder, month: texts.monthPlaceholder,
+                    quarter: texts.quarterPlaceholder, year: texts.yearPlaceholder, week: texts.weekPlaceholder, dates: texts.datesPlaceholder};
+                const ends = {date: ['startPlaceholder', 'endPlaceholder'], datetime: ['startTime', 'endTime'], time: ['startTime', 'endTime'],
+                    month: ['startMonth', 'endMonth'], quarter: ['startQuarter', 'endQuarter'], year: ['startYear', 'endYear']};
+                const endNames = ends[kind()] || ends.date;
+                $ctrl.nameText = $ctrl.placeholder || holders[kind()] || texts.placeholder;
+                $ctrl.startName = $ctrl.startPlaceholder || texts[endNames[0]];
+                $ctrl.endName = $ctrl.endPlaceholder || texts[endNames[1]];
+                const hints = kit.readFlag($attrs, 'showPlaceholder', $ctrl.showPlaceholder, true);
+                $ctrl.placeholderText = hints ? $ctrl.nameText : '';
+                $ctrl.startText = hints ? $ctrl.startName : '';
+                $ctrl.endTextHolder = hints ? $ctrl.endName : '';
+            }
+
             $ctrl.$onChanges = function (changes) {
-                const keys = Object.keys(changes).filter(k => ['min', 'max', 'maxRange', 'minRange', 'rangeCrossesDisabled', 'maxCount'].indexOf(k) >= 0);
-                if (!keys.length) return;
-                refreshLimits();
-                // the value checked again (once linked; Angular 1.5.3's change records have no isFirstChange)
+                const has = k => Object.prototype.hasOwnProperty.call(changes, k);
+                // before the first link (Angular 1.5.3's change records have no isFirstChange): $onInit sets them all
+                if (!triggerEl) return;
                 const m = model();
-                if (m && triggerEl) m.$validate();
+                if (['placeholder', 'startPlaceholder', 'endPlaceholder', 'showPlaceholder'].some(has)) setHints();
+                if (has('name')) writeFormValue();
+                // another time zone: the page's value read again in it, the boxes and the panel again
+                if (has('utcOffset')) {
+                    offset = $ctrl.utcOffset ? E.parseOffset($ctrl.utcOffset) : undefined;
+                    if (offset === null) offset = undefined;
+                    todayDay = null;
+                    if (m) {
+                        value = viewOf(m.$modelValue);
+                        given = value;
+                    }
+                }
+                // a format, a time zone: the boxes in it (getText() already was)
+                if (has('format') || has('utcOffset')) {
+                    paintBoxes();
+                    if ($ctrl.isOpen) paintDraft();
+                }
+                // the open panel's week start, steps and views
+                if ($ctrl.isOpen && (has('weekStart') || has('showWeekNumbers'))) {
+                    buildWeekdays();
+                    if ($ctrl.hasCalendar()) buildCalendars();
+                }
+                if ($ctrl.isOpen && (has('hourStep') || has('minuteStep') || has('secondStep') || has('format') || has('utcOffset'))) buildTime();
+                const limitKeys = ['min', 'max', 'maxRange', 'minRange', 'rangeCrossesDisabled', 'maxCount', 'utcOffset', 'disabledDate', 'disabledTime'];
+                if (limitKeys.some(has)) {
+                    refreshLimits();
+                    // an open panel's shortcuts and time slots with the new limits (a click took a value now refused)
+                    if ($ctrl.isOpen) {
+                        refreshShortcuts();
+                        if ($ctrl.usesSlots()) buildSlots();
+                    }
+                }
+                // the value checked again
+                if (m && (limitKeys.some(has) || has('format'))) m.$validate();
             };
 
             $ctrl.$postLink = function () {
@@ -20690,6 +21113,8 @@ angular.module('aui')
                         },
                         strategy: () => ($ctrl.dropDownPositionStrategy === 'absolute' ? 'absolute' : 'fixed'),
                         ownWidth: () => true,
+                        // a short window: the panel scrolls (its header and the focused day were off the screen)
+                        fitPanel: true,
                         onShown: () => scrollColumnsSoon(),
                         onPlaced: joinCorners,
                         onClosed: onPanelClosed
@@ -20712,6 +21137,18 @@ angular.module('aui')
                     triggerEl.addEventListener('focusin', onBoxFocus);
                     triggerEl.addEventListener('input', onBoxInput);
                     triggerEl.addEventListener('focusout', onBoxBlur);
+                    $element[0].addEventListener('focusout', onFieldLeave);
+                    resetForm = (triggerEl.querySelector('input.aui-date-picker__input') || {}).form || null;
+                    if (resetForm) resetForm.addEventListener('reset', onFormReset);
+                    // a named field: its form value left out of the native form while the field is disabled
+                    if (Object.prototype.hasOwnProperty.call($attrs, 'name')) $scope.$watch(() => $ctrl.isDisabled(), writeFormValue);
+                    // a box's own native change goes no further: the field tells its change once, on the host (the
+                    // page's listener got both, one without detail)
+                    triggerEl.addEventListener('change', event => {
+                        if (event.target !== triggerEl && event.target.classList && event.target.classList.contains('aui-date-picker__input')) {
+                            event.stopPropagation();
+                        }
+                    });
                     // fitted again when the focus comes or goes (after the quiet focus is set) and when the size changes
                     triggerEl.addEventListener('focusin', refitSoon);
                     triggerEl.addEventListener('focusout', refitSoon);
@@ -20868,7 +21305,27 @@ angular.module('aui')
                 localDigest();
             }
 
+            /*
+             * The form's native reset (a reset button, form.reset()) empties the boxes behind Angular's back: the model
+             * keeps its value (the model is the truth). The boxes show it again once the reset is done - also when the
+             * field is left before that (the empty box was taken as a text typed, and cleared the value).
+             */
+            let resetForm = null;
+            let resetPending = false;
+
+            function onFormReset() {
+                resetPending = true;
+                setTimeout(afterReset, 0);
+            }
+
+            function afterReset() {
+                if (!resetPending || destroyed) return;
+                resetPending = false;
+                paintBoxes();
+            }
+
             function onBoxBlur(event) {
+                afterReset();
                 const box = event.target;
                 if (!box.classList || !box.classList.contains('aui-date-picker__input')) return;
                 const index = Number(box.getAttribute('data-box')) || 0;
@@ -20877,6 +21334,15 @@ angular.module('aui')
                 if ($ctrl.isOpen && drafts() && (readBox(box.value, index === 1) !== null || readPair(box.value))) return;
                 // the other box of a range takes the focus: the text is taken without closing
                 settle(true, () => takeBox(index));
+            }
+
+            /** The field left (not for its other box or its panel): a value waiting for the blur (ng-model-options
+             * updateOn: 'blur') is committed, as Angular's own inputs do - after the box's text was taken. */
+            function onFieldLeave(event) {
+                const next = event.relatedTarget;
+                if (next && ($element[0].contains(next) || (panelEl && panelEl.contains(next)))) return;
+                const m = model();
+                if (m && kit.commitPending(m)) settle(true, () => kit.commitOnLeave(m));
             }
 
             $ctrl.clearClick = function ($event) {
@@ -20909,8 +21375,32 @@ angular.module('aui')
 
             $ctrl.focusFromLabel = () => focusBox(0);
 
+            // the methods put on the page's api object, to take them off again (a page that replaces its api object, or
+            // keeps it after the field is gone: the old object still drove the field, and kept it alive)
+            let installedApi = null;
+
+            function unbindApi() {
+                if (!installedApi) return;
+                const target = installedApi.target;
+                Object.keys(installedApi.methods).forEach(name => {
+                    if (target[name] === installedApi.methods[name]) delete target[name];
+                });
+                installedApi = null;
+            }
+
             function bindApi(target) {
+                unbindApi();
                 if (!target || typeof target !== 'object') return;
+                const before = Object.assign({}, target);
+                installApi(target);
+                const methods = {};
+                Object.keys(target).forEach(name => {
+                    if (typeof target[name] === 'function' && target[name] !== before[name]) methods[name] = target[name];
+                });
+                installedApi = {target: target, methods: methods};
+            }
+
+            function installApi(target) {
                 target.open = () => openFromInput(false);
                 target.close = () => settle(false, () => closeFromInput(false));
                 target.focus = () => focusBox(0);
@@ -20936,6 +21426,7 @@ angular.module('aui')
 
             $ctrl.$onDestroy = function () {
                 destroyed = true;
+                unbindApi();
                 pageAsk.cancel();
                 pageDigest.forget();
                 keepBody(false);
@@ -20947,6 +21438,8 @@ angular.module('aui')
                 if (resizeFrame !== null) window.cancelAnimationFrame(resizeFrame);
                 if (stopFit) stopFit();
                 if (fitFrame !== null) clearTimeout(fitFrame);
+                if (resetForm) resetForm.removeEventListener('reset', onFormReset);
+                resetForm = null;
                 if (panelCtl) panelCtl.destroy();
                 $element[0].removeEventListener('keydown', onRootKeydown);
             };
@@ -20970,6 +21463,8 @@ angular.module('aui')
                         <span class="aui-date-picker__mirror" aria-hidden="true"
                               aui-if="$ctrl.twoModels" name="{{ $ctrl.name }}" ng-model="$ctrl.mirrorValue"
                               ng-required="$ctrl.isRequired()" aui-date-picker-mirror></span>
+                        <!-- name: the value in the page's native form (FormData, a submit without Angular) -->
+                        <span class="aui-date-picker__form-value" hidden></span>
                         <div class="aui-field-label"
                              aui-if="$ctrl.showLabel && $ctrl.labelText && $ctrl.field.isLabelTop()"
                              ng-click="$ctrl.focusFromLabel()">{{$ctrl.labelText}}</div>
@@ -20989,6 +21484,7 @@ angular.module('aui')
                                        aria-expanded="{{ $ctrl.isOpen }}" aria-controls="{{ $ctrl.compId }}-panel"
                                        aria-label="{{ $ctrl.isRange() ? $ctrl.startName : ($ctrl.labelText || $ctrl.nameText) }}"
                                        aria-required="{{ $ctrl.isRequired() }}" aria-invalid="{{ $ctrl.showInvalid() }}"
+                                       ng-required="$ctrl.isRequired()"
                                        ng-attr-aria-describedby="{{ $ctrl.field.messageId() }}"
                                        ng-attr-placeholder="{{ $ctrl.isRange() ? $ctrl.startText : $ctrl.placeholderText }}"
                                        ng-disabled="$ctrl.isDisabled()" ng-readonly="$ctrl.isReadonly()"
@@ -20999,7 +21495,10 @@ angular.module('aui')
                                        role="combobox" aria-haspopup="dialog" aria-autocomplete="none"
                                        aria-expanded="{{ $ctrl.isOpen }}" aria-controls="{{ $ctrl.compId }}-panel"
                                        aria-label="{{ $ctrl.endName }}"
+                                       aria-required="{{ $ctrl.isRange() && $ctrl.isRequired() }}"
                                        aria-invalid="{{ $ctrl.showInvalid() }}"
+                                       ng-attr-aria-describedby="{{ $ctrl.isRange() ? $ctrl.field.messageId() : undefined }}"
+                                       ng-required="$ctrl.isRange() && $ctrl.isRequired()"
                                        ng-attr-placeholder="{{ $ctrl.endTextHolder }}"
                                        ng-disabled="!$ctrl.isRange() || $ctrl.isDisabled()" ng-readonly="$ctrl.isReadonly()"
                                        autocomplete="off" spellcheck="false">

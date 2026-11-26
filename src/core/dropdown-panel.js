@@ -63,7 +63,8 @@ angular.module('aui')
          *       ownWidth?(): boolean (the panel keeps the width of its content, its left edge on the trigger's: a
          *       calendar), onPlaced?() (after each placement, the side classes set: a panel of its own width
          *       measures where its edges meet the trigger's), onListLimited?() (the open list was given another
-         *       height to fit its side: a short viewport; the field keeps its active row in view)}
+         *       height to fit its side: a short viewport; the field keeps its active row in view), fitPanel?: true (a
+         *       panel without a list - a calendar - is itself never taller than the room on its side: it scrolls)}
          *
          * Placement: the side of the trigger (below or above) is chosen when the panel opens, by the height it will
          * need, and kept while it stays open: content that changes (data arriving, a search narrowing the list, nodes
@@ -200,6 +201,10 @@ angular.module('aui')
              * variable LIST_MAX_VAR) is that room less the rest of the panel and the list's own padding and border.
              */
             function limitList(available) {
+                if (cfg.fitPanel) {
+                    fitPanel(available);
+                    return;
+                }
                 const list = panel.querySelector('.aui-select__options');
                 const around = list ? heightAroundList(list) : null;
                 if (around === null) return;   // not shown (yet): measured at the next position
@@ -210,6 +215,26 @@ angular.module('aui')
                 // height is fitted at the next one, after the field brought its selected row into view for the list's
                 // full height - in a short viewport (a high zoom) that row was then below the list's end.
                 if (cfg.onListLimited) cfg.onListLimited();
+            }
+
+            /**
+             * fitPanel: a panel taller than the room on its side (a short window, a high zoom) gets that room as its
+             * height and scrolls (its top - a calendar's header, the focused day - was off the screen, with no way to
+             * reach it); a panel that fits is left as it is. Its height is read once it is shown.
+             */
+            function fitPanel(available) {
+                const room = Math.max(MIN_LIST_PX, Math.floor(available));
+                const wasLimited = !!panel.style.maxHeight;
+                if (wasLimited) {
+                    panel.style.maxHeight = '';
+                    panel.style.overflowY = '';
+                }
+                const needed = panel.scrollHeight;
+                if (!needed) return;                // not shown (yet): fitted at the next placement
+                if (needed <= room) return;
+                panel.style.maxHeight = room + 'px';
+                panel.style.overflowY = 'auto';
+                if (!wasLimited && cfg.onListLimited) cfg.onListLimited();
             }
 
             // Panel width follows the trigger, never narrower than cfg.minWidth(). The width is

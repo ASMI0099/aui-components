@@ -61,8 +61,8 @@ A time-only value (`time`, `timerange`) is its text (`HH:mm:ss` by default); its
 | Binding | Meaning | Default |
 |---|---|---|
 | `hour-step`, `minute-step`, `second-step` | the options of the time columns | 1 |
-| `disabled-time` | `disabled-time="vm.off($hour, $minute, $second, $end)"`: true for a time that cannot be set ($minute and $second null when an hour is asked, $second null for a minute; $end true for a range's end) | none |
-| `time-slots` | type `time`: one list of times instead of the columns, `'09:00-18:00/30m'` (`m`, `min` or `h`); a pick takes it | none |
+| `disabled-time` | `disabled-time="vm.off($hour, $minute, $second, $end)"`: true for a time that cannot be set ($minute and $second null when an hour is asked, $second null for a minute; $end true for a range's end). A typed or given time whose hour or minute it refuses is refused too, as the panel turns that hour or minute off | none |
+| `time-slots` | type `time`: one list of times instead of the columns, `'09:00-18:00/30m'` (`m`, `min` or `h`); a pick takes it. A definition that is no time range (minutes over 59, hours over 24, an end before its start, a step of nothing) is left out; a list may be as long as the day | none |
 | `commit-on-close` | a whole, allowed draft is taken when the panel closes without OK | true |
 
 A date is taken as it is picked. A time is set in a draft first: the day picked (its time kept), the columns (each
@@ -126,7 +126,8 @@ range set, and has OK (for a range set at its start only).
 
 `durations="['7d', '14d', '1M']"`: once the start is set, chips in the footer set the end that far from it (a range of
 days or units, both ends counted: `7d` from the 3rd is to the 9th; a date-time or time range, that time on), within the
-limits (a chip that would leave them is disabled).
+limits (a chip that would leave them is disabled). A time range is of one day: a chip that would pass midnight is
+disabled.
 
 The panel's content is built at a field's first opening and kept while it is closed (hidden, its bindings out of the page's digests), so later openings only bring it up to date; at most ten fields keep a closed panel (the one closed longest ago builds its again when opened).
 
@@ -167,9 +168,9 @@ each once). `$text` and `$timestamps` are lists.
 |---|---|
 | `min`, `max` | a value in `value-format`, or `today`, `now`, `today+30d`, `today-1y`, `now+2h` (days by the day; months, quarters, years and weeks by any day of them; date-times and times to the second) |
 | `limits-new-only` | true: `min` / `max` hold for new picks and typing only - an end the page gave (a saved value) outside them stays valid and is kept (`min="today"`: past days cannot be picked, a past start saved before can still be saved) |
-| `disabled-date` | `disabled-date="vm.closed($text, $parts, $timestamp, $unit)"`: true for one that cannot be picked; asked for each day (`$unit` `day`), or for each month, quarter, year or week (`$unit` that, `$parts` and `$timestamp` of its first day, `$text` in `value-format`); `$parts` has both names, `year`, `month`, `day` and `y`, `M`, `d` (as AuiDate's parts) |
+| `disabled-date` | `disabled-date="vm.closed($text, $parts, $timestamp, $unit)"`: true for one that cannot be picked; asked for each day (`$unit` `day`), or for each month, quarter, year or week (`$unit` that, `$parts` and `$timestamp` of its first day, `$text` in `value-format`); `$parts` has both names, `year`, `month`, `day` and `y`, `M`, `d` (as AuiDate's parts). A rule that throws refuses (the day is off, a value on it invalid) and its error goes to the application's `$exceptionHandler`, once until it answers again; the same for `disabled-time` |
 | `max-range`, `min-range` | the longest / shortest range: `31d`, `2w`, `3M`, `12M`, `1y`, `12h`, `30min` (ranges of days and units by their days, both ends counted: `12M` from March is to the next February; date-time and time ranges by their time, at the shown precision: with `HH:mm`, 31 days from 10:00 is to 10:00 of the 31st day on) |
-| `range-crosses-disabled` | true (default): a range may span disabled days, its ends may not be one; false: it may not (while its end is set, the days past the nearest disabled one after the start cannot be; a typed range over one is invalid, `rangeCrossesDisabled`) |
+| `range-crosses-disabled` | true (default): a range may span disabled days, its ends may not be one; false: it may not - nor a month, quarter or year range a disabled month, quarter or year (while its end is set, the days or units past the nearest disabled one after the start cannot be; a typed or given range over one is invalid, `rangeCrossesDisabled`). The whole range is looked at, however long: `disabled-date` is asked for each of its days (units) once while the range stays as it is, and again when a value is taken |
 | `max-count` | type `dates`: the most days that can be checked |
 
 Limits apply in every view (a month or year outside min / max is disabled in the month and year views); the keyboard
@@ -185,6 +186,13 @@ The model always holds what the field holds, valid or not, never `undefined` (wh
 value turns invalid, erasing it): a value the page or `api.setValue` gives outside the limits stays in the model and the
 field shows it invalid; a page that changes `min` / `max` later never loses its value; a required field cleared holds
 its empty value (`''`). The field sets ngModel's `allowInvalid` for this (a page's own `ng-model-options` are kept).
+
+In a native form: with a `name`, the value goes with the form's own data too (a submit without Angular, `FormData`) -
+hidden inputs of that name holding the text of what the model holds (a text value as it is, a timestamp its number, a
+Date its text in `value-format`): one for a date, two for a range (start, end; `''` for an end not set), one per date
+for `dates`; none while the field is disabled. `required` is also the boxes' own (a range's two), so the browser's
+check of the form stops at an empty required field. A native reset of the form (`form.reset()`, a reset button) does
+not change the model: the boxes show its value again.
 
 A range outside max-range / min-range, or ending before it starts, cannot be picked: while its end is set, the days
 (units) after the start that cannot end it are disabled (a day before the start can still be picked: it is a new
@@ -300,10 +308,24 @@ in the grid arrows move by a day or a week, PageUp/PageDown by a month, with Shi
 start/end, Enter or Space picks, Escape returns to the box (and closes). On months, quarters and years: arrows by one
 and by a row, PageUp/PageDown by a page, Enter or Space picks. The time columns are listboxes, one Tab stop each (the
 grid, the columns, then OK): ArrowUp/ArrowDown set the previous or next option, Home/End the first or last,
-ArrowLeft/ArrowRight move between the columns, Enter takes the draft (as OK); Escape drops the draft and closes.
-Screen readers: the box is a combobox with a dialog; each day (month, quarter, year) has its full name as label,
-selected and current states; week numbers are row headers.
+ArrowLeft/ArrowRight move between the columns (to the chosen option, or the first that can be chosen), Enter takes the
+draft (as OK); Escape drops the draft and closes. Tab also reaches the shortcuts, the duration chips, Today and Now. The
+month and year lists the calendar's title opens are one Tab stop (ArrowDown from the box goes there too): arrows by one
+and by a row, Home/End, Enter or Space chooses.
+Screen readers: the box is a combobox with a dialog (a range's end box required and described as its start box); each
+day (month, quarter, year) has its full name as label, selected and current states (`aria-current`, today's day and
+this month, quarter, year); the days are a grid (multi-selectable for `dates`), the months, quarters and years lists of
+options; a range's ends are selected as they are set (the preview under the pointer is drawn, not selected); a time
+range's two sets of columns are groups named by their captions; week numbers are row headers. In high contrast mode
+the keyboard's focus is an outline in the system's highlight colour and the arrows are drawn in its text colour.
 
 Texts (weekday and month names, labels) are the `date` group of `auiTexts` (see [texts.md](../texts.md)): English, or the
 page's language chosen once; a group (`shortcuts`, `length`, `unitNames`) is merged, so
 `set({date: {length: {days: '{n} d'}}})` changes one text of it. A 12-hour value shows and reads the `am` / `pm` texts.
+
+On a window under 640px wide the panel stays inside it (a time range's two sets of columns stand one under the
+other), and a panel taller than the room on its side scrolls.
+
+Values are to the whole second (a timestamp's milliseconds are kept while the value is not changed, never shown or
+set). As the other fields, the field is laid out left to right and follows the browser's zoom, not a CSS `zoom` on
+the page (see [fields.md](../fields.md)).

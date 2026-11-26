@@ -61,8 +61,11 @@ angular.module('aui')
             return {y: y, M: M, d: d, h: h || 0, m: m || 0, s: s || 0};
         }
 
+        // a copy keeps the instant of parts read from one (see fromTimestamp: given only while the parts are its own)
         function copy(p) {
-            return make(p.y, p.M, p.d, p.h, p.m, p.s);
+            const q = make(p.y, p.M, p.d, p.h, p.m, p.s);
+            if (typeof p.t === 'number') q.t = p.t;
+            return q;
         }
 
         function isInt(value, min, max) {
@@ -278,7 +281,8 @@ angular.module('aui')
 
         function parseOffset(text) {
             const match = /^([+-])(\d{2}):?(\d{2})$/.exec(String(text || '').trim());
-            if (!match) return null;
+            // the minutes of an offset are below 60 (+01:99 was read as +02:39, another real offset)
+            if (!match || Number(match[3]) > 59) return null;
             const minutes = Number(match[2]) * 60 + Number(match[3]);
             return minutes > 18 * 60 ? null : (match[1] === '-' ? -minutes : minutes);
         }
@@ -408,9 +412,19 @@ angular.module('aui')
             return new Date(ms);
         }
 
-        /** Milliseconds of the wall-clock parts: in local time, or at offset (minutes east of UTC) when given. */
+        // a Date, also one made in another window (a frame: instanceof Date is false for it)
+        function isDate(value) {
+            return Object.prototype.toString.call(value) === '[object Date]';
+        }
+
+        /** Milliseconds of the wall-clock parts: in local time, or at offset (minutes east of UTC) when given. Parts read
+         * from an instant they do not give back (see fromTimestamp) give that instant while they are still its parts. */
         function toTimestamp(p, offset) {
             if (!isValid(p)) return NaN;
+            if (typeof p.t === 'number') {
+                const own = fromTimestamp(p.t, offset);
+                if (own && own.y === p.y && own.M === p.M && own.d === p.d && own.h === p.h && own.m === p.m && own.s === p.s) return p.t;
+            }
             if (typeof offset === 'number' && isFinite(offset)) {
                 return seconds(p) * 1000 - offset * 60000;
             }
@@ -420,14 +434,25 @@ angular.module('aui')
             return date.getTime();
         }
 
+        /**
+         * The wall-clock parts of an instant: in local time, or at offset. When the parts do not give the instant back -
+         * a fraction of a second, the later of a local hour that comes twice (the clock set back) - the instant is kept
+         * with them (t): toTimestamp gives it while they are still its parts (written back, an unchanged value moved an
+         * hour or lost its milliseconds). A copy keeps it; parts changed are timed by their numbers again.
+         */
         function fromTimestamp(ms, offset) {
             if (typeof ms !== 'number' || !isFinite(ms)) return null;
+            let p;
             if (typeof offset === 'number' && isFinite(offset)) {
-                return fromSeconds(Math.floor((ms + offset * 60000) / 1000));
+                // inside years 1 to 9999, as in local time (a year 0 or 10000 was shown, with no timestamp back)
+                p = fromSeconds(Math.floor((ms + offset * 60000) / 1000));
+            } else {
+                const date = newDate(ms);
+                p = make(date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds());
             }
-            const date = newDate(ms);
-            const p = make(date.getFullYear(), date.getMonth() + 1, date.getDate(), date.getHours(), date.getMinutes(), date.getSeconds());
-            return isValid(p) ? p : null;
+            if (!isValid(p)) return null;
+            if (toTimestamp(p, offset) !== ms) p.t = ms;
+            return p;
         }
 
         function now(offset) {
@@ -457,6 +482,7 @@ angular.module('aui')
             make: make,
             copy: copy,
             isValid: isValid,
+            isDate: isDate,
             weekday: weekday,
             compare: compare,
             compareDay: compareDay,
@@ -505,7 +531,7 @@ angular.module('aui')
             if (value === null || value === undefined || value === '') return null;
             const offset = offsetOf(options);
             if (typeof value === 'number') return E.fromTimestamp(value, offset);
-            if (value instanceof Date) return E.fromTimestamp(value.getTime(), offset);
+            if (E.isDate(value)) return E.fromTimestamp(value.getTime(), offset);
             if (typeof value === 'object') return E.isValid(value) ? E.copy(value) : null;
             // in the format given; else (none, or a text of another form: a date-time where a date is asked for) read
             // as a date or date-time, which must then be at least a whole date (its time may be left out)
@@ -536,9 +562,11 @@ angular.module('aui')
                 const p = E.fromTimestamp(ms, offsetOf(options));
                 return p ? E.format(p, fmt || TEXT_FORMAT) : '';
             },
+            // a result outside years 1 to 9999 is no date: '' (as for a value that is none)
             add: function (value, n, unit, fmt) {
                 const p = read(value, fmt);
-                return p ? E.format(E.add(p, n, unit), fmt || TEXT_FORMAT) : '';
+                const q = p ? E.add(p, n, unit) : null;
+                return q && E.isValid(q) ? E.format(q, fmt || TEXT_FORMAT) : '';
             },
             diff: function (a, b, unit, fmt) {
                 const pa = read(a, fmt);
@@ -547,11 +575,13 @@ angular.module('aui')
             },
             startOf: function (value, unit, fmt, weekStart) {
                 const p = read(value, fmt);
-                return p ? E.format(E.startOf(p, unit, weekStart), fmt || TEXT_FORMAT) : '';
+                const q = p ? E.startOf(p, unit, weekStart) : null;
+                return q && E.isValid(q) ? E.format(q, fmt || TEXT_FORMAT) : '';
             },
             endOf: function (value, unit, fmt, weekStart) {
                 const p = read(value, fmt);
-                return p ? E.format(E.endOf(p, unit, weekStart), fmt || TEXT_FORMAT) : '';
+                const q = p ? E.endOf(p, unit, weekStart) : null;
+                return q && E.isValid(q) ? E.format(q, fmt || TEXT_FORMAT) : '';
             },
             compare: function (a, b, fmt) {
                 const pa = read(a, fmt);
