@@ -12,7 +12,7 @@
         /* a page's general span rules (padding, size, weight, colour) */
         .hostile span { padding: 0 10px; font-size: 20px; font-weight: 700; color: red; line-height: 30px; }
         .accent-green { --aui-control-accent-color: #198754; }
-        /* the 2026-11-24 retest: a page's span display rule, text hidden by the page's CSS, a centred footer, a row
+        /* a page's span display rule, text hidden by the page's CSS, a centred footer, a row
            lined up by the text's baseline */
         .span-display span { display: inline-block; }
         .page-hidden { display: none; }
@@ -139,7 +139,7 @@
     <aui-button id="b-narrow" block="true">A label far longer than its place</aui-button>
 </div>
 
-<div class="row" id="retest-1124">
+<div class="row" id="parts-row">
     <aui-button id="r-empty-dyn" icon="add">{{ state.none }}</aui-button>
     <aui-button id="r-empty-styled" icon="add" size="lg"><span class="page-styled">{{ state.none }}</span></aui-button>
     <aui-button id="r-empty-plain" icon="add"></aui-button>

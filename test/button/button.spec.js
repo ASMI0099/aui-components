@@ -767,7 +767,7 @@
             return {fits};
         });
 
-    // ------------------------------------------------------------------ the 2026-11-24 retest
+    // ------------------------------------------------------------------ parts, widths, focus, words, hidden text, copy, layouts, baseline
     const cx = el => { const r = rect(el); return r.left + r.width / 2; };
 
     T('B47 an icon alone whose label shows nothing (an empty {{ }}, an empty styled span): the icon in the middle of its square, as with no label at all',
