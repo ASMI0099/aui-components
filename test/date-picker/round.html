@@ -8,6 +8,8 @@
     <style>
         .dp-test { display: grid; grid-template-columns: repeat(3, 320px); gap: 12px 16px; padding: 12px; }
         .dp-test .dp-wide { grid-column: span 2; }
+        /* a page's general span rule (the field's own parts must not take it) */
+        .span-rule span { display: inline-block !important; padding: 0 6px; }
     </style>
     <script src="../../vendor/jquery.min.js"></script>
     <script src="../../vendor/angular.min.js"></script>
@@ -78,6 +80,11 @@
     <aui-date-picker id="r-week" type="week" week-start="0" name="week" ng-model="f.week"></aui-date-picker>
     <aui-date-picker id="r-slots" type="time" name="slots" ng-model="f.slots" time-slots="00:00-23:59/1m"></aui-date-picker>
     <aui-date-picker id="r-badslots" type="time" name="badSlots" ng-model="f.badSlots" time-slots="09:00-08:00/30m"></aui-date-picker>
+
+    <!-- a page's span rule around named fields -->
+    <div class="span-rule"><aui-date-picker id="r-spanrule" name="spanRule" ng-model="f.day" required></aui-date-picker></div>
+    <div class="span-rule dp-wide"><aui-date-picker id="r-spanrange" type="daterange" name="spanRange" ng-model="f.range"></aui-date-picker></div>
+    <div><aui-date-picker id="r-spanplain" name="spanPlain" ng-model="f.day"></aui-date-picker></div>
 </form>
 </body>
 </html>

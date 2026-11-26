@@ -18564,10 +18564,14 @@ angular.module('aui')
              * format, and had no name: a form sent without Angular, FormData, lost the field). The text of what the
              * model holds: a text value as it is, a timestamp its number, a Date its text in value-format; a range two
              * (start, end: '' for an end not set), dates one each. Disabled with the field (a native form leaves it out).
+             * The inputs are the field's last children, with no element around them: the browser never draws a hidden
+             * input, whatever the page's CSS (a holder <span> showed under a page's span rule and moved the field down).
              */
+            let formInputs = [];
+
             function writeFormValue() {
-                const holder = $element[0].querySelector('.aui-date-picker__form-value');
-                if (!holder) return;
+                const root = triggerEl ? triggerEl.parentNode : null;
+                if (!root) return;
                 const name = $ctrl.name ? String($ctrl.name) : '';
                 const one = p => {
                     if (isBad(p)) return String(p.bad);
@@ -18582,15 +18586,19 @@ angular.module('aui')
                 else if ($ctrl.isDates()) texts = isBad(value) ? [String(value.bad)] : datesOf(value).filter(good).map(one);
                 else if ($ctrl.isRange()) texts = isBad(value) ? [String(value.bad), ''] : [one(rangeParts().start), one(rangeParts().end)];
                 else texts = [one(value)];
-                while (holder.children.length > texts.length) holder.removeChild(holder.lastChild);
-                while (holder.children.length < texts.length) {
+                while (formInputs.length > texts.length) {
+                    const extra = formInputs.pop();
+                    if (extra.parentNode) extra.parentNode.removeChild(extra);
+                }
+                while (formInputs.length < texts.length) {
                     const input = document.createElement('input');
                     input.type = 'hidden';
-                    holder.appendChild(input);
+                    formInputs.push(input);
                 }
                 const off = $ctrl.isDisabled();
                 texts.forEach((text, i) => {
-                    const input = holder.children[i];
+                    const input = formInputs[i];
+                    if (input.parentNode !== root) root.appendChild(input);
                     if (input.name !== name) input.name = name;
                     if (input.value !== text) input.value = text;
                     if (input.disabled !== off) input.disabled = off;
@@ -21463,8 +21471,6 @@ angular.module('aui')
                         <span class="aui-date-picker__mirror" aria-hidden="true"
                               aui-if="$ctrl.twoModels" name="{{ $ctrl.name }}" ng-model="$ctrl.mirrorValue"
                               ng-required="$ctrl.isRequired()" aui-date-picker-mirror></span>
-                        <!-- name: the value in the page's native form (FormData, a submit without Angular) -->
-                        <span class="aui-date-picker__form-value" hidden></span>
                         <div class="aui-field-label"
                              aui-if="$ctrl.showLabel && $ctrl.labelText && $ctrl.field.isLabelTop()"
                              ng-click="$ctrl.focusFromLabel()">{{$ctrl.labelText}}</div>

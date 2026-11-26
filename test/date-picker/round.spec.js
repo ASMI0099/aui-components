@@ -333,6 +333,14 @@
             return {focus, arrows};
         });
 
+    T('DR21 a page\'s span rule around a named field: the field keeps its height and its box its place (the form value draws nothing)',
+        {day: {height: 34, top: 0}, range: {height: 34, top: 0}},
+        async () => {
+            const geo = id => { const h = host(id).getBoundingClientRect(); const t = host(id).querySelector('.aui-select__trigger').getBoundingClientRect();
+                return {height: Math.round(h.height), top: Math.round(t.top - h.top)}; };
+            return {day: geo('r-spanrule'), range: geo('r-spanrange')};
+        });
+
     T('DR99 no Angular errors other than the ones thrown on purpose',
         {errors: []},
         async () => ({errors: window.__ngErrors.slice()}));
