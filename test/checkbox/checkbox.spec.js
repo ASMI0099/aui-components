@@ -312,13 +312,34 @@
             return same ? {same} : {same, clean, hostile};
         });
 
-    T('K5 the box on the middle of its label\'s digits in the font they are drawn in (measured from the font: Microsoft YaHei draws them taller than Segoe UI); the box lifted by that middle',
-        {yahei: true, segoe: true, taller: true, lifted: true},
+    T('K5 the box on the middle of its label\'s digits in the font they are drawn in (half the digits\' ascent, measured from that font); taller digits lift the box more. Where Microsoft YaHei and Segoe UI are installed: YaHei\'s digits taller than Segoe UI\'s (other systems draw the labels in their own fonts)',
+        {measured: true, lifted: true, windowsFonts: true},
         async () => {
+            const a = 'c-k5-yahei', b = 'c-k5-segoe';
             const mid = id => parseFloat(getComputedStyle(look(id)).getPropertyValue('--aui-checkbox-mid'));
-            const y = mid('c-k5-yahei'), s = mid('c-k5-segoe');
             const lift = id => new DOMMatrix(getComputedStyle(look(id).querySelector('.aui-checkbox__control')).transform).m42;
-            return {yahei: y > 0.37 && y < 0.41, segoe: s > 0.34 && s < 0.37, taller: y > s, lifted: lift('c-k5-yahei') < lift('c-k5-segoe')};
+            // the middle the label's own font gives, measured here (half the digits' ascent at 100px, in em)
+            const ctx = document.createElement('canvas').getContext('2d');
+            const own = id => {
+                const s = getComputedStyle(look(id));
+                ctx.font = (s.fontWeight || '400') + ' 100px ' + s.fontFamily;
+                return Math.round(ctx.measureText('0123456789').actualBoundingBoxAscent * 5) / 1000;
+            };
+            // a font is installed when text in it is drawn otherwise than in the fallback alone
+            const installed = name => {
+                ctx.font = '100px monospace';
+                const fallback = ctx.measureText('0123456789 Wg').width;
+                ctx.font = '100px \'' + name + '\', monospace';
+                return ctx.measureText('0123456789 Wg').width !== fallback;
+            };
+            const measured = Math.abs(mid(a) - own(a)) < 0.0005 && Math.abs(mid(b) - own(b)) < 0.0005;
+            const taller = mid(a) - mid(b);
+            const lifted = Math.abs(taller) < 0.0005 ? Math.abs(lift(a) - lift(b)) < 0.05 : (taller > 0) === (lift(a) < lift(b));
+            const windows = installed('Microsoft YaHei') && installed('Segoe UI');
+            const windowsFonts = !windows || (mid(a) > 0.37 && mid(a) < 0.41 && mid(b) > 0.34 && mid(b) < 0.37 && taller > 0 && lift(a) < lift(b));
+            const out = {measured, lifted, windowsFonts};
+            if (!measured || !lifted || !windowsFonts) Object.assign(out, {mids: [mid(a), mid(b)], own: [own(a), own(b)], lifts: [lift(a), lift(b)], windows});
+            return out;
         });
 
     T('K6 row numbers in a table short of room (auto layout, long names beside): "10" and "100" stay on one line (the column is never squeezed below a whole number)',
