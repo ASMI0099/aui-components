@@ -21,6 +21,17 @@ const ROOT = path.resolve(__dirname, '..');
 const PAGE_TIMEOUT_MS = 240000;
 const SKIPPED = ['test/kit', 'test/unit', 'test/perf'];
 
+/**
+ * On GitHub Actions a failing suite is also written as an error annotation (its failing checks in it): annotations show
+ * on the commit and the run's summary, readable without the run's log.
+ */
+function annotate(title, lines) {
+    if (process.env.GITHUB_ACTIONS !== 'true') return;
+    const data = s => String(s).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+    const property = s => data(s).replace(/:/g, '%3A').replace(/,/g, '%2C');
+    console.log('::error title=' + property(title) + '::' + data(lines.join('\n').slice(0, 6000)));
+}
+
 function findSuites(filters) {
     const out = [];
     (function walk(dir) {
@@ -59,13 +70,16 @@ async function main() {
             const result = await page.waitFor('window.__result', PAGE_TIMEOUT_MS, true);
             await page.close();
             const seconds = Math.round((Date.now() - started) / 1000);
+            const title = (dist ? 'dist ' : 'src ') + suite;
             if (!result) {
                 failed += 1;
                 if (page.exceptions.length > 0) {
                     console.log('ERROR ' + suite + ' (' + seconds + ' s): the page threw before finishing');
                     page.exceptions.forEach(function (text) { console.log('    ' + text); });
+                    annotate(title, ['the page threw before finishing'].concat(page.exceptions));
                 } else {
                     console.log('TIMEOUT ' + suite + ' (' + seconds + ' s)');
+                    annotate(title, ['no result in ' + seconds + ' s']);
                 }
                 continue;
             }
@@ -78,6 +92,10 @@ async function main() {
                 if (verbose || line.indexOf('FAIL') === 0) console.log('    ' + line);
             });
             result.errors.forEach(function (error) { console.log('    angular error: ' + error); });
+            if (!ok) {
+                annotate(title, [result.pass + '/' + result.total + ' checks passed'].concat(result.lines.filter(line => line.indexOf('FAIL') === 0),
+                    result.errors.map(error => 'angular error: ' + error)));
+            }
         }
     } finally {
         await browser.close();
