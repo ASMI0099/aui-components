@@ -74,6 +74,27 @@ angular.module('aui')
                 collapse: 'Collapse'},
             // aui-button: what copy-text says for a moment after a click (shown, and announced to screen readers)
             button: {copied: 'Copied', copyFailed: 'Copy failed'},
+            // aui-pagination: {total}, {size}, {page}, {pages}, {count}, {from}, {to} are filled in; range: total-text
+            // "range"; pageOf: told to screen readers after a change; thousands: the separator of item counts ("60,000";
+            // empty: none)
+            pagination: {
+                nav: 'Pagination',
+                total: 'Total {total}',
+                range: '{from}–{to} of {total}',
+                pageOf: 'Page {page} of {pages}',
+                thousands: ',',
+                perPage: '{size} / page',
+                perPageLabel: 'Items per page',
+                goTo: 'Go to',
+                goToLabel: 'Go to page',
+                page: 'Page {page}',
+                previous: 'Previous page',
+                next: 'Next page',
+                previousMore: 'Previous {count} pages',
+                nextMore: 'Next {count} pages',
+                simple: '{page} / {pages}',
+                loading: 'Loading'
+            },
             field: {
                 required: 'This field is required',
                 maxlength: 'At most {length} characters',

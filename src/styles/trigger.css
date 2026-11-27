@@ -146,8 +146,11 @@
     line-height: var(--aui-control-inner-height, 24px);
     font-weight: 400;
     flex-grow: 1;
-    display: inline-block;
+    display: inline-block !important;
     width: 100%;
+    /* a page's general span rules (a margin, a padding, display: block) do not reach the field's text (the field grew) */
+    margin: 0 !important;
+    padding: 0 !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -156,8 +159,10 @@
 
 /* Display text  */
 .aui-select__display-text {
-    display: inline-block;
+    display: inline-block !important;
     width: 100%;
+    margin: 0 !important;
+    padding: 0 !important;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;

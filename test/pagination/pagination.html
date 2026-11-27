@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>aui-* family: aui-pagination</title>
+    <style>
+        body { font-family: system-ui, sans-serif; font-size: 14px; margin: 16px; background: #ffffff; color: #222; }
+        h1 { font-size: 18px; margin: 0 0 12px; }
+        .row { margin: 10px 0; }
+        .narrow { width: 380px; }
+        /* a page's general rules for buttons, spans and labels */
+        .hostile button { margin: 6px; padding: 10px; font-size: 20px; display: block; }
+        .hostile span, .hostile label { display: block; margin: 4px; }
+    </style>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../kit/aui-test-kit.css"/>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.min.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="pagination.fixture.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="../kit/aui-test-kit.js"></script>
+    <script src="pagination.spec.js"></script>
+</head>
+<body ng-app="auiTest" ng-controller="PageCtrl">
+<h1>aui-pagination: pages, sizes, the page to go to, loading, the page model</h1>
+<div class="row"><aui-pagination id="p-main" current-page="v.page" page-size="v.size" total="v.total" loading="v.busy"
+                                 on-change="go($page, $pageSize, $source)"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-search" page-model="search.page" page-size-items="[1,2,3,5,10,20,2000]"
+                                 on-page-data-change="search.refreshDataOnPageSizeChange"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-picker" page-model="picker.page" page-size-items="[5,10, 20, 50]"
+                                 on-page-data-change="picker.onPageChange"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-loading" page-model="loadingModel"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-empty" page-model="emptyModel"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-nopages" page-model="noPages"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-single" current-page="single.page" page-size="10" total="single.total" hide-on-single-page="true"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-few" current-page="1" page-size="10" total="8"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-simple" simple="true" current-page="3" page-size="10" total="200"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-layout" layout="pager, total" current-page="3" page-size="10" total="200"></aui-pagination></div>
+<div class="row narrow" id="narrow-box"><aui-pagination id="p-narrow" current-page="50" page-size="10" total="1000"></aui-pagination></div>
+<div class="row hostile"><aui-pagination id="p-hostile" current-page="5" page-size="10" total="1000"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-clean" current-page="5" page-size="10" total="1000"></aui-pagination></div>
+<!-- the sizes beside the fields of the same size -->
+<div class="row"><aui-pagination id="p-sm" size="sm" current-page="5" page-size="10" total="1000"></aui-pagination>
+    <aui-input id="f-sm" size="small" input-style-type="form" ng-model="f.a"></aui-input></div>
+<div class="row"><aui-pagination id="p-lg" size="large" current-page="5" page-size="10" total="1000"></aui-pagination>
+    <aui-input id="f-lg" size="large" input-style-type="form" ng-model="f.b"></aui-input></div>
+<div class="row"><aui-input id="f-md" input-style-type="form" ng-model="f.c"></aui-input></div>
+<!-- nothing moves from page to page -->
+<div class="row"><aui-pagination id="p-wide" current-page="w.page" page-size="10" total="w.total"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-simple2" simple="true" current-page="sw.page" page-size="10" total="200"></aui-pagination></div>
+<div class="row" id="limit-box"><aui-pagination id="p-limit" current-page="lim.page" page-size="10" total="437"></aui-pagination></div>
+<!-- the total went down -->
+<div class="row"><aui-pagination id="p-clamp" current-page="cl.page" page-size="10" total="cl.total" loading="cl.busy"
+                                 on-change="cl.go($page, $source)"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-clamp-model" page-model="clm.page" on-page-data-change="clm.onPage"></aui-pagination></div>
+<!-- total-text -->
+<div class="row"><aui-pagination id="p-range" total-text="range" layout="total, sizes, pager" current-page="r.page" page-size="10"
+                                 total="r.total" on-change="r.page = $page"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-own-text" total-text="{pages} pages, {size} a page, {total} items" current-page="3"
+                                 page-size="20" total="4321"></aui-pagination></div>
+<!-- a promise returned -->
+<div class="row"><aui-pagination id="p-promise" current-page="pr.page" page-size="10" total="200" on-change="pr.load($page)"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-native" current-page="nt.page" page-size="10" total="200" on-change="nt.load($page)"></aui-pagination></div>
+<!-- search -->
+<div class="row"><aui-pagination id="p-sfn" page-model="sm.page" search="sm.search"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-sexpr" current-page="1" page-size="10" total="100" search="sx.find($page, 'all')"></aui-pagination></div>
+<div class="row"><aui-pagination id="p-sslow" page-model="ss.page" search="ss.search"></aui-pagination></div>
+<!-- scroll-to: a list in a box that scrolls -->
+<div class="row" id="scroll-box" style="height: 160px; overflow: auto; border: 1px solid #ddd">
+    <div style="height: 40px">a header</div>
+    <div id="scroll-list" style="height: 500px">the list</div>
+    <aui-pagination id="p-scroll" current-page="sc.page" page-size="10" total="200" loading="sc.busy" scroll-to="#scroll-list"
+                    on-change="sc.go($page)"></aui-pagination>
+</div>
+<!-- a size changed by a script; a footer's end (its width follows its content); a font that arrives later -->
+<div class="row" id="rs-box" style="width: 1000px"><aui-pagination id="p-rs" current-page="50" page-size="10" total="1000"></aui-pagination></div>
+<div class="row" id="foot" style="display: flex; justify-content: flex-end; width: 1000px"><aui-pagination id="p-foot" current-page="50"
+                                 page-size="10" total="1000"></aui-pagination></div>
+<div class="row" style="width: 900px"><aui-pagination id="p-font" current-page="50" page-size="10" total="1000"></aui-pagination></div>
+</body>
+</html>

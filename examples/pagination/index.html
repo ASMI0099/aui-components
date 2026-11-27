@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <link rel="icon" href="data:,"/>
+    <title>aui-pagination</title>
+    <link rel="stylesheet" href="../../dist/aui-components.css"/>
+    <link rel="stylesheet" href="../assets/examples.css"/>
+    <style>
+        .pg-table { border-collapse: collapse; width: 100%; max-width: 640px; font-size: 13px; margin: 0 0 12px; }
+        .pg-table th, .pg-table td { border-bottom: 1px solid #e5e7eb; padding: 7px 10px; text-align: left; }
+        .pg-narrow { max-width: 360px; border: 1px dashed #cbd5e1; padding: 8px; }
+        .pg-row { margin: 0 0 14px; }
+        .pg-label { margin: 0 0 6px; font: 12px/1.5 ui-monospace, Consolas, monospace; color: #475569; }
+        .pg-fields { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 18px; }
+        .pg-note { margin: 4px 0 0; font: 12px/1.5 ui-monospace, Consolas, monospace; color: #475569; }
+    </style>
+    <script src="../../vendor/jquery.min.js"></script>
+    <script src="../../vendor/angular.js"></script>
+    <script src="../../vendor/floating-ui.core.min.js"></script>
+    <script src="../../vendor/floating-ui.dom.min.js"></script>
+    <script src="../assets/examples.js"></script>
+    <script src="../../dist/aui-components.js"></script>
+    <script src="pagination.js"></script>
+</head>
+<body class="ex" ng-app="auiExamples" ng-controller="PaginationCtrl as vm">
+<ex-page heading="aui-pagination"
+         lead="The pages of a list: the total, the page size, the pager and a page to go to. The page shown at once; on-change loads it; loading keeps a second click out.">
+
+    <section class="ex-example" id="ex-list">
+        <h2>A list from a server</h2>
+        <p class="ex-example__text">current-page, page-size, total and on-change, which returns its request: the loading look until it comes (a short delay here). total-text="range"; scroll-to brings the table's top into view when it is above the screen.</p>
+        <table class="pg-table" id="ex-list-table">
+            <tr><th>#</th><th>Item</th><th>Stock</th></tr>
+            <tr ng-repeat="row in vm.rows track by row.n"><td>{{ row.n }}</td><td>{{ row.name }}</td><td>{{ row.stock }}</td></tr>
+        </table>
+        <aui-pagination current-page="vm.page" page-size="vm.size" total="vm.total" total-text="range" scroll-to="#ex-list-table"
+                        on-change="vm.load($page, $pageSize, $source)"></aui-pagination>
+        <p class="pg-note">{{ vm.note }}</p>
+    </section>
+
+    <section class="ex-example" id="ex-search">
+        <h2>A search model</h2>
+        <p class="ex-example__text">page-model and search: on each change the bar writes the page into the model and calls the search with (currentPage, pageItemSize) itself - no handler of the page's own. The search returns its request: the loading look until it comes. total-text: a text of the page's.</p>
+        <table class="pg-table">
+            <tr><th>#</th><th>Item</th><th>Stock</th></tr>
+            <tr ng-repeat="row in vm.sm.rows track by row.n"><td>{{ row.n }}</td><td>{{ row.name }}</td><td>{{ row.stock }}</td></tr>
+        </table>
+        <aui-pagination page-model="vm.sm.page" page-size-items="[5, 10, 20]" search="vm.sm.search"
+                        total-text="Total {pages} pages, {size} a page, {total} items"></aui-pagination>
+    </section>
+
+    <section class="ex-example" id="ex-sizes">
+        <h2>Sizes</h2>
+        <p class="ex-example__text">The fields' sizes: each one with an aui-input and an aui-select of the same size under it - the same height, the same text size.</p>
+        <p class="pg-label">size="sm" (or small) - 28px, 13px text</p>
+        <div class="pg-row"><aui-pagination size="sm" current-page="4" page-size="20" total="380"></aui-pagination></div>
+        <div class="pg-fields"><aui-input size="small" input-style-type="form" width="200" placeholder="aui-input small" ng-model="vm.f.a"></aui-input>
+            <aui-select size="small" options="vm.choices" ng-model="vm.f.b" placeholder="aui-select small"></aui-select></div>
+        <p class="pg-label">size="md" - the default - 34px, 14px text</p>
+        <div class="pg-row"><aui-pagination current-page="4" page-size="20" total="380"></aui-pagination></div>
+        <div class="pg-fields"><aui-input input-style-type="form" width="200" placeholder="aui-input" ng-model="vm.f.c"></aui-input>
+            <aui-select options="vm.choices" ng-model="vm.f.d" placeholder="aui-select"></aui-select></div>
+        <p class="pg-label">size="lg" (or large) - 40px, 15px text</p>
+        <div class="pg-row"><aui-pagination size="lg" current-page="4" page-size="20" total="380"></aui-pagination></div>
+        <div class="pg-fields"><aui-input size="large" input-style-type="form" width="200" placeholder="aui-input large" ng-model="vm.f.e"></aui-input>
+            <aui-select size="large" options="vm.choices" ng-model="vm.f.f" placeholder="aui-select large"></aui-select></div>
+    </section>
+
+    <section class="ex-example" id="ex-forms">
+        <h2>Forms and states</h2>
+        <p class="pg-label">simple="true" - previous, the page of the pages, next</p>
+        <div class="pg-row"><aui-pagination simple="true" current-page="3" page-size="10" total="200"></aui-pagination></div>
+        <p class="pg-label">layout="pager, total" - only these parts, in this order</p>
+        <div class="pg-row"><aui-pagination layout="pager, total" current-page="12" page-size="10" total="500"></aui-pagination></div>
+        <p class="pg-label">pager-count="9" - more page buttons</p>
+        <div class="pg-row"><aui-pagination pager-count="9" current-page="12" page-size="10" total="500"></aui-pagination></div>
+        <p class="pg-label">loading="true" - nothing moves: the spinner in the current page</p>
+        <div class="pg-row"><aui-pagination loading="true" current-page="2" page-size="10" total="90"></aui-pagination></div>
+        <p class="pg-label">disabled="true"</p>
+        <div class="pg-row"><aui-pagination disabled="true" current-page="2" page-size="10" total="90"></aui-pagination></div>
+        <p class="pg-label">one page - no pager and no page to go to (hide-on-single-page="true": nothing at all)</p>
+        <div class="pg-row"><aui-pagination current-page="1" page-size="10" total="8"></aui-pagination></div>
+        <p class="pg-label">a narrow place (360px) - the parts give way, the pager keeps 5 buttons</p>
+        <div class="pg-row pg-narrow"><aui-pagination current-page="50" page-size="10" total="1000"></aui-pagination></div>
+    </section>
+
+    <section class="ex-example" id="ex-model">
+        <h2>The page model (the older form)</h2>
+        <p class="ex-example__text">page-model and on-page-data-change: the page written into the model, then the handler with a copy.</p>
+        <aui-pagination page-model="vm.model" page-size-items="[5, 10, 20, 50]" on-page-data-change="vm.onPageData"></aui-pagination>
+        <p class="pg-note">model: {{ vm.model | json }}</p>
+    </section>
+</ex-page>
+</body>
+</html>

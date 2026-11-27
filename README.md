@@ -1,6 +1,6 @@
 # aui-components
 
-Form and overlay components for AngularJS 1.5.3: select, tree select, input, date picker, checkbox, button, popover,
+Form and overlay components for AngularJS 1.5.3: select, tree select, input, date picker, checkbox, pagination, button, popover,
 modal and messages. Built for large data, keyboard use and pages with CSS of their own.
 
 * **Large data.** Lists and trees draw only the rows in view; options load from a server page by page, level by
@@ -24,6 +24,7 @@ modal and messages. Built for large data, keyboard use and pages with CSS of the
 | [`aui-input`, `aui-textarea`](docs/components/input.md) | Text, number, password and search fields; multi-line text |
 | [`aui-date-picker`, `aui-time-picker`](docs/components/date-picker.md) | Dates, times, ranges, months, quarters, years, weeks |
 | [`aui-checkbox`, `aui-checkbox-group`](docs/components/checkbox.md) | Checkboxes, with select-all and limits for groups |
+| [`aui-pagination`](docs/components/pagination.md) | The pages of a list: total, page size, pager, a page to go to |
 | [`aui-button`](docs/components/button.md) | Buttons in seven variants and five intents, with icons and a loading state |
 | [`aui-popover`](docs/components/popover.md) | A card next to a trigger: a note, a confirmation, a small form |
 | [`aui-modal`, `AuiModal`](docs/components/modal.md) | Dialogs in templates and from code |

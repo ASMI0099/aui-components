@@ -8,6 +8,14 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- `aui-pagination`: the pages of a list - the total, the page size (an aui-select), the pager (first and last
+  always, ellipses that move 5 pages), a page to go to; `loading`, `simple`, `layout`, `size`, `disabled`; a narrow
+  place makes its parts give way (fitted in the frame of the change); keyboard and screen readers (`nav`,
+  `aria-current`, "Page 5 of 44" told). Nothing moves from page to page (as many pager items on every page, one
+  button width). `search`: a search function called with (currentPage, pageItemSize); a returned promise is the
+  loading look; `total-text` (`range` or a text of the page's); `scroll-to`; item counts thousands separated; the
+  total went down: the last page chosen and told. The page-model form (`page-model`, `on-page-data-change`,
+  `page-size-items`) of the earlier pagination works as before.
 - `aui-checkbox`, `aui-checkbox-group` in a native form: a named box sends its `true-value`, a named group each checked
   value; `required` (and a group's `min` / `max`) hold for the browser's check of the form; a native reset leaves the
   boxes as the model is. `aria-labelledby`, `aria-describedby` and `tabindex` on the element act on the box (one Tab
@@ -70,6 +78,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- `aui-select`: a page's general span rules (a margin, display: block) no longer reach the field's text (the field
+  grew).
 - `aui-checkbox-group`: `max` counts every value the model holds (a click could go past it with a saved value not
   shown); select-all checks only within `max` and always clears; a model changed in place is validated at once; a
   disabled group keeps its select-all mark; an option edited in place is followed; options of one value are one

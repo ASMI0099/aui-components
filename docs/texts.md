@@ -60,6 +60,7 @@ angular.module('app', ['aui'])
 | `modal` | aui-modal, `AuiModal`, `AuiMessageBox`, `AuiMessage`; aui-popover's Cancel and Confirm |
 | `icons` | the names of the icons (`edit`, `delete`, `copy`, `check`, `close`, `circle-check`, `circle-close`, `info`, `help`, `more`, `filter`, `settings`, `add`, `search`, `refresh`, `download`, `upload`, `expand`, `collapse`, ...): an icon shown alone is named by them |
 | `button` | aui-button's `copy-text`: `copied`, `copyFailed` |
+| `pagination` | aui-pagination: `total`, `range`, `perPage`, `goTo`, `page`, `pageOf`, `previous`, `next`, `previousMore`, `nextMore`, `simple`, `loading`, `thousands` (the separator of item counts) and its labels |
 | `field` | the message line under a field (`required`, `maxlength`, `minlength`, `pattern`, `min`, `max`, `precision`, `integer`, `minItems`, `maxItems`, `number`, `email`, `url`, ...) |
 | `date` | aui-date-picker and aui-time-picker: weekday and month names, placeholders, buttons, shortcut names, lengths of ranges (see [the date picker](components/date-picker.md)) |
 

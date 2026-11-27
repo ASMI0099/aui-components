@@ -21,6 +21,7 @@
         ]},
         {title: 'Actions and overlays', links: [
             {href: 'examples/button/', text: 'aui-button'},
+            {href: 'examples/pagination/', text: 'aui-pagination'},
             {href: 'examples/popover/', text: 'aui-popover'},
             {href: 'examples/modal/', text: 'aui-modal and messages'}
         ]},

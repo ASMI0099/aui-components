@@ -1,0 +1,342 @@
+/*
+ * aui-pagination.
+ */
+
+/* aui-pagination: a row of its parts (the total, the page sizes, the pager, the page to go to) in the fields' sizes:
+   sm 28px (13px text), md 34px (14px, the default), lg 40px (15px) - its page size select and its field the same. Page buttons are quiet (no border); the current one is the accent with white
+   text (4.5:1); hover tints, the keyboard's focus is the family's ring. Its parts are kept off a page's rules for
+   buttons, spans, labels and inputs (their size, margin, display): !important where a page's rule could be stronger. */
+aui-pagination {
+    display: block;
+    max-width: 100%;
+    min-width: 0;
+}
+
+.aui-pagination {
+    --aui-pagination-height: 34px;
+    /* the digits of the last page (set by the component): the page buttons' one width */
+    --aui-pagination-digits: 2;
+    position: relative;
+    --aui-pagination-font: calc(var(--aui-font-14) * 1px);
+    display: flex !important;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box;
+    color: var(--aui-control-value-color);
+    font-size: var(--aui-pagination-font);
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+}
+
+.aui-pagination--sm {
+    --aui-pagination-height: 28px;
+    --aui-pagination-font: calc(var(--aui-font-13) * 1px);
+    gap: 10px;
+}
+
+.aui-pagination--lg {
+    --aui-pagination-height: 40px;
+    --aui-pagination-font: calc(var(--aui-font-15) * 1px);
+    gap: 14px;
+}
+
+/* hidden parts stay hidden whatever a page's rule says about spans, labels and nav */
+nav.aui-pagination[hidden],
+nav.aui-pagination [hidden] {
+    display: none !important;
+}
+
+/* a narrow place: the parts give way in this order before the pager would not fit (set by the component) */
+nav.aui-pagination--no-jumper .aui-pagination__jumper,
+nav.aui-pagination--no-total .aui-pagination__total,
+nav.aui-pagination--no-sizes .aui-pagination__sizes {
+    display: none !important;
+}
+
+.aui-pagination__total {
+    position: relative;
+    display: inline-flex !important;
+    align-items: center;
+    flex: none;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: var(--aui-control-label-color, #64748b);
+    white-space: nowrap;
+}
+
+.aui-pagination__sizes {
+    display: block !important;
+    flex: none;
+    width: 112px;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.aui-pagination--sm .aui-pagination__sizes {
+    width: 104px;
+}
+
+.aui-pagination--lg .aui-pagination__sizes {
+    width: 124px;
+}
+
+.aui-pagination__pager {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 4px;
+    flex: none;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.aui-pagination .aui-pagination__button {
+    position: relative;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    min-width: var(--aui-pagination-height);
+    height: var(--aui-pagination-height);
+    margin: 0 !important;
+    padding: 0 6px !important;
+    border: 0 !important;
+    border-radius: 6px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: inherit !important;
+    font-weight: 500;
+    line-height: 1 !important;
+    text-transform: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    box-shadow: none;
+    outline: none;
+}
+
+/* the page buttons and the ellipses: one width for all, from the digits of the last page - the pager is as wide on
+   every page, nothing after it moves (a font with wider digits: the digits pass the box's edges, the box stays) */
+.aui-pagination .aui-pagination__page,
+.aui-pagination .aui-pagination__more {
+    width: calc(var(--aui-pagination-digits) * 0.6em + 8px);
+    padding: 0 !important;
+    white-space: nowrap;
+}
+
+/* a text in the room of its widest form (the total, "3 / 20"): the widest one hidden, the one shown over it */
+.aui-pagination .aui-pagination__sizer {
+    display: block !important;
+    visibility: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: nowrap;
+}
+
+.aui-pagination .aui-pagination__shown {
+    position: absolute !important;
+    top: 0;
+    right: 0;
+    left: 0;
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    white-space: nowrap;
+}
+
+.aui-pagination .aui-pagination__simple .aui-pagination__shown {
+    text-align: center;
+}
+
+.aui-pagination .aui-pagination__button:hover:not(:disabled):not([aria-disabled="true"]):not(.aui-pagination__page--current) {
+    background-color: var(--aui-control-accent-a08);
+    color: var(--aui-control-accent-text);
+}
+
+.aui-pagination .aui-pagination__button:focus-visible {
+    box-shadow: 0 0 0 2px var(--aui-control-background-color), 0 0 0 4px var(--aui-control-accent-color) !important;
+}
+
+.aui-pagination .aui-pagination__page--current {
+    background-color: var(--aui-control-accent-color);
+    color: #ffffff;
+    font-weight: 600;
+    cursor: default;
+}
+
+.aui-pagination .aui-pagination__button:disabled {
+    color: var(--aui-control-disabled-color);
+    cursor: not-allowed;
+}
+
+/* loading or disabled: the buttons take no click (the focus stays where it is) */
+.aui-pagination .aui-pagination__button[aria-disabled="true"] {
+    cursor: not-allowed;
+}
+
+.aui-pagination--loading .aui-pagination__page:not(.aui-pagination__page--current),
+.aui-pagination--loading .aui-pagination__more,
+.aui-pagination--loading .aui-pagination__prev,
+.aui-pagination--loading .aui-pagination__next {
+    color: var(--aui-control-disabled-color);
+}
+
+.aui-pagination--disabled .aui-pagination__button {
+    color: var(--aui-control-disabled-color);
+}
+
+.aui-pagination--disabled .aui-pagination__page--current {
+    background-color: #b8c2cf;
+    color: #ffffff;
+}
+
+/* previous / next: the family's chevrons (a mask in the text's colour) */
+.aui-pagination .aui-pagination__prev::before,
+.aui-pagination .aui-pagination__next::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    background-color: currentColor;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 3.5L5.5 8L10 12.5'/%3E%3C/svg%3E") center / 16px 16px no-repeat;
+            mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 3.5L5.5 8L10 12.5'/%3E%3C/svg%3E") center / 16px 16px no-repeat;
+}
+
+.aui-pagination .aui-pagination__next::before {
+    transform: scaleX(-1);
+}
+
+.aui-pagination--sm .aui-pagination__prev::before,
+.aui-pagination--sm .aui-pagination__next::before {
+    width: 14px;
+    height: 14px;
+    -webkit-mask-size: 14px 14px;
+            mask-size: 14px 14px;
+}
+
+.aui-pagination--lg .aui-pagination__prev::before,
+.aui-pagination--lg .aui-pagination__next::before {
+    width: 18px;
+    height: 18px;
+    -webkit-mask-size: 18px 18px;
+            mask-size: 18px 18px;
+}
+
+.aui-pagination .aui-pagination__more {
+    letter-spacing: 1px;
+}
+
+.aui-pagination__simple {
+    display: inline-flex !important;
+    align-items: center;
+    margin: 0 !important;
+    padding: 0 8px !important;
+    white-space: nowrap;
+}
+
+/* the page to go to: "Go to" and the family's field (aui-input, its form box) */
+.aui-pagination .aui-pagination__jumper {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 8px;
+    flex: none;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: var(--aui-control-label-color, #64748b);
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    white-space: nowrap;
+    cursor: default;
+}
+
+/* loading: told to screen readers (a live region, no room taken); the spinner over the page chosen, its size kept */
+.aui-pagination__status {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    overflow: hidden !important;
+    clip-path: inset(50%) !important;
+    white-space: nowrap !important;
+}
+
+.aui-pagination .aui-pagination__page--busy,
+.aui-pagination .aui-pagination__simple--busy {
+    color: transparent !important;
+}
+
+.aui-pagination__simple {
+    position: relative;
+}
+
+.aui-pagination__page--busy .aui-pagination__spinner,
+.aui-pagination__simple--busy .aui-pagination__spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    margin: -7px 0 0 -7px;
+}
+
+.aui-pagination__page--busy .aui-pagination__spinner {
+    border-color: #ffffff;
+    border-top-color: transparent;
+}
+
+.aui-pagination__simple--busy .aui-pagination__spinner {
+    border-color: var(--aui-control-accent-color);
+    border-top-color: transparent;
+}
+
+/* the spinner: a small ring of the family */
+.aui-pagination__spinner {
+    display: inline-block;
+    box-sizing: border-box;
+    width: 14px;
+    height: 14px;
+    border: 2px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: aui-pagination-spin 0.6s linear infinite;
+}
+
+@keyframes aui-pagination-spin {
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .aui-pagination__spinner {
+        animation-duration: 1.6s;
+    }
+}
+
+/* High contrast: the focus as an outline in the system's highlight colour, the current page in it, the chevrons in
+   the text's colour (a mask over a background the browser would remap) */
+@media (forced-colors: active) {
+    .aui-pagination .aui-pagination__button:focus-visible {
+        outline: 2px solid Highlight;
+        outline-offset: 1px;
+    }
+
+    .aui-pagination .aui-pagination__page--current {
+        forced-color-adjust: none;
+        background-color: Highlight;
+        color: HighlightText;
+    }
+
+    .aui-pagination .aui-pagination__prev::before,
+    .aui-pagination .aui-pagination__next::before {
+        forced-color-adjust: none;
+        background-color: ButtonText;
+    }
+
+    .aui-pagination .aui-pagination__button:disabled::before {
+        background-color: GrayText;
+    }
+}
