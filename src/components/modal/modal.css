@@ -5,6 +5,10 @@
 .aui-modal {
     border: 1px solid rgb(226 232 240);
     border-radius: 0.375rem;
+    /* The room around the header, the body and the footer, in every layout but content-layout="fill" (auto-size too).
+       The browser's own value for a dialog, given here so that a page's reset (dialog { padding: 0 }) does not take it
+       away. */
+    padding: 1em;
     background-color: #ffffff;
     color: rgb(17 24 39);
     /* a white box: what it holds (links, controls, scrollbars) in the light scheme, also on a page that declares a dark
@@ -178,9 +182,24 @@
     width: 100%;
 }
 
+/* The header and the footer: the page's <header> / <footer> (or the default buttons) in a row; the header's title
+   style and its room above the body. In the stylesheet, not inline, so that a page can change them. */
 .aui-modal .aui-modal__header {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 12px;
     font-weight: bold;
     font-size: medium;
+}
+
+.aui-modal .aui-modal__footer {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
 
 
@@ -274,12 +293,19 @@
     height: fit-content !important;
     max-width: 92vw;
     max-height: 88vh;
-    padding: 0;
+    /* the caps hold the padding too: the whole box stays within 92% x 88% of the window */
+    box-sizing: border-box;
 }
 
+/* auto-size changes the size only: the box keeps the room of the default layout around the header, the body and the
+   footer (it had none: the header and the body touched the border, the footer the bottom edge) */
 .aui-modal--auto .aui-modal__container {
-    padding: 0;
     height: auto !important;
+}
+
+/* The body does not grow here (the box is as tall as its content): the footer keeps the header's room (12px) from it */
+.aui-modal--auto:not(.aui-modal--content-fill) > .aui-modal__container > .aui-modal__footer {
+    padding-top: 12px;
 }
 
 .aui-modal--auto .aui-modal__content {
@@ -414,6 +440,23 @@
 .aui-modal--content-fill.aui-scroll,
 .aui-modal--content-fill.aui-scroll * {
     scrollbar-gutter: auto !important;
+}
+
+/* content-layout="fill" with auto-size: the box as large as its content, with no room around it (content that draws
+   its own, as the message box). Within the auto-size caps; taller than they allow, the box scrolls itself as any
+   auto-size box does - its content has no room of its own to scroll in - with the same stable gutter. */
+.aui-modal.aui-modal--auto.aui-modal--content-fill {
+    max-width: 92vw;
+    max-height: 88vh;
+    overflow: auto;
+}
+
+.aui-modal--auto.aui-modal--content-fill > .aui-modal__container > .aui-modal__content {
+    overflow: visible !important;
+}
+
+.aui-modal--auto.aui-modal--content-fill.aui-scroll {
+    scrollbar-gutter: stable !important;
 }
 
 /* The scroll areas keep a stable gutter (the modal, its body, the option lists): their content does not move when a

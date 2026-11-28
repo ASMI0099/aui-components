@@ -22,7 +22,7 @@ angular.module('auiTest', ['aui'])
     }])
     .controller('ModalCtrl', ['$scope', '$q', '$timeout', function ($scope, $q, $timeout) {
         $scope.open = {plain: false, deferred: false, rendered: false, actions: false, glass: false, noesc: false, confirm: false,
-            own: false, reopen: false, native: false, sized: false, upper: false};
+            own: false, reopen: false, native: false, sized: false, upper: false, auto: false, autoOwn: false, fill: false};
         $scope.sized = {w: '', h: ''};
         // on-close of m-reopen: the page opens it again at once (a microtask, as after an awaited call), once
         $scope.reopens = 0;

@@ -481,6 +481,67 @@
             return {resolved, content: item.content, render: item.render, onConfirm: item._onConfirm, onClose: item._onClose, closedCalled};
         });
 
+    T('M22 auto-size keeps the default layout\'s room: the header as far from the border as there, the footer as far from the bottom as the header from the top, 12px between body and footer; header and footer styled by the stylesheet (a page rule changes them); content-layout="fill" without room',
+        {header: true, body: true, footer: true, plainFooter: true, gap: '12px', inline: [null, null], pageRule: true, ownFooter: true,
+            fill: {padding: '0px', header: 1}},
+        async () => {
+            const measure = async (key, id) => {
+                apply(s => { s.open[key] = true; });
+                await sleep(500);
+                const d = dialog(id);
+                const b = d.getBoundingClientRect();
+                const at = sel => {
+                    const r = d.querySelector(sel).getBoundingClientRect();
+                    return {left: r.left - b.left, top: r.top - b.top, bottom: b.bottom - r.bottom};
+                };
+                const footer = d.querySelector('.aui-modal__footer');
+                const m = {header: at('.aui-modal__header'), body: at('.aui-modal__content'), footer: at('.aui-modal__footer'),
+                    padding: getComputedStyle(d).paddingTop, gap: getComputedStyle(footer).paddingTop, justify: getComputedStyle(footer).justifyContent,
+                    inline: [d.querySelector('.aui-modal__header').getAttribute('style'), footer.getAttribute('style')]};
+                apply(s => { s.open[key] = false; });
+                await sleep(500);
+                return m;
+            };
+            const near = (a, b) => Math.abs(a - b) < 0.5;
+            const plain = await measure('plain', 'm-plain');
+            const auto = await measure('auto', 'm-auto');
+            const own = await measure('autoOwn', 'm-auto-own');
+            const fill = await measure('fill', 'm-fill');
+            // the page's justify-content: flex-end, as this browser writes it back (newer Chrome reports "flow-end")
+            const probe = document.createElement('div');
+            probe.style.cssText = 'display: flex; justify-content: flex-end;';
+            document.body.appendChild(probe);
+            const flexEnd = getComputedStyle(probe).justifyContent;
+            probe.remove();
+            return {
+                header: near(auto.header.left, plain.header.left) && near(auto.header.top, plain.header.top),
+                body: near(auto.body.left, auto.header.left),
+                footer: near(auto.footer.bottom, auto.header.top),
+                plainFooter: near(plain.footer.bottom, plain.header.top),
+                gap: auto.gap,
+                inline: auto.inline,
+                pageRule: own.justify === flexEnd && auto.justify !== flexEnd,
+                ownFooter: near(own.footer.bottom, own.header.top),
+                fill: {padding: fill.padding, header: Math.round(fill.header.left)}
+            };
+        });
+
+    T('M23 the message box keeps its own frame (auto-size with content-layout fill): no room around it, the box within 92% x 88% of the window',
+        {padding: '0px', at: [1, 1], within: true},
+        async () => {
+            svc('AuiMessageBox').alert('A message box');
+            await until(() => boxDialog() && boxDialog().open, 2000);
+            await sleep(500);
+            const d = boxDialog();
+            const b = d.getBoundingClientRect();
+            const m = d.querySelector('.aui-message-box').getBoundingClientRect();
+            const r = {padding: getComputedStyle(d).paddingTop, at: [Math.round(m.left - b.left), Math.round(m.top - b.top)],
+                within: b.width <= window.innerWidth * 0.92 + 0.5 && b.height <= window.innerHeight * 0.88 + 0.5};
+            apply(() => { svc('AuiMessageBox')._cancelCurrent(); });
+            await sleep(700);
+            return r;
+        });
+
     T('M11 no Angular errors on the page',
         {errors: []},
         async () => ({errors: AuiTest.angularErrors()}));

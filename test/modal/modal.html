@@ -81,6 +81,22 @@
 <aui-modal id="m-upper" is-open="open.upper" size="small">
     <content><div style="padding: 8px;">Opened over another one</div></content>
 </aui-modal>
+
+<!-- auto-size keeps the default layout's room; a page's rule changes the footer (no inline style in the way) -->
+<style>#m-auto-own .aui-modal__footer { justify-content: flex-end; }</style>
+<aui-modal id="m-auto" is-open="open.auto" auto-size="true">
+    <header><span>Auto-size</span></header>
+    <content><div style="width: 300px;">A body as large as it is</div></content>
+</aui-modal>
+<aui-modal id="m-auto-own" is-open="open.autoOwn" auto-size="true">
+    <header><span>Auto-size, a footer of its own</span></header>
+    <content><div style="width: 300px;">A body</div></content>
+    <footer><aui-button>Done</aui-button></footer>
+</aui-modal>
+<aui-modal id="m-fill" is-open="open.fill" size="small" content-layout="fill">
+    <header><span>Fill</span></header>
+    <content><div style="width: 100%;">A body to the edges</div></content>
+</aui-modal>
 <!-- the page scrolls (it has a scrollbar), as most pages do -->
 <div id="tall-page" style="height: 2400px;"></div>
 </body>

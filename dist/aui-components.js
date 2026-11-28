@@ -5028,15 +5028,15 @@ angular.module('aui')
         template: ['auiModalRegistry', function (auiModalRegistry) {
             // the footer: the page's own <footer>, or the default buttons - never both built (see ownFooter). Its actions
             // wrap to a second line where the box is too narrow for one. The Confirm button shows confirm-loading-text
-            // while on-confirm's promise runs (the button's own loading-text: a label is hidden while it loads).
-            const FOOTER = 'class="aui-modal__footer" style="display: flex;flex-direction: row;flex-wrap: wrap;align-items: center;' +
-                'justify-content: center;padding-bottom: 5px;gap: 10px;"';
+            // while on-confirm's promise runs (the button's own loading-text: a label is hidden while it loads). The
+            // header's and the footer's layout and spacing are in the stylesheet (.aui-modal__header, .aui-modal__footer),
+            // where a page can change them; inline, they could only be overridden with !important.
+            const FOOTER = 'class="aui-modal__footer"';
             // the body's place while defer-render waits for the first frame: aui-modal__content--pending
             const INNER = `
                         <div class="aui-modal__container" aui-modal-mount="$ctrl.contentMounted"
                              style="width: 100%;height: 100%;display: flex;flex-direction: column;">
-                            <div class="aui-modal__header" ng-if="$ctrl.showHeader" ng-transclude="header"
-                                 style="display: flex;flex-direction: row;align-items: center;padding-bottom: 12px;"></div>
+                            <div class="aui-modal__header" ng-if="$ctrl.showHeader" ng-transclude="header"></div>
                             <div class="aui-modal__content" aui-modal-mount="$ctrl.bodyMounted" ng-transclude="content"
                                  style="display: flex;flex-direction: row;flex: 1;overflow-y: auto;"></div>
                             <div class="aui-modal__content aui-modal__content--pending" aui-modal-mount="!$ctrl.bodyMounted" aria-busy="true"
@@ -17607,6 +17607,7 @@ angular.module('aui')
                        show-header="false"
                        show-footer="false"
                        auto-size="true"
+                       content-layout="fill"
                        aria-label="{{ $ctrl.label() }}"
                        aria-describedby="{{ $ctrl.messageId }}"
                        close-on-esc="{{ $ctrl.svc.state.current.closeOnEsc ? 'true' : 'false' }}">

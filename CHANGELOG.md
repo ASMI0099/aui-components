@@ -75,8 +75,20 @@ All notable changes to this project are documented here. The format follows
   keep their colour through `--aui-calendar-muted-color` (`#9aa8b8`).
 - Theming guide: the colours for pages that must meet WCAG AA for the field border and placeholders too
   (`#8590a0` / `#737f90`, `#64748b`).
+- `aui-modal`: `auto-size` keeps the room of the default layout (1em inside the border, 12px under the header) and
+  puts 12px between the body and the footer; it had none (the header and the body touched the border, the footer the
+  bottom edge). Only `content-layout="fill"` has no room. The footer's extra 5px at the bottom is gone (the footer is
+  as far from the bottom as the header from the top). The header's and the footer's layout moved from inline styles
+  into the stylesheet (`.aui-modal__header`, `.aui-modal__footer`): a page's rule changes them. The box's padding is
+  the stylesheet's own (a page's `dialog { padding: 0 }` took it away). Pages that gave an auto-size dialog padding of
+  their own drop it.
+- `aui-modal`: `content-layout="fill"` with `auto-size` is content that draws its own frame (the message box uses it):
+  as large as its content within the auto-size limits, scrolling as a whole where it is taller.
 
 ### Fixed
+
+- `aui-select`, `aui-tree-select` (and the pagination's page-size field): a field at the bottom of a scroll box made the
+  box scroll by 1px (the hidden input of the form's check hung below the field).
 
 - `aui-select`: a page's general span rules (a margin, display: block) no longer reach the field's text (the field
   grew).

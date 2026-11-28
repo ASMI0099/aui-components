@@ -12,12 +12,15 @@
     min-height: var(--aui-control-height);
 }
 
+/* The native input of the form's required check: 1px at the bottom middle of the field (the browser's own message
+   points there), inside it - with the usual -1px margin it hung 1px below the field, and a scroll box with a field at
+   its bottom (a pagination bar's page-size field, a form's last field) could scroll by that pixel. */
 .aui-select__hidden-input {
     position: absolute;
     width: 1px !important;
     height: 1px !important;
     padding: 0 !important;
-    margin: -1px !important;
+    margin: 0 !important;
     overflow: hidden;
     clip: rect(0, 0, 0, 0);
     border: 0 !important;

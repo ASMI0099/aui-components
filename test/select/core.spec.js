@@ -438,5 +438,12 @@
             return {box: style.width + ' ' + style.height, mask: style.webkitMaskSize || style.maskSize};
         });
 
+    T('T34 a field at the bottom of a scroll box does not make it scroll: the hidden input of the form\'s check stays inside the field (it hung 1px below it)',
+        {select: 0, tree: 0},
+        async () => {
+            const over = id => { const box = document.getElementById(id); return box.scrollHeight - box.clientHeight; };
+            return {select: over('box-select'), tree: over('box-tree')};
+        });
+
     AuiTest.run('aui-select: core', tests, {delay: 0});
 })();

@@ -264,6 +264,7 @@ angular.module('aui')
                        show-header="false"
                        show-footer="false"
                        auto-size="true"
+                       content-layout="fill"
                        aria-label="{{ $ctrl.label() }}"
                        aria-describedby="{{ $ctrl.messageId }}"
                        close-on-esc="{{ $ctrl.svc.state.current.closeOnEsc ? 'true' : 'false' }}">

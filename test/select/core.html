@@ -79,5 +79,10 @@
     </div>
     <button type="submit" id="submitBtn">Submit</button>
 </form>
+<!-- T34: a field at the bottom of a scroll box -->
+<div class="row">
+    <div id="box-select" style="overflow: auto; width: 260px; border: 1px solid #ccc;"><aui-select ng-model="m.inBox" options="strOptions" placeholder="At the bottom"></aui-select></div>
+    <div id="box-tree" style="overflow: auto; width: 260px; border: 1px solid #ccc;"><aui-tree-select ng-model="m.inTree" options="treeOptions"></aui-tree-select></div>
+</div>
 </body>
 </html>

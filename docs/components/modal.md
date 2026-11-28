@@ -24,12 +24,19 @@ default buttons are not built). Where the dialog is too narrow for its actions t
 and the footer take the height their content needs; the body between them scrolls. Inside the dialog, `aui-modal-close` on any element
 closes it (`aui-modal-close="vm.cancel()"` evaluates the expression too).
 
+The dialog has room around its parts in every layout but `content-layout="fill"`: `1em` inside its border (as the
+browser's own dialog, kept where a page's reset sets `dialog { padding: 0 }`), the header bold with `12px` below it,
+the footer's actions in a centred row with `10px` between them. `auto-size` keeps all of it, and puts `12px` between
+the body and the footer (its body does not grow, so nothing else would keep them apart): a page writes no padding of
+its own. The header's and the footer's look come from the stylesheet (`.aui-modal__header`, `.aui-modal__footer`), so a
+page's rule changes them without `!important`.
+
 | Attribute | |
 |---|---|
 | `is-open` | Opens and closes the dialog (two-way: closing it sets it to false). |
 | `size` | `small` (40% of the window), `medium` (60%), `large` (80%), `fullScreen`. Without `size`, 85%. On a small window a preset keeps at least 20rem × 12rem (never more than the window). |
 | `width`, `height` | A size of its own, each on its own (the other one comes from `size`): a CSS length (`480px`, `30rem`, `50%`, `calc(...)`), or a number from 5 to 100 for that share of the window (`width="55"`: 55vw). |
-| `auto-size` | `"true"`: as large as its content. |
+| `auto-size` | `"true"`: as large as its content (with the room around it), up to 92% × 88% of the window; a taller content scrolls with the whole dialog. |
 | `show-header`, `show-footer` | `"false"` hides the part. |
 | `show-confirm-button` | `"true"` adds the Confirm button to the default footer. |
 | `confirm-text`, `confirm-loading-text` | The Confirm button's text, and its text while `on-confirm`'s promise runs. |
@@ -38,7 +45,7 @@ closes it (`aui-modal-close="vm.cancel()"` evaluates the expression too).
 | `on-close` | Called when the dialog closes (not when the page removes the open dialog from the page). |
 | `close-on-esc` | `"true"`: Escape closes it. Off by default (a form is not lost to a stray key); `AuiModal.open` closes on Escape unless `closeOnEsc: false`. |
 | `initial-focus` | A selector inside the dialog for the element that takes the focus on open. |
-| `content-layout` | `fill`: the content without padding and outer scrolling (a full-size editor, a chart). |
+| `content-layout` | `fill`: the content without padding and outer scrolling (a full-size editor, a chart). With `auto-size`: content that draws its own frame (the message box does), the dialog as large as it within the auto-size limits, scrolling as a whole where it is taller. |
 | `border-radius` | The corners, in px. |
 | `display-on-top` | `"true"` with `size="medium"`: the dialog sits higher on the page - less high where its height needs the room, so it never leaves the window. |
 | `background-opacity` | `OPAQUE_LIKE`: a translucent, blurred dialog; otherwise opaque. |
